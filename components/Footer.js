@@ -1,0 +1,3 @@
+import Link from 'next/link';
+import {dictionaries} from '../lib/i18n';
+export default function Footer({lang}){const t=dictionaries[lang];return <footer><div className="wrap footer-main"><Link className="brand" href={`/${lang}`}><img className="brand-mark" src="/assets/tl-monogram.svg" alt="TL"/><span>tio lira<small>{t.studio}</small></span></Link><div><Link href={`/${lang}/calculadora`}>{t.calculator}</Link><a href="https://www.instagram.com/tiolira/" target="_blank" rel="noreferrer">Instagram ↗</a><Link href="/admin">{t.admin}</Link></div><p>{t.footer}</p></div><div className="wrap footer-bottom"><span>© 2026 Diego Lira. {t.rights}</span><span>PT · EN · ES</span></div></footer>}

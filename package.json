@@ -1,0 +1,23 @@
+{
+  "name": "tiolira",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 8766",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 8766",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "@vercel/blob": "^2.8.0",
+    "zod": "^4.6.5"
+  },
+  "packageManager": "pnpm@11.19.0"
+}

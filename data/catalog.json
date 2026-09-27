@@ -1,0 +1,762 @@
+{
+  "settings": {
+    "heroTitle": "O presépio é um presente para você.",
+    "heroDescription": "Gratuito, feito com carinho e atenção a todos que fazem parte dessa história. Imprima, monte e leve um pouco de fé e afeto para a sua casa.",
+    "announcement": "PRESÉPIO GRATUITO · UM PRESENTE DO TIO LIRA",
+    "clubDescription": "Várias coleções exclusivas estão chegando. Um novo espaço para colecionar, criar e, com a licença certa, vender suas peças físicas.",
+    "about": "Sou Diego Lira, criador de modelos 3D. Minha família, minha fé, minhas raízes e meu bom humor fazem parte de tudo o que eu crio. Este é meu ateliê aberto: um lugar para compartilhar carinho, ideias e histórias que ganham forma.",
+    "instagram": "https://www.instagram.com/tiolira/",
+    "contactEmail": "diegolira@diegolira.com.br",
+    "storesOpen": true,
+    "translations": {
+      "en": {
+        "heroTitle": "The nativity is a gift for you.",
+        "heroDescription": "Free, made with love and care for everyone who is part of this story. Print, assemble and bring a little faith and warmth into your home.",
+        "announcement": "FREE NATIVITY · A GIFT FROM TIO LIRA",
+        "clubDescription": "Several exclusive collections are on their way. A new space to collect, create and, with the right license, sell your physical prints.",
+        "about": "I’m Diego Lira, a 3D model designer. My family, faith, roots and sense of humor are part of everything I create. This is my open studio: a place to share care, ideas and stories that take shape."
+      },
+      "es": {
+        "heroTitle": "El belén es un regalo para ti.",
+        "heroDescription": "Gratis, hecho con cariño y atención para todos los que forman parte de esta historia. Imprime, monta y lleva un poco de fe y afecto a tu hogar.",
+        "announcement": "BELÉN GRATUITO · UN REGALO DE TIO LIRA",
+        "clubDescription": "Están llegando varias colecciones exclusivas. Un nuevo espacio para coleccionar, crear y, con la licencia adecuada, vender tus piezas físicas.",
+        "about": "Soy Diego Lira, creador de modelos 3D. Mi familia, mi fe, mis raíces y mi buen humor forman parte de todo lo que creo. Este es mi taller abierto: un lugar para compartir cariño, ideas e historias que toman forma."
+      }
+    }
+  },
+  "collections": [
+    {
+      "id": "presepio",
+      "name": "Presépio Tio Lira",
+      "description": "Um presente gratuito, feito com carinho para todos.",
+      "image": "/assets/5e6af6dbc5364235.jpg",
+      "free": true,
+      "comingSoon": false,
+      "published": true,
+      "translations": {
+        "en": {
+          "name": "Tio Lira Nativity",
+          "description": "A free gift, made with love for everyone."
+        },
+        "es": {
+          "name": "Belén Tio Lira",
+          "description": "Un regalo gratuito, hecho con cariño para todos."
+        }
+      }
+    },
+    {
+      "id": "fe",
+      "name": "Pequenos símbolos",
+      "description": "O carinho mora nos detalhes.",
+      "image": "/assets/ccfd9e1621ccd1b2.jpg",
+      "free": true,
+      "comingSoon": false,
+      "published": true,
+      "translations": {
+        "en": {
+          "name": "Little symbols",
+          "description": "Love lives in the details."
+        },
+        "es": {
+          "name": "Pequeños símbolos",
+          "description": "El cariño vive en los detalles."
+        }
+      }
+    },
+    {
+      "id": "nordeste",
+      "name": "Raízes nordestinas",
+      "description": "Com um sotaque bem nosso.",
+      "image": "/assets/47f8da1039d82f07.jpg",
+      "free": true,
+      "comingSoon": false,
+      "published": true,
+      "translations": {
+        "en": {
+          "name": "Northeastern roots",
+          "description": "A little piece of northeastern Brazil."
+        },
+        "es": {
+          "name": "Raíces del nordeste",
+          "description": "Un pedacito del nordeste de Brasil."
+        }
+      }
+    }
+  ],
+  "products": [
+    {
+      "id": "presepio-natalino-rei-mago-2",
+      "slug": "presepio-natalino-rei-mago-2",
+      "name": "Rei Melchior",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Rei Mago em pé, com túnica ocre, cabelo e barba brancos, coroa e cálice dourados. Seu visual complementa os outros dois Reis Magos da coleção.\n\nAltura montada aproximada: 20 cm. O projeto contém 18 peças em 6 bandejas organizadas por cor, permitindo a impressão sem AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Rei Mago em pé, com túnica ocre, cabelo e barba brancos, coroa e cálice dourados. Seu visual complementa os outros dois Reis Magos da coleção.",
+      "image": "/assets/bb10ba97e8d1c1df.jpg",
+      "gallery": [
+        "/assets/presepio-natalino-rei-mago-2-gallery-1.png"
+      ],
+      "size": "20 cm",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3358086-wise-man-melchior-nativity-scene-uncle-lira",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 0,
+      "translations": {
+        "en": {
+          "name": "Wise Man Melchior",
+          "description": "A standing wise man with an ochre tunic, white hair and beard, and a golden crown and chalice. His look complements the other two wise men in the collection.\n\nApproximate assembled height: 20 cm. 18 parts on 6 color-separated trays, printable without AMS.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Rey Melchor",
+          "description": "Rey Mago de pie, con túnica ocre, cabello y barba blancos, corona y cáliz dorados. Su aspecto complementa a los otros dos Reyes Magos de la colección.\n\nAltura montada aproximada: 20 cm. 18 piezas en 6 bandejas por color, para imprimir sin AMS.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-maria",
+      "slug": "presepio-natalino-maria",
+      "name": "Maria",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Maria da coleção Presépio Tio Lira, em pose de oração, com detalhes no rosto, no véu e nas dobras da roupa.\n\nModelo com aproximadamente 15 cm de altura, dividido em peças para impressão por cores e montagem. Perfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA: camadas de 0,12 mm, 3 paredes, 12% de preenchimento e suportes árvore, com ajustes por peça. São 5 bandejas nas cores branco, marrom, pele e preto.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Maria da coleção Presépio Tio Lira, em pose de oração, com detalhes no rosto, no véu e nas dobras da roupa.",
+      "image": "/assets/603ea2ab9c97d1fc.jpg",
+      "gallery": [
+        "/assets/presepio-natalino-maria-gallery-1.png"
+      ],
+      "size": "15 cm",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3354199-maria-nativity-uncle-lira",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 1,
+      "translations": {
+        "en": {
+          "name": "Mary",
+          "description": "Mary from the Tio Lira Nativity collection, in a prayer pose, with details on her face, veil and clothing folds.\n\nApproximately 15 cm tall, split into parts for printing by color and assembly. Bambu Lab A1, 0.4 mm nozzle, PLA, 0.12 mm layers, 3 walls, 12% infill and tree supports, adjusted per part. Five trays in white, brown, skin tone and black.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "María",
+          "description": "María de la colección Belén Tio Lira, en oración, con detalles en el rostro, el velo y los pliegues de la ropa.\n\nAproximadamente 15 cm de altura, dividido por colores para imprimir y montar. Bambu Lab A1, boquilla de 0,4 mm, PLA, capas de 0,12 mm, 3 paredes, 12% de relleno y soportes de árbol ajustados por pieza. Cinco bandejas en blanco, marrón, piel y negro.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-jose",
+      "slug": "presepio-natalino-jose",
+      "name": "José",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "José traz uma expressão serena, túnica branca e detalhes delicados no cabelo e na barba. Faz parte da coleção Presépio Tio Lira e combina com Maria e o Menino Jesus para compor a Sagrada Família.\n\nO modelo montado mede aproximadamente 20 cm de altura, 8,3 cm de largura e 6,4 cm de profundidade. São 18 peças organizadas em 5 bandejas por cor, permitindo imprimir sem AMS. Os olhos têm componentes brancos e pretos separados, e a cabeça usa um pino em D para orientar a montagem.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA Basic: camadas de 0,12 mm, 3 paredes e 12% de preenchimento. O pino e as peças dos olhos usam 100% de preenchimento. Consulte o guia ilustrado para a posição das peças dos olhos.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "José traz uma expressão serena, túnica branca e detalhes delicados no cabelo e na barba. Faz parte da coleção Presépio Tio Lira e combina com Maria e o Menino Jesus para compor a Sagrada Família.",
+      "image": "/assets/382acfa0a193fa49.jpg",
+      "gallery": [],
+      "size": "20 cm",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3350295-jose-nativity-scene-uncle-lira",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 2,
+      "translations": {
+        "en": {
+          "name": "Joseph",
+          "description": "Joseph has a serene expression, a white tunic and delicate hair and beard details. Part of the Tio Lira Nativity collection, he joins Mary and Baby Jesus to form the Holy Family.\n\nAssembled size: approximately 20 cm high, 8.3 cm wide and 6.4 cm deep. Eighteen parts on five color-separated trays, printable without AMS. Eyes have separate black and white parts; a D-shaped pin aligns the head.\n\nBambu Lab A1, 0.4 mm nozzle, PLA Basic, 0.12 mm layers, 3 walls and 12% infill. Pin and eye parts use 100% infill. Follow the illustrated guide for eye positioning.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "José",
+          "description": "José tiene una expresión serena, túnica blanca y detalles delicados en el cabello y la barba. Forma parte del Belén Tio Lira y se une a María y al Niño Jesús para formar la Sagrada Familia.\n\nMedidas montado: aproximadamente 20 cm de alto, 8,3 cm de ancho y 6,4 cm de profundidad. Dieciocho piezas en cinco bandejas por color, sin necesidad de AMS. Ojos blancos y negros separados y pasador en D para orientar la cabeza.\n\nBambu Lab A1, boquilla de 0,4 mm, PLA Basic, capas de 0,12 mm, 3 paredes y 12% de relleno. Pasador y ojos al 100% de relleno. Consulta la guía ilustrada para colocar los ojos.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-menino-jesus",
+      "slug": "presepio-natalino-menino-jesus",
+      "name": "Menino Jesus e manjedoura",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "O centro da cena do Natal: Menino Jesus acomodado na manjedoura, com manta branca e traços delicados que acompanham o estilo da coleção Presépio Tio Lira.\n\nVersão montável com peças organizadas em 6 bandejas por cor: madeira, palha, manta branca, pele, cabelo e olhos/sobrancelhas pretos. A separação por bandejas permite imprimir as cores individualmente, sem necessidade de AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA Basic, com camadas de 0,12 mm para valorizar os detalhes.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "O centro da cena do Natal: Menino Jesus acomodado na manjedoura, com manta branca e traços delicados que acompanham o estilo da coleção Presépio Tio Lira.",
+      "image": "/assets/5e6af6dbc5364235.jpg",
+      "gallery": [],
+      "size": "",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3344809-baby-jesus-and-manger-tio-lira",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 3,
+      "translations": {
+        "en": {
+          "name": "Baby Jesus and manger",
+          "description": "At the heart of Christmas: Baby Jesus resting in a manger with a white blanket and the delicate features of the Tio Lira Nativity collection.\n\nAn assembly model on six color-separated trays: wood, straw, white blanket, skin, hair and black eyes/eyebrows. Colors print individually without AMS.\n\nBambu Lab A1 profile, 0.4 mm nozzle, PLA Basic and 0.12 mm layers to preserve details.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Niño Jesús y pesebre",
+          "description": "El centro de la Navidad: el Niño Jesús en el pesebre, con una manta blanca y los rasgos delicados del Belén Tio Lira.\n\nModelo montable en seis bandejas por color: madera, paja, manta blanca, piel, cabello y ojos/cejas negros. Permite imprimir colores por separado sin AMS.\n\nPerfil para Bambu Lab A1, boquilla de 0,4 mm, PLA Basic y capas de 0,12 mm para conservar los detalles.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "jesus-sentado-multi-partes",
+      "slug": "jesus-sentado-multi-partes",
+      "name": "Jesus sentado · multipartes",
+      "collection": "fe",
+      "category": "fe",
+      "description": "Mini Jesus agora versão Multi Partes - Exclusivo",
+      "summary": "Mini Jesus agora versão Multi Partes - Exclusivo",
+      "image": "/assets/ccfd9e1621ccd1b2.jpg",
+      "gallery": [],
+      "size": "",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3341988-jesus-sentado-tio-lira-multi-partes#profileId-3797037",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Confira a licença específica na página do modelo. O download gratuito não concede automaticamente autorização comercial.",
+      "planIds": [],
+      "order": 4,
+      "translations": {
+        "en": {
+          "name": "Seated Jesus · multipart",
+          "description": "Mini Jesus, now in an exclusive multipart version."
+        },
+        "es": {
+          "name": "Jesús sentado · por piezas",
+          "description": "Mini Jesús, ahora en una versión exclusiva por piezas."
+        }
+      }
+    },
+    {
+      "id": "estatua-padre-cicero",
+      "slug": "estatua-padre-cicero",
+      "name": "Padre Cícero · multipartes",
+      "collection": "fe",
+      "category": "fe",
+      "description": "Estatua do Padre Cicero Multi-Partes, ainda ganha de brinde o mini padre cicero para monitor ou mesa",
+      "summary": "Estatua do Padre Cicero Multi-Partes, ainda ganha de brinde o mini padre cicero para monitor ou mesa",
+      "image": "/assets/f8b4d2a87d0dbf4d.jpg",
+      "gallery": [],
+      "size": "",
+      "access": "site",
+      "url": "https://diegolira.com.br/3d/produto/estatua-padre-cicero",
+      "filePath": "",
+      "exclusive": false,
+      "published": true,
+      "license": "Confira a licença específica na página do modelo. O download gratuito não concede automaticamente autorização comercial.",
+      "planIds": [],
+      "order": 5,
+      "translations": {
+        "en": {
+          "name": "Father Cícero · multipart",
+          "description": "Multipart Father Cícero statue, with a bonus Mini Father Cícero for your monitor or desk."
+        },
+        "es": {
+          "name": "Padre Cícero · por piezas",
+          "description": "Estatua del Padre Cícero por piezas, con un Mini Padre Cícero de regalo para el monitor o la mesa."
+        }
+      }
+    },
+    {
+      "id": "estatua-frei",
+      "slug": "estatua-frei",
+      "name": "Frei · multipartes",
+      "collection": "fe",
+      "category": "fe",
+      "description": "Miniatura Frei, desenvolvida especialmente para impressão 3D, com aproximadamente 16 cm de altura. O modelo é separado em 4 bandejas, facilitando a impressão por cores, com montagem prática e impressão rápida.\n\nIdeal para decoração, presentes, artigos religiosos e uso pessoal.\n📦 Produto digital: arquivo para impressão 3D.\n🖨️ 4 bandejas organizadas para impressão rápida.\n\n⚠️ Nenhum produto físico será enviado.",
+      "summary": "Miniatura Frei, desenvolvida especialmente para impressão 3D, com aproximadamente 16 cm de altura. O modelo é separado em 4 bandejas, facilitando a impressão por cores, com montagem prática e impressão rápida.",
+      "image": "/assets/f444901531549c47.jpeg",
+      "gallery": [
+        "/assets/estatua-frei-gallery-1.jpeg"
+      ],
+      "size": "16 cm",
+      "access": "site",
+      "url": "https://diegolira.com.br/3d/produto/estatua-frei",
+      "filePath": "",
+      "exclusive": false,
+      "published": true,
+      "license": "Confira a licença específica na página do modelo. O download gratuito não concede automaticamente autorização comercial.",
+      "planIds": [],
+      "order": 6,
+      "translations": {
+        "en": {
+          "name": "Friar · multipart",
+          "description": "Friar miniature designed for 3D printing, approximately 16 cm tall. Four trays make printing by color and assembly easy.\n\nFor decoration, gifts, religious items and personal use. Digital 3D printing file. No physical product will be shipped."
+        },
+        "es": {
+          "name": "Fraile · por piezas",
+          "description": "Miniatura de fraile diseñada para impresión 3D, de aproximadamente 16 cm. Cuatro bandejas facilitan la impresión por colores y el montaje.\n\nPara decoración, regalos, artículos religiosos y uso personal. Archivo digital para impresión 3D. No se envía ningún producto físico."
+        }
+      }
+    },
+    {
+      "id": "novo-mini-jesus-sentado",
+      "slug": "novo-mini-jesus-sentado",
+      "name": "Novo Mini Jesus sentado",
+      "collection": "fe",
+      "category": "fe",
+      "description": "O Mini Jesus Sentado é um modelo digital para impressão 3D que transmite ternura, paz e fé.",
+      "summary": "O Mini Jesus Sentado é um modelo digital para impressão 3D que transmite ternura, paz e fé.",
+      "image": "/assets/0b39e5d12ce313c3.jpeg",
+      "gallery": [],
+      "size": "",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3275718-mini-jesus-tiolira#profileId-3714929",
+      "filePath": "",
+      "exclusive": false,
+      "published": true,
+      "license": "Confira a licença específica na página do modelo. O download gratuito não concede automaticamente autorização comercial.",
+      "planIds": [],
+      "order": 7,
+      "translations": {
+        "en": {
+          "name": "New seated Mini Jesus",
+          "description": "Seated Mini Jesus is a digital 3D printing model that conveys tenderness, peace and faith."
+        },
+        "es": {
+          "name": "Nuevo Mini Jesús sentado",
+          "description": "Mini Jesús Sentado es un modelo digital para impresión 3D que transmite ternura, paz y fe."
+        }
+      }
+    },
+    {
+      "id": "chaveiro-frei",
+      "slug": "chaveiro-frei",
+      "name": "Chaveiro Mini Frei",
+      "collection": "fe",
+      "category": "fe",
+      "description": "Chaveiro Mini Frei – Arquivo para Impressão 3D\n\nMiniatura inspirada no Frei, desenvolvida especialmente para impressão 3D em formato de chaveiro. Modelo compacto, com visual carismático e detalhes pensados para uma impressão bonita e prática.\n\nIdeal para lembrancinhas, presentes, artigos religiosos e uso pessoal.",
+      "summary": "Chaveiro Mini Frei – Arquivo para Impressão 3D",
+      "image": "/assets/519907fddcb514e8.jpeg",
+      "gallery": [],
+      "size": "",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3276251-chaveiro-mini-frei-tiolira#profileId-3715585",
+      "filePath": "",
+      "exclusive": false,
+      "published": true,
+      "license": "Confira a licença específica na página do modelo. O download gratuito não concede automaticamente autorização comercial.",
+      "planIds": [],
+      "order": 8,
+      "translations": {
+        "en": {
+          "name": "Mini Friar keychain",
+          "description": "Mini Friar keychain – digital 3D printing file.\n\nA compact miniature inspired by the friar, with a friendly look and details designed for practical printing. For keepsakes, gifts, religious items and personal use."
+        },
+        "es": {
+          "name": "Llavero Mini Fraile",
+          "description": "Llavero Mini Fraile – archivo para impresión 3D.\n\nUna miniatura compacta inspirada en el fraile, con un aspecto carismático y detalles pensados para una impresión práctica. Para recuerdos, regalos, artículos religiosos y uso personal."
+        }
+      }
+    },
+    {
+      "id": "virgem-maria",
+      "slug": "virgem-maria",
+      "name": "Chaveiro Virgem Maria",
+      "collection": "fe",
+      "category": "fe",
+      "description": "Mini Chaveiro Virgem Maria – Arquivo para Impressão 3D\n\nMiniatura da Virgem Maria desenvolvida em formato de chaveiro para impressão 3D. Um modelo delicado e cheio de significado, representando fé, proteção e devoção.\nIdeal para lembrancinhas religiosas, presentes, chaveiros personalizados ou para levar consigo um símbolo de fé no dia a dia.",
+      "summary": "Mini Chaveiro Virgem Maria – Arquivo para Impressão 3D",
+      "image": "/assets/94b723eac9940eda.jpeg",
+      "gallery": [],
+      "size": "",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3276341-mini-mary-keychain-uncle-lira#profileId-3779887",
+      "filePath": "",
+      "exclusive": false,
+      "published": true,
+      "license": "Confira a licença específica na página do modelo. O download gratuito não concede automaticamente autorização comercial.",
+      "planIds": [],
+      "order": 9,
+      "translations": {
+        "en": {
+          "name": "Virgin Mary keychain",
+          "description": "Virgin Mary mini keychain – digital 3D printing file.\n\nA delicate miniature representing faith, protection and devotion. For religious keepsakes, gifts, personalized keychains or carrying a symbol of faith every day."
+        },
+        "es": {
+          "name": "Llavero Virgen María",
+          "description": "Mini llavero Virgen María – archivo para impresión 3D.\n\nUna miniatura delicada que representa fe, protección y devoción. Para recuerdos religiosos, regalos, llaveros personalizados o llevar un símbolo de fe cada día."
+        }
+      }
+    },
+    {
+      "id": "padre-cicero",
+      "slug": "padre-cicero",
+      "name": "Chaveiro Padre Cícero",
+      "collection": "fe",
+      "category": "fe",
+      "description": "Mini Chaveiro Padre Cícero – Arquivo para Impressão 3D\n\nMiniatura inspirada no Padre Cícero, desenvolvida em formato de chaveiro para impressão 3D. Um modelo compacto e cheio de personalidade, inspirado em uma das figuras religiosas mais queridas e tradicionais do Nordeste.\n\nIdeal para lembrancinhas, presentes, artigos religiosos e recordações de fé e devoção.\n\n📦 Produto digital: arquivo para impressão 3D.\n⚠️ Nenhum produto físico será enviado.",
+      "summary": "Mini Chaveiro Padre Cícero – Arquivo para Impressão 3D",
+      "image": "/assets/df81eb28ed7b405e.jpeg",
+      "gallery": [],
+      "size": "",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3276192-mini-padre-cicero-keychain#profileId-3715514",
+      "filePath": "",
+      "exclusive": false,
+      "published": true,
+      "license": "Confira a licença específica na página do modelo. O download gratuito não concede automaticamente autorização comercial.",
+      "planIds": [],
+      "order": 10,
+      "translations": {
+        "en": {
+          "name": "Father Cícero keychain",
+          "description": "Father Cícero mini keychain – digital 3D printing file.\n\nA compact miniature full of personality, inspired by one of the most beloved religious figures in northeastern Brazil. For keepsakes, gifts, religious items and memories of faith. No physical product will be shipped."
+        },
+        "es": {
+          "name": "Llavero Padre Cícero",
+          "description": "Mini llavero Padre Cícero – archivo para impresión 3D.\n\nUna miniatura compacta llena de personalidad, inspirada en una de las figuras religiosas más queridas del nordeste de Brasil. Para recuerdos, regalos y artículos religiosos. No se envía ningún producto físico."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-estabulo-compacto-grande",
+      "slug": "presepio-natalino-estabulo-compacto-grande",
+      "name": "Estábulo compacto grande",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Um cenário acolhedor para completar seu presépio. O Estábulo Compacto Grande combina textura de madeira, telhado em tom de palha e uma estrela dourada. A profundidade reduzida facilita a composição em mesas e prateleiras.\n\nProporcional à coleção grande, com José de 20 cm como referência. Medidas montado: aproximadamente 37,3 cm de largura × 11,7 cm de profundidade × 26,7 cm de altura, incluindo a estrela.\n\nSão 5 módulos principais e 8 pinos de união, distribuídos em 4 bandejas: estrutura esquerda e pinos; estrutura direita; duas metades do telhado; estrela. Cada bandeja usa uma cor, sem necessidade de AMS.\n\nCamadas de 0,20 mm nas estruturas e no telhado, 0,16 mm nos pinos e 0,12 mm na estrela, com 3 paredes e 8% de preenchimento gyroid. O guia ilustrado apresenta a sequência de montagem. Transporte o conjunto pela base. Personagens e manjedoura não incluídos.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Um cenário acolhedor para completar seu presépio. O Estábulo Compacto Grande combina textura de madeira, telhado em tom de palha e uma estrela dourada. A profundidade reduzida facilita a composição em mesas e prateleiras.",
+      "image": "/assets/643c6e11015bd4b0.jpg",
+      "gallery": [],
+      "size": "37,3 × 11,7 × 26,7 cm",
+      "access": "soon",
+      "url": "",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 11,
+      "translations": {
+        "en": {
+          "name": "Large compact stable",
+          "description": "A welcoming setting for your nativity. The large compact stable combines a wood texture, a straw-colored roof and a golden star. Its shallow depth makes it easy to arrange on tables and shelves.\n\nScaled to the large collection, using 20 cm Joseph as reference. Assembled: approximately 37.3 cm wide × 11.7 cm deep × 26.7 cm high, including the star.\n\nFive main modules and eight joining pins on four trays: left frame and pins, right frame, two roof halves, and star. One color per tray; no AMS required.\n\n0.20 mm layers for frames and roof, 0.16 mm for pins and 0.12 mm for the star, 3 walls and 8% gyroid infill. Follow the illustrated assembly guide. Carry by the base. Characters and manger not included.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Establo compacto grande",
+          "description": "Un escenario acogedor para tu belén. El establo compacto grande combina textura de madera, techo de color paja y una estrella dorada. Su poca profundidad facilita colocarlo en mesas y estantes.\n\nA escala de la colección grande, con José de 20 cm como referencia. Montado: aproximadamente 37,3 cm de ancho × 11,7 cm de profundidad × 26,7 cm de alto, incluida la estrella.\n\nCinco módulos principales y ocho pasadores en cuatro bandejas: estructura izquierda y pasadores, estructura derecha, dos mitades del techo y estrella. Un color por bandeja, sin AMS.\n\nCapas de 0,20 mm en estructuras y techo, 0,16 mm en pasadores y 0,12 mm en estrella, 3 paredes y 8% de relleno gyroid. Sigue la guía ilustrada. Transporta por la base. No incluye personajes ni pesebre.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-ovelha-2",
+      "slug": "presepio-natalino-ovelha-2",
+      "name": "Ovelha deitada",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Ovelha deitada, com lã branca, rosto bege, olhos pretos e detalhes rosados nas orelhas. Sua pose baixa ajuda a compor a frente do presépio.\n\nAltura montada aproximada: 8 cm. O projeto contém 9 peças em 5 bandejas organizadas por cor, permitindo a impressão sem AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Ovelha deitada, com lã branca, rosto bege, olhos pretos e detalhes rosados nas orelhas. Sua pose baixa ajuda a compor a frente do presépio.",
+      "image": "/assets/4b69a3d0f8aabaae.jpg",
+      "gallery": [],
+      "size": "8 cm",
+      "access": "soon",
+      "url": "",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 12,
+      "translations": {
+        "en": {
+          "name": "Resting sheep",
+          "description": "A resting sheep with white wool, a beige face, black eyes and pink ear details. Its low pose fits the front of the nativity scene.\n\nApproximate assembled height: 8 cm. 9 parts on 5 color-separated trays, printable without AMS.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Oveja acostada",
+          "description": "Oveja acostada, con lana blanca, rostro beige, ojos negros y detalles rosados en las orejas. Su postura baja encaja en la parte delantera del belén.\n\nAltura montada aproximada: 8 cm. 9 piezas en 5 bandejas por color, para imprimir sin AMS.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-ovelha-1",
+      "slug": "presepio-natalino-ovelha-1",
+      "name": "Ovelha em pé",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Ovelha em pé, com lã branca, rosto bege, olhos pretos e detalhes rosados nas orelhas. Combina com a ovelha deitada para dar variedade à cena.\n\nAltura montada aproximada: 10 cm. O projeto contém 10 peças em 5 bandejas organizadas por cor, permitindo a impressão sem AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Ovelha em pé, com lã branca, rosto bege, olhos pretos e detalhes rosados nas orelhas. Combina com a ovelha deitada para dar variedade à cena.",
+      "image": "/assets/29fa0d55e9931235.jpg",
+      "gallery": [],
+      "size": "10 cm",
+      "access": "soon",
+      "url": "",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 13,
+      "translations": {
+        "en": {
+          "name": "Standing sheep",
+          "description": "A standing sheep with white wool, a beige face, black eyes and pink ear details. Pairs with the resting sheep for a varied scene.\n\nApproximate assembled height: 10 cm. 10 parts on 5 color-separated trays, printable without AMS.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Oveja de pie",
+          "description": "Oveja de pie, con lana blanca, rostro beige, ojos negros y detalles rosados en las orejas. Combina con la oveja acostada para dar variedad a la escena.\n\nAltura montada aproximada: 10 cm. 10 piezas en 5 bandejas por color, para imprimir sin AMS.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-burro",
+      "slug": "presepio-natalino-burro",
+      "name": "Burro",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Burro em pé, com corpo cinza, crina e cascos pretos e focinho bege. As orelhas e a expressão do rosto acompanham o estilo delicado da coleção.\n\nAltura montada aproximada: 16 cm. O projeto contém 13 peças em 3 bandejas organizadas por cor, permitindo a impressão sem AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Burro em pé, com corpo cinza, crina e cascos pretos e focinho bege. As orelhas e a expressão do rosto acompanham o estilo delicado da coleção.",
+      "image": "/assets/69006c2333a6dd40.jpg",
+      "gallery": [],
+      "size": "16 cm",
+      "access": "soon",
+      "url": "",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 14,
+      "translations": {
+        "en": {
+          "name": "Donkey",
+          "description": "A standing donkey with a gray body, black mane and hooves, and beige muzzle. The ears and expression follow the delicate style of the collection.\n\nApproximate assembled height: 16 cm. 13 parts on 3 color-separated trays, printable without AMS.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Burro",
+          "description": "Burro de pie, con cuerpo gris, crin y pezuñas negras y hocico beige. Las orejas y la expresión siguen el estilo delicado de la colección.\n\nAltura montada aproximada: 16 cm. 13 piezas en 3 bandejas por color, para imprimir sin AMS.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-vaca",
+      "slug": "presepio-natalino-vaca",
+      "name": "Vaca",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Vaca deitada, com corpo castanho, focinho e chifres bege e olhos pretos. Uma peça acolhedora para completar os animais do presépio.\n\nAltura montada aproximada: 11 cm. O projeto contém 10 peças em 4 bandejas organizadas por cor, permitindo a impressão sem AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Vaca deitada, com corpo castanho, focinho e chifres bege e olhos pretos. Uma peça acolhedora para completar os animais do presépio.",
+      "image": "/assets/06811617b88dfa9f.jpg",
+      "gallery": [],
+      "size": "11 cm",
+      "access": "soon",
+      "url": "",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 15,
+      "translations": {
+        "en": {
+          "name": "Cow",
+          "description": "A resting cow with a brown body, beige muzzle and horns, and black eyes. A warm addition to the nativity animals.\n\nApproximate assembled height: 11 cm. 10 parts on 4 color-separated trays, printable without AMS.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Vaca",
+          "description": "Vaca acostada, con cuerpo castaño, hocico y cuernos beige y ojos negros. Una pieza acogedora para completar los animales del belén.\n\nAltura montada aproximada: 11 cm. 10 piezas en 4 bandejas por color, para imprimir sin AMS.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-aldeao",
+      "slug": "presepio-natalino-aldeao",
+      "name": "Aldeão",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "O Aldeão amplia a cena do presépio com um personagem de traços delicados e vestes detalhadas, no mesmo estilo da Sagrada Família e dos Reis Magos.\n\nAltura montada aproximada: 20 cm. O projeto contém 12 peças em 5 bandejas organizadas por cor, permitindo a impressão sem AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "O Aldeão amplia a cena do presépio com um personagem de traços delicados e vestes detalhadas, no mesmo estilo da Sagrada Família e dos Reis Magos.",
+      "image": "/assets/28d854715495c264.jpg",
+      "gallery": [],
+      "size": "20 cm",
+      "access": "soon",
+      "url": "",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 16,
+      "translations": {
+        "en": {
+          "name": "Villager",
+          "description": "The villager expands the nativity scene with delicate features and detailed clothing, matching the Holy Family and wise men.\n\nApproximate assembled height: 20 cm. 12 parts on 5 color-separated trays, printable without AMS.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Aldeano",
+          "description": "El aldeano amplía el belén con rasgos delicados y ropa detallada, al estilo de la Sagrada Familia y los Reyes Magos.\n\nAltura montada aproximada: 20 cm. 12 piezas en 5 bandejas por color, para imprimir sin AMS.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-anjo",
+      "slug": "presepio-natalino-anjo",
+      "name": "Anjo",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Um anjo em pose de oração para completar a cena do nascimento. As asas, a auréola e a expressão delicada acompanham o estilo dos personagens da coleção.\n\nAltura montada aproximada: 15 cm. O projeto contém 14 peças em 6 bandejas organizadas por cor, permitindo a impressão sem AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Um anjo em pose de oração para completar a cena do nascimento. As asas, a auréola e a expressão delicada acompanham o estilo dos personagens da coleção.",
+      "image": "/assets/9bde6426b71b7369.jpg",
+      "gallery": [],
+      "size": "15 cm",
+      "access": "soon",
+      "url": "",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 17,
+      "translations": {
+        "en": {
+          "name": "Angel",
+          "description": "An angel in prayer to complete the birth scene. The wings, halo and delicate expression match the other characters.\n\nApproximate assembled height: 15 cm. 14 parts on 6 color-separated trays, printable without AMS.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Ángel",
+          "description": "Un ángel en oración para completar la escena del nacimiento. Las alas, la aureola y la expresión delicada combinan con los demás personajes.\n\nAltura montada aproximada: 15 cm. 14 piezas en 6 bandejas por color, para imprimir sin AMS.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-rei-mago-3",
+      "slug": "presepio-natalino-rei-mago-3",
+      "name": "Rei Gaspar",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Rei Mago ajoelhado, com túnica verde, véu branco e barba castanha, segurando um cálice dourado. A pose de adoração traz variedade à composição do presépio.\n\nAltura montada aproximada: 15,5 cm. O projeto contém 17 peças em 7 bandejas organizadas por cor, permitindo a impressão sem AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Rei Mago ajoelhado, com túnica verde, véu branco e barba castanha, segurando um cálice dourado. A pose de adoração traz variedade à composição do presépio.",
+      "image": "/assets/c433422648f1ebce.jpg",
+      "gallery": [],
+      "size": "15,5 cm",
+      "access": "soon",
+      "url": "",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 18,
+      "translations": {
+        "en": {
+          "name": "Wise Man Caspar",
+          "description": "A kneeling wise man with a green tunic, white veil and brown beard, holding a golden chalice. The worship pose adds variety to the scene.\n\nApproximate assembled height: 15,5 cm. 17 parts on 7 color-separated trays, printable without AMS.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Rey Gaspar",
+          "description": "Rey Mago arrodillado, con túnica verde, velo blanco y barba castaña, sosteniendo un cáliz dorado. La postura de adoración aporta variedad al belén.\n\nAltura montada aproximada: 15,5 cm. 17 piezas en 7 bandejas por color, para imprimir sin AMS.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "presepio-natalino-rei-mago-1",
+      "slug": "presepio-natalino-rei-mago-1",
+      "name": "Rei Baltazar",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Rei Mago em pé, com túnica azul, turbante branco, barba escura e cálice dourado. Uma composição cheia de detalhes para representar a visita dos Reis Magos.\n\nAltura montada aproximada: 20 cm. O projeto contém 18 peças em 6 bandejas organizadas por cor, permitindo a impressão sem AMS.\n\nPerfil preparado para Bambu Lab A1, bico de 0,4 mm e PLA. Para outras impressoras FDM, adapte o fatiamento ao volume útil, bico e material. Mantenha a mesma escala em todas as peças e consulte o manual individual para a sequência de montagem.\n\nRemova os suportes com cuidado e confira os encaixes a seco antes de aplicar cola compatível com PLA, se desejar.\n\nModelo da coleção Presépio Tio Lira, destinado à disponibilização gratuita e exclusiva no MakerWorld. Imagens ilustrativas. Os demais personagens são modelos separados.",
+      "summary": "Rei Mago em pé, com túnica azul, turbante branco, barba escura e cálice dourado. Uma composição cheia de detalhes para representar a visita dos Reis Magos.",
+      "image": "/assets/73dc013174f2ccb9.jpg",
+      "gallery": [],
+      "size": "20 cm",
+      "access": "soon",
+      "url": "",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 19,
+      "translations": {
+        "en": {
+          "name": "Wise Man Balthazar",
+          "description": "A standing wise man with a blue tunic, white turban, dark beard and golden chalice. A detailed composition representing the wise men’s visit.\n\nApproximate assembled height: 20 cm. 18 parts on 6 color-separated trays, printable without AMS.\n\nProfile prepared for Bambu Lab A1, 0.4 mm nozzle and PLA. For other FDM printers, adapt slicing to the build volume, nozzle and material. Keep the same scale for all parts and follow the individual assembly guide.\n\nRemove supports carefully and dry-fit all joints before optionally applying PLA-compatible glue.\n\nPart of the Tio Lira Nativity collection, intended for free, exclusive release on MakerWorld. Illustrative images. Other characters are separate models."
+        },
+        "es": {
+          "name": "Rey Baltasar",
+          "description": "Rey Mago de pie, con túnica azul, turbante blanco, barba oscura y cáliz dorado. Una composición detallada para representar la visita de los Reyes Magos.\n\nAltura montada aproximada: 20 cm. 18 piezas en 6 bandejas por color, para imprimir sin AMS.\n\nPerfil preparado para Bambu Lab A1, boquilla de 0,4 mm y PLA. Para otras impresoras FDM, adapta el laminado al volumen útil, boquilla y material. Mantén la misma escala en todas las piezas y consulta el manual de montaje.\n\nRetira los soportes con cuidado y prueba los encajes antes de aplicar pegamento compatible con PLA, si lo deseas.\n\nModelo del Belén Tio Lira, destinado a su publicación gratuita y exclusiva en MakerWorld. Imágenes ilustrativas. Los demás personajes son modelos separados."
+        }
+      }
+    },
+    {
+      "id": "eu-amo-cuscuz",
+      "slug": "eu-amo-cuscuz",
+      "name": "Eu amo cuscuz",
+      "collection": "nordeste",
+      "category": "nordeste",
+      "description": "Plaquina personalizada eu amo cuscuz",
+      "summary": "Plaquina personalizada eu amo cuscuz",
+      "image": "/assets/47f8da1039d82f07.jpg",
+      "gallery": [],
+      "size": "",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3327597-i-love-cuscuz-uncle-lira#profileId-3779094",
+      "filePath": "",
+      "exclusive": false,
+      "published": true,
+      "license": "Confira a licença específica na página do modelo. O download gratuito não concede automaticamente autorização comercial.",
+      "planIds": [],
+      "order": 20,
+      "translations": {
+        "en": {
+          "name": "I love cuscuz",
+          "description": "A personalized “Eu amo cuscuz” sign, celebrating a beloved Brazilian dish."
+        },
+        "es": {
+          "name": "Me encanta el cuscuz",
+          "description": "Una placa personalizada “Eu amo cuscuz”, que celebra un plato muy querido de Brasil."
+        }
+      }
+    },
+    {
+      "id": "orgulho-de-ser-arreato",
+      "slug": "orgulho-de-ser-arreato",
+      "name": "Orgulho de ser arretado",
+      "collection": "nordeste",
+      "category": "nordeste",
+      "description": "🌵 Orgulho de ser arretado!\n\nUma plaquinha cheia de personalidade e orgulho nordestino, perfeita para decorar seu cantinho ou presentear aquele cabra arretado! 🤠\n\n🖨️ Arquivo para impressão 3D disponível no MakerWorld.",
+      "summary": "🌵 Orgulho de ser arretado!",
+      "image": "/assets/efc464ed6ed95396.jpg",
+      "gallery": [
+        "/assets/orgulho-de-ser-arreato-gallery-1.jpeg",
+        "/assets/orgulho-de-ser-arreato-gallery-2.jpeg",
+        "/assets/orgulho-de-ser-arreato-gallery-3.jpeg",
+        "/assets/orgulho-de-ser-arreato-gallery-4.jpeg"
+      ],
+      "size": "",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3280764-pride-of-being-unyielding#profileId-3721258",
+      "filePath": "",
+      "exclusive": false,
+      "published": true,
+      "license": "Confira a licença específica na página do modelo. O download gratuito não concede automaticamente autorização comercial.",
+      "planIds": [],
+      "order": 21,
+      "translations": {
+        "en": {
+          "name": "Proud to be arretado",
+          "description": "🌵 Proud to be arretado!\n\nA sign full of personality and northeastern Brazilian pride, for decorating your space or giving as a gift. The lettering stays in Portuguese.\n\n3D printing file available on MakerWorld."
+        },
+        "es": {
+          "name": "Orgullo de ser arretado",
+          "description": "🌵 ¡Orgullo de ser arretado!\n\nUna placa llena de personalidad y orgullo del nordeste brasileño, para decorar tu rincón o regalar. El texto de la pieza se mantiene en portugués.\n\nArchivo de impresión 3D disponible en MakerWorld."
+        }
+      }
+    }
+  ],
+  "plans": [],
+  "stores": []
+}
