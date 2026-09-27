@@ -16,20 +16,31 @@ A página inicial redireciona para `/pt`. Também existem `/en`, `/es`, `/admin`
 - Catálogo com busca, filtros, páginas individuais, imagens e descrições nos três idiomas.
 - Presépio gratuito e autorização do criador para vender **peças físicas**, sem assinatura. Arquivos digitais não podem ser revendidos ou redistribuídos.
 - Links oficiais de download; modelos exclusivos permanecem no MakerWorld.
-- Rede por cidade e obra, sem lojas fictícias. Cadastro gratuito para pessoas e lojas; consentimento separado para futuras parcerias.
+- Rede por cidade e obra, sem lojas fictícias. Cadastro gratuito para pessoas e lojas; consentimento separado para futuras parcerias. Busca por peça ou coleção completa (todas as peças já lançadas).
 - Calculadora com material, energia, depreciação, manutenção, falhas, trabalho, taxas e margem. Salva simulações no navegador.
 - Painel demonstrável: editar obras, coleções, planos, traduções e textos; revisar participantes; exportar catálogo JSON e CSV de contatos que aceitaram parcerias.
 - Marca TL vetorial em `public/assets/tl-monogram.svg`.
 
-## O que aguarda o banco de dados
+## PostgreSQL Neon e administração
 
-Sem armazenamento configurado, `/admin` mostra **uma demonstração pública com apenas o catálogo público**. As alterações são rascunhos locais no navegador e **não alteram o site**. Não cadastre dados privados na demonstração. O formulário público informa que o envio ainda não está ativo; ele não simula um cadastro recebido.
+O site agora usa **PostgreSQL Neon** quando `DATABASE_URL` (ou `POSTGRES_URL`) está configurada. O driver oficial faz consultas HTTPS adequadas às funções da Vercel. O projeto `tiolira` já foi vinculado à integração Neon nos ambientes Production e Preview.
 
-O banco e o serviço de autenticação definitivos serão conectados depois que forem informados. A fronteira de persistência está em `server/store.mjs` e as regras em `server/schema.mjs`. `docs/DADOS.md` descreve as entidades. Nenhuma credencial deve ser colocada no GitHub ou em variáveis `NEXT_PUBLIC_*`.
+```sh
+pnpm db:migrate
+pnpm test:db
+```
 
-Há um adaptador opcional já implementado para **Vercel Blob privado**, além de armazenamento local de desenvolvimento. Ele não exige uso desse fornecedor: pode ser substituído pelo banco escolhido. Para utilizá-lo, conecte um Blob **privado**, configure `BLOB_READ_WRITE_TOKEN`, `ADMIN_SETUP_TOKEN` e `ADMIN_SESSION_SECRET` (as duas últimas com pelo menos 32 caracteres aleatórios), faça novo deploy e crie o primeiro administrador em `/admin`. Remova o setup token após a configuração. O login usa senha com scrypt, cookie HttpOnly, validação de origem, limite de tentativas e sessão de 8 horas. Mantenha o token da sessão para o login continuar funcionando.
+A migração cria o schema isolado `tiolira`, a tabela `records` e importa o catálogo inicial apenas se ele ainda não existir. Não sobrescreve obras, cadastros nem administrador existentes. A tabela armazena JSONB com revisão; gravações concorrentes são comparadas atomicamente pelo PostgreSQL. O comando de verificação cria e remove somente um registro temporário próprio.
 
-`LOCAL_DATA_DIR` é somente para desenvolvimento, nunca para a Vercel. O modo real exige todas as chaves e armazenamento persistente. Alterações simultâneas usam revisão para impedir sobrescrita silenciosa.
+Na primeira migração são gerados um segredo de sessão e um hash do código de configuração, guardados no banco. O código original é salvo **apenas no arquivo local ignorado** `.local-data/admin-setup.txt`. O primeiro administrador deve abrir `/admin`, informar esse código e escolher seu próprio e-mail e senha. Nenhuma senha padrão é criada. Uma conta existente impede novas configurações, mesmo que o código seja reutilizado. A autenticação usa scrypt, cookies HttpOnly, validação de origem, limite de tentativas e sessão de 8 horas.
+
+O cadastro gratuito fica ativo quando o banco e a configuração de segurança estão disponíveis. Cada inscrição entra como `pending`; o administrador revisa antes de publicar. E-mail, consentimento de parcerias e dados de autorização ficam privados. Nunca coloque a conexão do banco em variáveis `NEXT_PUBLIC_*` ou no GitHub.
+
+Sem banco ou armazenamento configurado, `/admin` continua mostrando uma demonstração pública com somente o catálogo público. Rascunhos ficam no navegador e não alteram o site. Na versão conectada, a demonstração é substituída pelo login real; rascunhos locais não são importados automaticamente.
+
+Os adaptadores de armazenamento local e Vercel Blob privado foram preservados para compatibilidade, mas **DATABASE_URL tem prioridade**. Blob só é necessário se forem hospedados arquivos privados por esse serviço. As imagens importadas continuam em `public/assets` e os modelos exclusivos permanecem no MakerWorld.
+
+Para um novo banco ou uma branch Neon de preview sem o schema, execute a migração nesse ambiente antes do deploy. As variáveis `ADMIN_SESSION_SECRET` e `ADMIN_SETUP_TOKEN` são opcionais e sobrepõem a configuração do banco; mantenha-as privadas caso escolha usá-las.
 
 ## Conteúdo e disponibilidade
 

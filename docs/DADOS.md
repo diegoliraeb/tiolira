@@ -1,6 +1,6 @@
 # Integração do banco de dados
 
-O site público já pode ser publicado sem credenciais. O banco definitivo deverá implementar o contrato de `server/store.mjs` ou substituí-lo por um repositório tipado. A interface não deve acessar segredos do banco.
+O site público já pode ser publicado sem credenciais. O adaptador PostgreSQL Neon em `server/postgres.mjs` implementa o contrato de `server/store.mjs`. A interface não deve acessar segredos do banco.
 
 ## Entidades
 
@@ -22,4 +22,4 @@ O site público já pode ser publicado sem credenciais. O banco definitivo dever
 7. Preservar consentimentos separados e oferecer correção/remoção por solicitação ao criador.
 8. Rascunhos da demonstração não devem ser importados automaticamente para produção. Revisar o JSON exportado antes de qualquer migração.
 
-O adaptador Blob privado opcional usa documentos JSON versionados. Para uma rede grande, o banco relacional poderá oferecer busca indexada por cidade/país e tabelas específicas. O banco será conectado após o usuário informar o serviço escolhido.
+O adaptador Blob privado opcional usa documentos JSON versionados. Para uma rede grande, o banco relacional poderá oferecer busca indexada por cidade/país e tabelas específicas. O Neon utiliza o schema isolado `tiolira` com registros JSONB e revisão atômica. O catálogo e os cadastros são persistidos no banco; chaves de segurança ficam em registro separado e nunca entram na exportação do catálogo.

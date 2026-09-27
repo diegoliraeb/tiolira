@@ -1,3 +1,4 @@
+import {databaseUrl,readPostgresRecord,writePostgresRecord} from './postgres.mjs';
 import seed from '../data/catalog.json' with { type: 'json' };
 import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
 import { readFile, writeFile, mkdir, rename, rm } from 'node:fs/promises';
@@ -5,10 +6,11 @@ import { resolve, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export class Conflict extends Error { constructor(){super('Os dados mudaram. Recarregue antes de salvar.');this.status=409;} }
-export function configured(){return Boolean(process.env.BLOB_READ_WRITE_TOKEN || (!process.env.VERCEL && process.env.LOCAL_DATA_DIR));}
+export function configured(){return Boolean(databaseUrl() || process.env.BLOB_READ_WRITE_TOKEN || (!process.env.VERCEL && process.env.LOCAL_DATA_DIR));}
 const local=()=>!process.env.VERCEL && process.env.LOCAL_DATA_DIR;
 const diskPath=key=>resolve(process.env.LOCAL_DATA_DIR,key);
 export async function readRecord(key){
+ if(databaseUrl())return readPostgresRecord(key);
  if(local()){try{return JSON.parse(await readFile(diskPath(key),'utf8'));}catch(e){if(e.code==='ENOENT')return null;throw e;}}
  if(!configured())return null;
  const item=await get(`studio/${key}`,{access:'private',useCache:false});
@@ -16,6 +18,7 @@ export async function readRecord(key){
  return {data:await new Response(item.stream).json(),etag:item.blob.etag};
 }
 export async function writeRecord(key,data,etag){
+ if(databaseUrl()){const revision=await writePostgresRecord(key,data,etag);if(!revision)throw new Conflict();return revision;}
  if(!configured())throw Object.assign(new Error('Conecte o armazenamento privado para salvar.'),{status:503});
  if(local()){
   const path=diskPath(key),lock=path+'.lock';await mkdir(dirname(path),{recursive:true});
