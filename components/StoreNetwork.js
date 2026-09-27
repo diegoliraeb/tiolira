@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
+import LogoUpload from './LogoUpload';
 import LocationFields from './LocationFields';
 import DeliveryFields from './DeliveryFields';
 import {countryName,deliveryLabel} from '../lib/geography.mjs';
@@ -13,6 +14,7 @@ export default function StoreNetwork({lang,catalog}){
  const [address,setAddress]=useState({countryCode:'BR',stateId:'',state:'',cityId:'',city:''});
  const [serviceArea,setServiceArea]=useState({scope:'city',countryCode:'BR',stateId:'',cities:[]});
  const [piece,setPiece]=useState('all');
+ const [logo,setLogo]=useState(''),[logoBusy,setLogoBusy]=useState(false);
  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[sent,setSent]=useState(false);
  const found=catalog.stores.filter(s=>matchesStore(s,location,piece,catalog.products));
  useEffect(()=>{
@@ -27,11 +29,12 @@ export default function StoreNetwork({lang,catalog}){
  }
  async function submit(e){
   e.preventDefault();
-  if(!catalog.registrationReady||submitting.current)return;
+  if(!catalog.registrationReady||submitting.current||logoBusy)return;
   const form=e.currentTarget,f=new FormData(form),data=Object.fromEntries(f);
   Object.assign(data,address,{country:countryName(address.countryCode),serviceArea,delivery:deliveryLabel(serviceArea)});
   if(!address.stateId||!address.cityId){setMessage(t.registrationError);return;}
   if(['city','cities'].includes(serviceArea.scope)&&!serviceArea.cities.length){setMessage(t.chooseDeliveryCity);return;}
+  if(logo)data.logoData=logo;
   data.consent=f.has('consent');data.partnershipConsent=f.has('partnershipConsent');
   data.whatsapp=data.whatsapp.replace(/\D/g,'');
   if(!/^\d{10,15}$/.test(data.whatsapp)){setMessage(t.whatsappHelp);return;}
@@ -39,13 +42,14 @@ export default function StoreNetwork({lang,catalog}){
   try{
    const r=await fetch('/api/stores/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
    const result=await r.json();
-   if(!r.ok||result.ok!==true){setMessage(r.status===429?t.registrationLimit:r.status===409?t.registrationClosed:t.registrationError);return;}
+   if(!r.ok||result.ok!==true){setMessage(result.code==='INVALID_LOGO'?t.logoError:r.status===429?t.registrationLimit:r.status===409?t.registrationClosed:t.registrationError);return;}
    form.reset();setSent(true);
   }catch{setMessage(t.registrationError)}
   finally{submitting.current=false;setBusy(false)}
  }
  return <section className="store-section wrap section" id="lojas">
   <div className="store-heading"><div><p className="eyebrow">{t.shopEyebrow}</p><h2>{t.shopTitle}</h2></div><p>{t.shopIntro}</p></div>
+  <div className="network-benefit"><span aria-hidden="true">✦</span><div><h3>{t.networkBenefitTitle}</h3><p>{t.networkBenefit}</p></div><button className="button primary" onClick={openRegistration}>{t.join} ↗</button></div>
   {sent&&<p className="notice registration-receipt" role="status">{t.sent} {t.registrationReview}</p>}
   <div className="store-shell">
    <div className="store-search-panel"><span className="store-icon">⌖</span><h3>{t.stores}</h3>
@@ -57,7 +61,7 @@ export default function StoreNetwork({lang,catalog}){
     <button className="store-register" onClick={openRegistration}>{t.join} ↗</button>
    </div>
    <div className="store-results-panel" ref={results}><span className="network-label">{t.join} · {t.freeNativity}</span>
-    <p className="store-result-count" role="status">{found.length} {found.length===1?t.storeCountOne:t.storeCount}</p><div className="store-results" aria-live="polite">{!found.length?<div className="store-empty"><span>⌖</span><h3>{catalog.stores.length?t.noMatch:t.noStores}</h3><p>{t.joinIntro}</p></div>:found.map(s=><article className="store-card" key={s.id}><h3>{s.name}</h3><p>{s.city}, {s.state} · {s.country}</p><p>{s.description}</p><p className="store-delivery">{s.serviceArea?deliveryLabel(s.serviceArea,lang):s.delivery}</p>{s.offeringsUnspecified&&<p className="store-availability">{t.confirmAvailability}</p>}<a className="store-contact" href={quoteUrl(s)} target="_blank" rel="noreferrer">{t.quote} ↗</a></article>)}</div>
+    <p className="store-result-count" role="status">{found.length} {found.length===1?t.storeCountOne:t.storeCount}</p><div className="store-results" aria-live="polite">{!found.length?<div className="store-empty"><span>⌖</span><h3>{catalog.stores.length?t.noMatch:t.noStores}</h3><p>{t.joinIntro}</p></div>:found.map(s=><article className="store-card" key={s.id}><div className="store-identity">{s.logo&&<img className="store-logo" src={s.logo} alt={`${t.logoOf} ${s.name}`} loading="lazy" width="72" height="72"/>}<h3>{s.name}</h3></div><p>{s.city}, {s.state} · {s.country}</p><p>{s.description}</p><p className="store-delivery">{s.serviceArea?deliveryLabel(s.serviceArea,lang):s.delivery}</p>{s.offeringsUnspecified&&<p className="store-availability">{t.confirmAvailability}</p>}<a className="store-contact" href={quoteUrl(s)} target="_blank" rel="noreferrer">{t.quote} ↗</a></article>)}</div>
     <p className="store-disclaimer">{t.disclaimer}</p>
    </div>
   </div>
@@ -66,12 +70,13 @@ export default function StoreNetwork({lang,catalog}){
    {sent?<div className="registration-success" ref={feedback} tabIndex={-1} role="status">
     <span className="registration-success-icon" aria-hidden="true">✓</span><h2 id="join-title">{t.sent}</h2><p>{t.registrationReview}</p><button className="button primary" onClick={()=>dialog.current.close()}>{t.close}</button>
    </div>:<>
-    <p className="eyebrow">{t.join}</p><h2 id="join-title">{t.joinTitle}</h2><p>{t.joinIntro}</p>
+    <p className="eyebrow">{t.join}</p><h2 id="join-title">{t.joinTitle}</h2><p>{t.joinIntro}</p><p className="registration-benefit">✦ {t.networkBenefit}</p>
     {!catalog.registrationReady&&<p className="notice">{t.previewForm}</p>}
     {message&&<p className="notice registration-error" ref={feedback} tabIndex={-1} role="alert">{message}</p>}
     <form onSubmit={submit} className="form-grid" aria-busy={busy}>
      <label>{t.name}<input name="name" required maxLength={200}/></label>
      <label>{t.email}<input name="email" type="email" required maxLength={254}/></label>
+     <LogoUpload lang={lang} value={logo} onChange={setLogo} onBusyChange={setLogoBusy} disabled={busy}/>
      <LocationFields lang={lang} value={address} required onChange={value=>{setAddress(value);if(value.countryCode!==address.countryCode)setServiceArea({scope:'city',countryCode:value.countryCode,stateId:'',cities:[]})}}/>
      <label>{t.whatsapp}<input name="whatsapp" type="tel" required placeholder="55 82 99999-9999" maxLength={30}/></label>
      <label className="full">{t.website}<input name="website" type="url" placeholder="https://" pattern="https://.*"/></label>
@@ -80,7 +85,7 @@ export default function StoreNetwork({lang,catalog}){
      <label className="check full"><input type="checkbox" name="consent" required/>{t.consent}</label>
      <label className="check full"><input type="checkbox" name="partnershipConsent"/>{t.partnership}</label>
      <div className="honey" aria-hidden="true"><label>Website confirmation<input name="honeypot" tabIndex={-1} autoComplete="off"/></label></div>
-     <button className="button primary full" disabled={busy||!catalog.registrationReady}>{busy?t.loading:t.submit}</button>
+     <button className="button primary full" disabled={busy||logoBusy||!catalog.registrationReady}>{busy?t.loading:t.submit}</button>
     </form>
    </>}
   </dialog>
