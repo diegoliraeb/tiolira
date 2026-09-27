@@ -82,3 +82,9 @@ A prévia funciona sem `.env.local`. Para testar persistência local, use as var
 - `tests/`: validação de regras, privacidade, autenticação, persistência e cálculo.
 
 Publicação inicial autorizada no repositório do próprio criador. Imagens e modelos pertencem a Diego Lira; não há concessão de redistribuição dos arquivos digitais neste repositório.
+
+### Ordem do catálogo e cliques
+
+As obras disponíveis aparecem antes das indisponíveis; dentro de cada grupo, a ordem é pelo total de cliques, depois pela ordem editorial. Obras marcadas como `soon` ou sem link/arquivo recebem o selo traduzido “Em breve”.
+
+Cliques na imagem ou em “Conhecer a obra” são registrados por `POST /api/products/click`. A contagem começa com esta implementação e não importa estatísticas do MakerWorld. `analytics/product-clicks.json` guarda os totais separadamente do catálogo, usando o mesmo armazenamento configurado (Neon em produção). Cliques repetidos da mesma origem/navegador na mesma obra são deduplicados por 30 minutos com HMAC, sem gravar o IP em texto. Robôs identificados são ignorados. Nenhuma migração adicional é necessária.

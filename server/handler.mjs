@@ -1,3 +1,4 @@
+import {readClickCounts,recordProductClick} from './product-clicks.mjs';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { get, put } from '@vercel/blob';
@@ -17,7 +18,7 @@ export default async function handler(req,res){
   const route=String((Array.isArray(req.query?.route)?req.query.route.join('/'):req.query?.route)||url.searchParams.get('route')||url.pathname.replace(/^\/api\/?/,'')).replace(/^\/+|\/+$/g,'');
   const method=req.method;
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
-  if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data));}
+  if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
   if(method==='GET'&&route==='admin/status'){const auth=await readRecord('admin.json');let loggedIn=false;try{await requireAdmin(req);loggedIn=true;}catch{}return json(res,200,{configured:configured(),initialized:Boolean(auth),loggedIn,setupReady:await setupReady()});}
   if(method==='GET'&&route==='admin/catalog'){await requireAdmin(req);const {data,etag}=await getCatalog();return json(res,200,{...data,revision:etag});}
   if(method==='GET'&&route==='store-logo'){
@@ -32,6 +33,12 @@ export default async function handler(req,res){
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req);
+  if(method==='POST'&&route==='products/click'){
+   if(!configured())return json(res,200,{ok:true});
+   if(typeof input.id!=='string'||!/^[a-z0-9][a-z0-9-]{0,99}$/.test(input.id))fail('Obra inválida.');
+   const {data}=await getCatalog();if(!publicCatalog(data).products.some(p=>p.id===input.id))fail('Obra não encontrada.',404);
+   await recordProductClick(req,input.id);return json(res,200,{ok:true});
+  }
   if(method==='POST'&&route==='admin/setup'){
    if(!configured()||!await setupReady())fail('A administração ainda não foi configurada.',503);
    await rateLimit(req,'setup',5,15*60_000);
