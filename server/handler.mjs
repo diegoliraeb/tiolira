@@ -4,6 +4,7 @@ import { get, put } from '@vercel/blob';
 import { configured, getCatalog, readRecord, writeRecord, updateRecord, Conflict } from './store.mjs';
 import { assertOrigin, requireAdmin, passwordHash, verifyPassword, makeSession, sessionCookie, safeEqual, rateLimit, setupReady, verifySetupToken } from './auth.mjs';
 import { productSchema,collectionSchema,planSchema,storeSchema,applicationSchema,settingsSchema,publicCatalog } from './schema.mjs';
+import {geographyOptions,normalizeStoreLocation} from './geography.mjs';
 const schemas={products:productSchema,collections:collectionSchema,plans:planSchema,stores:storeSchema};
 function fail(message,status=400){throw Object.assign(new Error(message),{status});}
 async function body(req){if(req.body!==undefined)return typeof req.body==='string'?JSON.parse(req.body):req.body;let data='',bytes=0;for await(const part of req){bytes+=part.length;if(bytes>4_000_000)fail('Conteúdo muito grande.',413);data+=part;}return data?JSON.parse(data):{};}
@@ -14,6 +15,7 @@ export default async function handler(req,res){
   const url=new URL(req.url,'https://'+(req.headers.host||'localhost'));
   const route=String((Array.isArray(req.query?.route)?req.query.route.join('/'):req.query?.route)||url.searchParams.get('route')||url.pathname.replace(/^\/api\/?/,'')).replace(/^\/+|\/+$/g,'');
   const method=req.method;
+  if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data));}
   if(method==='GET'&&route==='admin/status'){const auth=await readRecord('admin.json');let loggedIn=false;try{await requireAdmin(req);loggedIn=true;}catch{}return json(res,200,{configured:configured(),initialized:Boolean(auth),loggedIn,setupReady:await setupReady()});}
   if(method==='GET'&&route==='admin/catalog'){await requireAdmin(req);const {data,etag}=await getCatalog();return json(res,200,{...data,revision:etag});}
@@ -35,7 +37,7 @@ export default async function handler(req,res){
   if(method==='POST'&&route==='admin/logout'){res.setHeader('Set-Cookie',sessionCookie('',true));return json(res,200,{ok:true});}
   if(method==='POST'&&route==='stores/apply'){
    if(input.honeypot)return json(res,201,{ok:true});await rateLimit(req,'store-application',3,3600_000);
-   const parsed=applicationSchema.parse(input);const {data}=await getCatalog();if(!data.settings.storesOpen)fail('Os cadastros estão temporariamente fechados.',409);
+   const parsed=await normalizeStoreLocation(applicationSchema.parse(input));const {data}=await getCatalog();if(!data.settings.storesOpen)fail('Os cadastros estão temporariamente fechados.',409);
    if(parsed.productIds.some(id=>!data.products.some(p=>p.id===id&&p.published)))fail('Selecione obras válidas.');
    const entry={...parsed,id:randomUUID(),status:'pending',licenseProof:'',licenseUntil:'',createdAt:new Date().toISOString()};delete entry.honeypot;
    for(let attempt=0;attempt<5;attempt++){const current=await getCatalog();try{current.data.stores.push(entry);await writeRecord('catalog.json',current.data,current.etag);return json(res,201,{ok:true});}catch(e){if(!(e instanceof Conflict)||attempt===4)throw e;}}
@@ -56,7 +58,7 @@ export default async function handler(req,res){
   if(method==='DELETE'){
    if(kind==='collections'&&current.data.products.some(p=>p.collection===input.id))fail('Mova as obras antes de excluir esta coleção.');
    current.data[kind]=current.data[kind].filter(item=>item.id!==input.id);
-  }else{const parsed=schemas[kind].parse(input.item);if(kind==='stores'&&parsed.status==='approved'){const paid=parsed.productIds.some(id=>!current.data.products.some(p=>p.id===id&&p.collection==='presepio'));if(paid&&(!parsed.licenseProof||!parsed.licenseUntil))fail('Para obras fora do presépio, registre a autorização e sua validade.');}if(kind==='products'){
+  }else{let parsed=schemas[kind].parse(input.item);if(kind==='stores')parsed=await normalizeStoreLocation(parsed);if(kind==='stores'&&parsed.status==='approved'){const paid=parsed.productIds.some(id=>!current.data.products.some(p=>p.id===id&&p.collection==='presepio'));if(paid&&(!parsed.licenseProof||!parsed.licenseUntil))fail('Para obras fora do presépio, registre a autorização e sua validade.');}if(kind==='products'){
    if(!current.data.collections.some(c=>c.id===parsed.collection))fail('Coleção não encontrada.');
    if(parsed.collection==='presepio'&&parsed.access==='members')fail('O presépio é gratuito e não pode exigir assinatura.');
    if(current.data.products.some(p=>p.id!==parsed.id&&p.slug===parsed.slug))fail('Já existe uma obra com este endereço.');

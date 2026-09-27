@@ -1,5 +1,6 @@
 const config = {
  poweredByHeader: false,
+ outputFileTracingIncludes: {'/api/*':['./public/geography/*.json']},
  async redirects() { return [
  {source:'/3d',destination:'/pt',permanent:false},
  {source:'/3d/produto/:slug',destination:'/pt/produto/:slug',permanent:false},

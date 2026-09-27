@@ -16,7 +16,7 @@ A página inicial redireciona para `/pt`. Também existem `/en`, `/es`, `/admin`
 - Catálogo com busca, filtros, páginas individuais, imagens e descrições nos três idiomas.
 - Presépio gratuito e autorização do criador para vender **peças físicas**, sem assinatura. Arquivos digitais não podem ser revendidos ou redistribuídos.
 - Links oficiais de download; modelos exclusivos permanecem no MakerWorld.
-- Rede por cidade e obra, sem lojas fictícias. Cadastro gratuito para pessoas e lojas; consentimento separado para futuras parcerias. Busca por peça ou coleção completa (todas as peças já lançadas).
+- Rede por cidade e obra, sem lojas fictícias. Cadastro gratuito para pessoas e lojas; consentimento separado para futuras parcerias. Cadastro sem seleção de peças, com confirmação explícita e revisão antes da publicação. Busca por peça ou coleção completa (todas as peças já lançadas); participantes sem catálogo também aparecem, com aviso para consultar disponibilidade. O pedido escolhido segue na mensagem de orçamento do WhatsApp.
 - Calculadora com material, energia, depreciação, manutenção, falhas, trabalho, taxas e margem. Salva simulações no navegador.
 - Painel demonstrável: editar obras, coleções, planos, traduções e textos; revisar participantes; exportar catálogo JSON e CSV de contatos que aceitaram parcerias.
 - Marca TL vetorial em `public/assets/tl-monogram.svg`.
@@ -49,6 +49,10 @@ Origem: catálogo público de https://diegolira.com.br/3d, consultado em 27/09/2
 Os downloads próprios de **Padre Cícero** e **Frei** ainda apontam para suas páginas originais. Os arquivos STL/3MF privados não foram fornecidos e não estão no repositório. Foram incluídas também as imagens adicionais recuperadas de Melchior, Maria, Frei e Orgulho de ser arretado. As demais galerias adicionais ainda dependem da migração de mídia; a capa está disponível para todas as obras. Não desligue o site original antes de migrar esses downloads. Não foi alterado nenhum domínio.
 
 As assinaturas ainda não cobram e não foram abertas. O painel aceita o link de uma plataforma externa; essa plataforma deverá proteger os downloads e gerenciar pagamentos. Nunca publique URLs diretas de arquivos pagos. Os detalhes dos planos, preços e termos ainda precisam ser definidos.
+
+O painel Rede de Lojas tem filtros combinados por situação, região brasileira (ou Exterior), estado, cidade e nome. Endereços usam seletores encadeados de país, estado e cidade. A área atendida pode abranger todo o país, um estado, uma cidade ou várias cidades de estados diferentes. A busca pública considera essa área; cadastros antigos sem área estruturada continuam sendo encontrados pelo endereço.
+
+As localidades são snapshots servidos pelo próprio site, sem enviar dados de compradores ou lojistas a serviços externos. Brasil: 27 UFs e 5.571 municípios do IBGE. Outros países: Countries States Cities Database, com atribuição e ODbL em `public/geography/`. A base comunitária pode ter lacunas; localidades ausentes mostram uma orientação de contato. A API valida a relação entre país, estado e município, e grava os nomes canônicos. Os registros existentes são preservados, sem migração destrutiva.
 
 A aprovação na rede serve para revisar as informações do cadastro. Não exige assinatura nem comprovante para o presépio. Obras de outras coleções só aparecem no diretório após registrar a autorização comercial correspondente. O consentimento para parcerias é privado e separado do consentimento de publicação na rede.
 
