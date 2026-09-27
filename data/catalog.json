@@ -755,6 +755,40 @@
           "description": "🌵 ¡Orgullo de ser arretado!\n\nUna placa llena de personalidad y orgullo del nordeste brasileño, para decorar tu rincón o regalar. El texto de la pieza se mantiene en portugués.\n\nArchivo de impresión 3D disponible en MakerWorld."
         }
       }
+    },
+    {
+      "id": "presepio-natalino-arco-estrela-grande",
+      "slug": "presepio-natalino-arco-estrela-grande",
+      "name": "Arco com Estrela Grande",
+      "collection": "presepio",
+      "category": "presepio",
+      "description": "Arco marrom com relevos de madeira e estrela de Belém dourada, uma alternativa compacta ao estábulo para o Presépio Tio Lira grande. Projetado usando José de 20 cm como referência.\n\nDimensões montadas, com as bases: 35,5 cm de largura × 9 cm de profundidade × aproximadamente 29,7 cm de altura até a estrela. Vão entre os pilares: 28 cm.\n\nSão 8 peças em 3 bandejas: duas metades do arco, duas bases, chave de união, estrela e dois pinos. Impressão em marrom e dourado, com uma cor por bandeja, sem necessidade de AMS.\n\nPerfil para Bambu Lab A1, PLA e bico de 0,4 mm. Impressão sem suportes; preserve a orientação e a escala para manter os encaixes. Siga o guia ilustrado de montagem disponível no MakerWorld e teste os encaixes a seco antes de colar.\n\nDownload gratuito e exclusivo no MakerWorld. Personagens e manjedoura são modelos separados e não estão incluídos. A capa é um mockup ilustrativo. Geometria e fatiamento verificados digitalmente; impressão física de teste ainda não realizada.",
+      "summary": "Arco com textura de madeira e estrela de Belém dourada para compor o Presépio Tio Lira grande. Oito peças, três bandejas e impressão sem AMS.",
+      "image": "https://makerworld.bblmw.com/makerworld/model/US92aa03c06c5272/design/ae7df7e8daef78c6.png?x-oss-process=image/resize,w_1000/format,webp",
+      "gallery": [
+        "https://makerworld.bblmw.com/makerworld/model/US92aa03c06c5272/design/f572b768f10bfee2.jpeg?x-oss-process=image/resize,w_1000/format,webp",
+        "https://makerworld.bblmw.com/makerworld/model/US92aa03c06c5272/design/69ac0aec1fac20e8.jpeg?x-oss-process=image/resize,w_1000/format,webp",
+        "https://makerworld.bblmw.com/makerworld/model/US92aa03c06c5272/design/a38aa1d2ee68e711.jpeg?x-oss-process=image/resize,w_1000/format,webp"
+      ],
+      "size": "35,5 × 9 × 29,7 cm",
+      "access": "maker",
+      "url": "https://makerworld.com/pt/models/3364987-large-star-arch-nativity-scene-uncle-lira",
+      "filePath": "",
+      "exclusive": true,
+      "published": true,
+      "license": "Autorizada a impressão e venda de peças físicas, gratuitamente e sem assinatura. Proibida a revenda ou redistribuição dos arquivos digitais. Downloads exclusivos no MakerWorld.",
+      "planIds": [],
+      "order": 22,
+      "translations": {
+        "en": {
+          "name": "Large Arch with Star",
+          "description": "A brown arch with wood relief details and a golden Star of Bethlehem, a compact alternative to the stable for the large Tio Lira Nativity collection. Designed around the 20 cm Joseph figure.\n\nAssembled dimensions including bases: 35.5 cm wide × 9 cm deep × approximately 29.7 cm high to the star. Clear span between pillars: 28 cm.\n\n8 parts on 3 plates: two arch halves, two bases, a joining key, a star and two pins. Brown and gold, one color per plate; no AMS required.\n\nProfile for Bambu Lab A1, PLA and a 0.4 mm nozzle. No supports needed; preserve orientation and scale to maintain the joints. Follow the illustrated assembly guide on MakerWorld and dry-fit before gluing.\n\nFree download exclusively on MakerWorld. Figures and manger are separate models and are not included. The cover is an illustrative mockup. Geometry and slicing have been checked digitally; a physical test print has not yet been made."
+        },
+        "es": {
+          "name": "Arco Grande con Estrella",
+          "description": "Arco marrón con relieves de madera y estrella de Belén dorada, una alternativa compacta al establo para el Belén Tio Lira grande. Diseñado tomando como referencia la figura de José de 20 cm.\n\nMedidas montadas con las bases: 35,5 cm de ancho × 9 cm de profundidad × aproximadamente 29,7 cm de altura hasta la estrella. Espacio entre pilares: 28 cm.\n\n8 piezas en 3 bandejas: dos mitades del arco, dos bases, una llave de unión, una estrella y dos pasadores. Marrón y dorado, un color por bandeja; no requiere AMS.\n\nPerfil para Bambu Lab A1, PLA y boquilla de 0,4 mm. Sin soportes; conserva la orientación y la escala para mantener los encajes. Sigue la guía ilustrada de montaje en MakerWorld y prueba los encajes antes de pegar.\n\nDescarga gratuita y exclusiva en MakerWorld. Las figuras y el pesebre son modelos separados y no están incluidos. La portada es un mockup ilustrativo. Geometría y laminado verificados digitalmente; aún no se ha realizado una impresión física de prueba."
+        }
+      }
     }
   ],
   "plans": [],
