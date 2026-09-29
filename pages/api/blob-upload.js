@@ -9,6 +9,7 @@ export default async function handler(req,res){
  res.setHeader('Cache-Control','private, no-store');res.setHeader('X-Content-Type-Options','nosniff');
  try{
   if(req.method!=='POST')return res.status(405).json({error:'Método não permitido.'});
+  if(!process.env.BLOB_READ_WRITE_TOKEN)throw Object.assign(new Error('Conecte um armazenamento Vercel Blob ao projeto e faça um novo deploy.'),{status:503});
   const body=await readJson(req);
   const response=await handleUpload({body,request:req,onBeforeGenerateToken:async pathname=>{
    await requireAdmin(req);

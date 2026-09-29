@@ -22,7 +22,7 @@ export default function GalleryUpload({value=[],onChange,onBusyChange,disabled=f
     uploaded.push(`/api/media?path=${encodeURIComponent(blob.pathname)}`);onChange([...images,...uploaded]);
    }
    if(input.current)input.current.value='';
-  }catch(error){setError(error.message||'Não foi possível enviar a foto.');}
+  }catch(error){setError(/client token/i.test(String(error?.message))?'Conecte o Vercel Blob ao projeto e faça um novo deploy.':error.message||'Não foi possível enviar a foto.');}
   finally{setBusy(false);onBusyChange?.(false)}
  }
  function remove(index){onChange(images.filter((_,itemIndex)=>itemIndex!==index));setError('');}

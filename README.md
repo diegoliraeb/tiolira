@@ -7,7 +7,7 @@ Prévia em **React 19 + Next.js 16 (App Router)**, preparada para importar na Ve
 1. Importe o repositório `diegoliraeb/tiolira` no painel da Vercel.
 2. Selecione a branch `main`, diretório raiz `./` e framework **Next.js**.
 3. Mantenha os comandos automáticos de instalação/build. Node.js **24.x**.
-4. Clique em Deploy. **Não são necessárias variáveis de ambiente para esta prévia.**
+4. Clique em Deploy. Para o catálogo público, não são necessárias variáveis; uploads do Clube exigem a configuração do Blob abaixo.
 
 A página inicial redireciona para `/pt`. Também existem `/en`, `/es`, `/admin`, `/{idioma}/calculadora` e `/{idioma}/produto/{slug}`. Os caminhos antigos `/3d`, `/3d/produto/*`, `/3d/calculadora` e `/3d/admin` redirecionam para os equivalentes novos.
 
@@ -39,6 +39,8 @@ O cadastro gratuito fica ativo quando o banco e a configuração de segurança e
 Sem banco ou armazenamento configurado, `/admin` continua mostrando uma demonstração pública com somente o catálogo público. Rascunhos ficam no navegador e não alteram o site. Na versão conectada, a demonstração é substituída pelo login real; rascunhos locais não são importados automaticamente.
 
 Os adaptadores de armazenamento local e Vercel Blob privado foram preservados para compatibilidade, mas **DATABASE_URL tem prioridade**. Blob só é necessário se forem hospedados arquivos privados por esse serviço. As imagens importadas continuam em `public/assets` e os modelos exclusivos permanecem no MakerWorld.
+
+Para habilitar uploads no painel, abra o projeto na Vercel, entre em **Storage → Create Database → Blob**, crie um armazenamento **Private** e conecte-o aos ambientes Production e Preview. A Vercel adiciona `BLOB_READ_WRITE_TOKEN`; faça um novo deploy depois de selecionar os ambientes. O administrador poderá enviar modelos do Clube de até 100 MB e até 20 fotos por galeria, com 10 MB por foto.
 
 Para um novo banco ou uma branch Neon de preview sem o schema, execute a migração nesse ambiente antes do deploy. As variáveis `ADMIN_SESSION_SECRET` e `ADMIN_SETUP_TOKEN` são opcionais e sobrepõem a configuração do banco; mantenha-as privadas caso escolha usá-las.
 

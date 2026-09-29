@@ -12,7 +12,7 @@ export default function ModelUpload({value='',onChange,onBusyChange,disabled=fal
    const path=`models/${crypto.randomUUID()}.${extension}`;
    const blob=await upload(path,file,{access:'private',handleUploadUrl:'/api/blob-upload',onUploadProgress:event=>setProgress(event.percentage||0)});
    onChange(blob.pathname);
-  }catch(error){setError(error.message)}finally{setBusy(false);onBusyChange?.(false)}
+  }catch(error){setError(/client token/i.test(String(error?.message))?'Conecte o Vercel Blob ao projeto e faça um novo deploy.':error.message||'Não foi possível enviar o arquivo.')}finally{setBusy(false);onBusyChange?.(false)}
  }
  return <div className="logo-upload full"><label>Arquivo privado do Clube<input ref={input} type="file" accept=".stl,.3mf,.zip,.pdf" disabled={disabled||busy} onChange={choose}/></label><p className="field-help">Envie o arquivo diretamente para o armazenamento privado. Limite atual: 100 MB.</p>{busy&&<p role="status">Enviando arquivo... {Math.round(progress)}%</p>}{value&&<div className="model-upload-current"><strong>Arquivo salvo no armazenamento privado</strong><code>{value}</code><button type="button" className="text-link" disabled={disabled||busy} onClick={()=>{onChange('');if(input.current)input.current.value=''}}>Remover arquivo</button></div>}{error&&<p className="error-text" role="alert">{error}</p>}</div>;
 }
