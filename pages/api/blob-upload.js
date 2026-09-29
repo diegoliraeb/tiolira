@@ -12,8 +12,9 @@ export default async function handler(req,res){
   const body=await readJson(req);
   const response=await handleUpload({body,request:req,onBeforeGenerateToken:async pathname=>{
    await requireAdmin(req);
-   if(!/^models\/[a-f0-9-]{36}\.(stl|3mf|zip|pdf)$/i.test(pathname))throw Object.assign(new Error('Nome de arquivo inválido.'),{status:400});
-   return {allowedContentTypes:['application/octet-stream','application/zip','application/pdf','model/3mf','model/stl'],maximumSizeInBytes:100_000_000,addRandomSuffix:false};
+   if(/^models\/[a-f0-9-]{36}\.(stl|3mf|zip|pdf)$/i.test(pathname))return {allowedContentTypes:['application/octet-stream','application/zip','application/pdf','model/3mf','model/stl'],maximumSizeInBytes:100_000_000,addRandomSuffix:false};
+   if(/^images\/[a-f0-9-]{36}\.(jpg|jpeg|png|webp)$/i.test(pathname))return {allowedContentTypes:['image/jpeg','image/png','image/webp'],maximumSizeInBytes:10_000_000,addRandomSuffix:false};
+   throw Object.assign(new Error('Nome de arquivo inválido.'),{status:400});
   }});
   return res.status(200).json(response);
  }catch(error){console.error('Blob upload error',error.name||'Error');return res.status(error.status||400).json({error:error.message||'Não foi possível preparar o upload.'});}
