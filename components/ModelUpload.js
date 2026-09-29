@@ -1,6 +1,6 @@
 'use client';
 import {useRef,useState} from 'react';
-import {upload} from '@vercel/blob/client';
+import {uploadPresigned} from '@vercel/blob/client';
 export default function ModelUpload({value='',onChange,onBusyChange,disabled=false}){
  const input=useRef(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[progress,setProgress]=useState(0);
  async function choose(e){
@@ -10,7 +10,7 @@ export default function ModelUpload({value='',onChange,onBusyChange,disabled=fal
   setBusy(true);setProgress(0);onBusyChange?.(true);
   try{
    const path=`models/${crypto.randomUUID()}.${extension}`;
-   const blob=await upload(path,file,{access:'private',handleUploadUrl:'/api/blob-upload',onUploadProgress:event=>setProgress(event.percentage||0)});
+   const blob=await uploadPresigned(path,file,{access:'private',handleUploadUrl:'/api/blob-upload',multipart:file.size>5_000_000,onUploadProgress:event=>setProgress(event.percentage||0)});
    onChange(blob.pathname);
   }catch(error){setError(/client token/i.test(String(error?.message))?'Conecte o Vercel Blob ao projeto e faça um novo deploy.':error.message||'Não foi possível enviar o arquivo.')}finally{setBusy(false);onBusyChange?.(false)}
  }

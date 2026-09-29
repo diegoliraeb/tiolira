@@ -1,6 +1,6 @@
 'use client';
 import {useRef,useState} from 'react';
-import {upload} from '@vercel/blob/client';
+import {uploadPresigned} from '@vercel/blob/client';
 
 const MAX_IMAGES=20;
 const MAX_FILE_SIZE=10_000_000;
@@ -18,7 +18,7 @@ export default function GalleryUpload({value=[],onChange,onBusyChange,disabled=f
   try{
    for(let index=0;index<files.length;index++){
     const file=files[index],extension=MIME_EXTENSIONS[file.type],path=`images/${crypto.randomUUID()}.${extension}`;
-    const blob=await upload(path,file,{access:'private',handleUploadUrl:'/api/blob-upload',onUploadProgress:event=>setProgress(((index+(event.percentage||0)/100)/files.length)*100)});
+    const blob=await uploadPresigned(path,file,{access:'private',handleUploadUrl:'/api/blob-upload',multipart:file.size>5_000_000,onUploadProgress:event=>setProgress(((index+(event.percentage||0)/100)/files.length)*100)});
     uploaded.push(`/api/media?path=${encodeURIComponent(blob.pathname)}`);onChange([...images,...uploaded]);
    }
    if(input.current)input.current.value='';
