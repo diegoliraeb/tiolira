@@ -3,14 +3,16 @@ import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { get, put } from '@vercel/blob';
 import { configured, getCatalog, readRecord, writeRecord, updateRecord, Conflict } from './store.mjs';
-import { assertOrigin, requireAdmin, passwordHash, verifyPassword, makeSession, sessionCookie, safeEqual, rateLimit, setupReady, verifySetupToken } from './auth.mjs';
-import { productSchema,collectionSchema,planSchema,storeSchema,applicationSchema,settingsSchema,publicCatalog } from './schema.mjs';
+import { assertOrigin, requireAdmin, requireClub, passwordHash, verifyPassword, makeSession, sessionCookie, clubSessionCookie, safeEqual, rateLimit, setupReady, verifySetupToken } from './auth.mjs';
+import { productSchema,collectionSchema,planSchema,storeSchema,applicationSchema,clubRegistrationSchema,settingsSchema,publicCatalog } from './schema.mjs';
 import {encodeLogo,saveLogo,logoPath} from './store-logo.mjs';
 import {geographyOptions,normalizeStoreLocation} from './geography.mjs';
 const schemas={products:productSchema,collections:collectionSchema,plans:planSchema,stores:storeSchema};
 function fail(message,status=400){throw Object.assign(new Error(message),{status});}
-async function body(req){if(req.body!==undefined)return typeof req.body==='string'?JSON.parse(req.body):req.body;let data='',bytes=0;for await(const part of req){bytes+=part.length;if(bytes>4_000_000)fail('Conteúdo muito grande.',413);data+=part;}return data?JSON.parse(data):{};}
+async function body(req){if(req.body!==undefined)return typeof req.body==='string'?JSON.parse(req.body):req.body;let data='',bytes=0;for await(const part of req){bytes+=part.length;if(bytes>40_000_000)fail('Conteúdo muito grande.',413);data+=part;}return data?JSON.parse(data):{};}
 function json(res,status,data){res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(data));}
+function publicClubMember(member){const {hash,version,...profile}=member;return profile;}
+function clubDownloads(data){return data.products.filter(p=>p.published&&p.access==='site'&&!p.exclusive&&p.filePath).map(({filePath,...p})=>({...p,downloadUrl:`/api/download?id=${p.id}`}));}
 export default async function handler(req,res){
  res.setHeader('Cache-Control','private, no-store');res.setHeader('X-Content-Type-Options','nosniff');
  try{
@@ -19,6 +21,7 @@ export default async function handler(req,res){
   const method=req.method;
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
+  if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,{member:publicClubMember(member),downloads:clubDownloads(data)});}
   if(method==='GET'&&route==='admin/status'){const auth=await readRecord('admin.json');let loggedIn=false;try{await requireAdmin(req);loggedIn=true;}catch{}return json(res,200,{configured:configured(),initialized:Boolean(auth),loggedIn,setupReady:await setupReady()});}
   if(method==='GET'&&route==='admin/catalog'){await requireAdmin(req);const {data,etag}=await getCatalog();return json(res,200,{...data,revision:etag});}
   if(method==='GET'&&route==='store-logo'){
@@ -29,7 +32,7 @@ export default async function handler(req,res){
    res.setHeader('Content-Type','image/webp');res.setHeader('Cache-Control',approved?'public, max-age=60':'private, no-store');return res.end(Buffer.from(record.data.base64,'base64'));
   }
   if(method==='GET'&&route==='media'){const path=url.searchParams.get('path');if(!/^images\/[a-zA-Z0-9._-]+\.(png|jpg|jpeg|webp)$/.test(path||''))fail('Imagem não encontrada.',404);const blob=await get(path,{access:'private'});if(!blob)fail('Imagem não encontrada.',404);res.setHeader('Content-Type',blob.blob.contentType);res.setHeader('Cache-Control','public, max-age=86400');return Readable.fromWeb(blob.stream).pipe(res);}
-  if(method==='GET'&&route==='download'){const {data}=await getCatalog();const p=data.products.find(p=>p.id===url.searchParams.get('id')&&p.published);if(!p||p.access!=='site'||p.exclusive||!p.filePath)fail('Arquivo não disponível para download direto.',404);const blob=await get(p.filePath,{access:'private',useCache:false});if(!blob)fail('Arquivo ainda não enviado.',404);res.setHeader('Content-Type','application/octet-stream');res.setHeader('Content-Disposition',`attachment; filename="${p.slug}.${p.filePath.split('.').pop()}"`);return Readable.fromWeb(blob.stream).pipe(res);}
+  if(method==='GET'&&route==='download'){await requireClub(req);const {data}=await getCatalog();const p=data.products.find(p=>p.id===url.searchParams.get('id')&&p.published);if(!p||p.access!=='site'||p.exclusive||!p.filePath)fail('Arquivo não disponível para download direto.',404);const blob=await get(p.filePath,{access:'private',useCache:false});if(!blob)fail('Arquivo ainda não enviado.',404);res.setHeader('Content-Type','application/octet-stream');res.setHeader('Content-Disposition',`attachment; filename="${p.slug}.${p.filePath.split('.').pop()}"`);return Readable.fromWeb(blob.stream).pipe(res);}
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req);
@@ -39,6 +42,24 @@ export default async function handler(req,res){
    const {data}=await getCatalog();if(!publicCatalog(data).products.some(p=>p.id===input.id))fail('Obra não encontrada.',404);
    await recordProductClick(req,input.id);return json(res,200,{ok:true});
   }
+  if(method==='POST'&&route==='club/register'){
+   if(!configured())fail('O Clube ainda não está conectado ao armazenamento seguro.',503);
+   await rateLimit(req,'club-register',5,15*60_000);
+   const parsed=await normalizeStoreLocation(clubRegistrationSchema.parse(input));
+   const email=parsed.email.trim().toLowerCase();
+   const {password,...profile}=parsed;
+   const member={...profile,email,hash:await passwordHash(password),id:randomUUID(),version:randomUUID(),createdAt:new Date().toISOString(),lastLoginAt:new Date().toISOString()};
+   await updateRecord('club-members.json',old=>{const members=old?.members||[];if(members.some(item=>safeEqual(item.email,email)))fail('Já existe uma conta do Clube com este e-mail.',409);return {members:[...members,member]};});
+   res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));return json(res,201,{ok:true,member:publicClubMember(member),downloads:clubDownloads((await getCatalog()).data)});
+  }
+  if(method==='POST'&&route==='club/login'){
+   if(!configured())fail('O Clube ainda não está conectado ao armazenamento seguro.',503);
+   await rateLimit(req,'club-login',8,15*60_000);
+   const email=typeof input.email==='string'?input.email.trim().toLowerCase():'';const record=await readRecord('club-members.json');const member=record?.data?.members?.find(item=>safeEqual(item.email,email));
+   if(!member||typeof input.password!=='string'||input.password.length>200||!await verifyPassword(input.password,member.hash))fail('E-mail ou senha incorretos.',401);
+   res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));return json(res,200,{ok:true,member:publicClubMember(member),downloads:clubDownloads((await getCatalog()).data)});
+  }
+  if(method==='POST'&&route==='club/logout'){res.setHeader('Set-Cookie',clubSessionCookie('',true));return json(res,200,{ok:true});}
   if(method==='POST'&&route==='admin/setup'){
    if(!configured()||!await setupReady())fail('A administração ainda não foi configurada.',503);
    await rateLimit(req,'setup',5,15*60_000);
@@ -62,8 +83,8 @@ export default async function handler(req,res){
   if(method==='POST'&&route==='admin/upload'){
    if(!process.env.BLOB_READ_WRITE_TOKEN)fail('Uploads exigem o armazenamento Vercel Blob conectado.',503);
    const kind=input.kind;const extension=String(input.name||'').split('.').pop().toLowerCase();const allowed=kind==='image'?['jpg','jpeg','png','webp']:['stl','3mf','zip','pdf'];if(!allowed.includes(extension))fail('Formato não permitido.');
-   if(typeof input.base64!=='string'||input.base64.length>3_800_000)fail('Envie arquivos de até 2,8 MB. Para arquivos maiores, use um link de download protegido.',413);
-   const bytes=Buffer.from(input.base64,'base64');if(!bytes.length||bytes.length>2_800_000)fail('Arquivo vazio ou maior que 2,8 MB.',413);
+   if(typeof input.base64!=='string'||input.base64.length>35_000_000)fail('Envie arquivos de até 25 MB.',413);
+   const bytes=Buffer.from(input.base64,'base64');if(!bytes.length||bytes.length>25_000_000)fail('Arquivo vazio ou maior que 25 MB.',413);
    const path=`${kind==='image'?'images':'models'}/${randomUUID()}.${extension}`;
    const mime={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',pdf:'application/pdf'}[extension]||'application/octet-stream';
    await put(path,bytes,{access:'private',addRandomSuffix:false,contentType:mime});return json(res,201,{path,url:kind==='image'?`/api/media?path=${encodeURIComponent(path)}`:null});

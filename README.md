@@ -15,7 +15,7 @@ A página inicial redireciona para `/pt`. Também existem `/en`, `/es`, `/admin`
 
 - Catálogo com busca, filtros, páginas individuais, imagens e descrições nos três idiomas.
 - Presépio gratuito e autorização do criador para vender **peças físicas**, sem assinatura. Arquivos digitais não podem ser revendidos ou redistribuídos.
-- Links oficiais de download; modelos exclusivos permanecem no MakerWorld.
+- Arquivos gratuitos hospedados no site exigem cadastro e login no Clube; links oficiais do MakerWorld continuam levando diretamente para a plataforma.
 - Rede por cidade e obra, sem lojas fictícias. Cadastro gratuito para pessoas e lojas; consentimento separado para futuras parcerias. Cadastro sem seleção de peças, com confirmação explícita e revisão antes da publicação. Busca por peça ou coleção completa (todas as peças já lançadas); participantes sem catálogo também aparecem, com aviso para consultar disponibilidade. O pedido escolhido segue na mensagem de orçamento do WhatsApp.
 - Calculadora com material, energia, depreciação, manutenção, falhas, trabalho, taxas e margem. Salva simulações no navegador.
 - Painel demonstrável: editar obras, coleções, planos, traduções e textos; revisar participantes; exportar catálogo JSON e CSV de contatos que aceitaram parcerias.

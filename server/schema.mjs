@@ -15,6 +15,12 @@ const serviceArea=z.object({scope:z.enum(['country','state','city','cities']),co
 const storeBase={id,logo:z.string().regex(/^\/api\/store-logo\?id=[a-f0-9-]{36}$/).or(z.literal('')).default(''),countryCode:z.string().regex(/^[A-Z]{2}$/).optional(),stateId:text(30).optional(),stateCode:text(30).optional(),cityId:text(30).optional(),region:text(100).optional(),serviceArea:serviceArea.nullable().optional(),name:text().min(1),city:text(120).min(1),state:text(120).min(1),country:text(100).min(1),whatsapp:z.string().regex(/^\d{10,15}$/),website:httpsUrl.default(''),email:z.email().max(254),description:text(2000),delivery:text(16000),productIds:z.array(id).max(200).default([]),licenseProof:text(3000).default(''),licenseUntil:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).default(''),status:z.enum(['pending','approved','paused','rejected']),consent:z.literal(true),partnershipConsent:z.boolean().default(false),createdAt:text(50)};
 export const storeSchema=z.object(storeBase);
 export const applicationSchema=storeSchema.omit({id:true,status:true,createdAt:true,licenseUntil:true,licenseProof:true,logo:true}).extend({logoData:z.string().max(2_800_000).optional(),honeypot:text().optional()});
+export const clubRegistrationSchema=z.object({
+ name:text().min(1),email:z.email().max(254),password:z.string().min(12,'Use uma senha de pelo menos 12 caracteres.').max(200),
+ countryCode:z.string().regex(/^[A-Z]{2}$/),stateId:text(30).min(1),stateCode:text(30).optional(),cityId:text(30).min(1),region:text(100).optional(),
+ city:text(120).min(1),state:text(120).min(1),country:text(100).min(1),whatsapp:z.string().regex(/^\d{10,15}$/),website:httpsUrl.default(''),description:text(2000),delivery:text(16000),
+ partnershipConsent:z.boolean().default(false),consent:z.literal(true)
+});
 export const settingsSchema=z.object({heroTitle:text(180),heroDescription:text(1200),announcement:text(200),clubDescription:text(1800),about:text(3000),instagram:httpsUrl,contactEmail:z.email(),storesOpen:z.boolean().default(true),translations});
 export const normalize=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 export function publicCatalog(data,now=new Date(),clickCounts={}){
