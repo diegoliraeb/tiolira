@@ -5,7 +5,7 @@ import {storeSchema} from './schema.mjs';
 
 export const partnerEmail=value=>String(value||'').trim().toLowerCase();
 const duplicate=()=>{throw Object.assign(new Error('Este e-mail já tem um cadastro de parceiro. Use “Definir ou recuperar senha” para acessar o Clube.'),{status:409,code:'PARTNER_EXISTS'});};
-const profileKeys=['name','email','countryCode','stateId','stateCode','cityId','region','city','state','country','whatsapp','website','description','delivery','serviceArea','partnershipConsent'];
+const profileKeys=['name','email','countryCode','stateId','stateCode','cityId','region','city','state','country','whatsapp','website','instagram','description','delivery','serviceArea','partnershipConsent'];
 const profileOf=source=>Object.fromEntries(profileKeys.filter(k=>source[k]!==undefined).map(k=>[k,source[k]]));
 const listingOf=(member,data)=>data.stores.find(s=>(member.storeId&&s.id===member.storeId)||partnerEmail(s.email)===partnerEmail(member.email));
 

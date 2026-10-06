@@ -1,3 +1,4 @@
+import {partnerInstagram} from '../lib/instagram.mjs';
 import {encodeLogo,saveLogo} from './store-logo.mjs';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
@@ -6,12 +7,13 @@ import {normalizeStoreLocation} from './geography.mjs';
 import {getCatalog,updateRecord,readRecord} from './store.mjs';
 import {partnerEmail} from './partners.mjs';
 
-const fields=['name','countryCode','stateId','stateCode','cityId','region','city','state','country','whatsapp','website','description','delivery','serviceArea','partnershipConsent'];
+const fields=['name','countryCode','stateId','stateCode','cityId','region','city','state','country','whatsapp','website','instagram','description','delivery','serviceArea','partnershipConsent'];
 const pick=source=>Object.fromEntries(fields.filter(key=>source[key]!==undefined).map(key=>[key,source[key]]));
 const listing=(member,data)=>data.stores.find(s=>(member.storeId&&s.id===member.storeId)||partnerEmail(s.email)===partnerEmail(member.email));
 export function partnerProfile(member,data){
  const store=listing(member,data);
- return {...pick(member),...pick(store||{}),...(member.profilePending||{}),id:member.id,email:member.email,createdAt:member.createdAt,logo:member.profilePending?.logo??store?.logo??member.directoryProfile?.logo??''};
+ const profile={...pick(member),...pick(store||{}),...(member.profilePending||{}),id:member.id,email:member.email,createdAt:member.createdAt,logo:member.profilePending?.logo??store?.logo??member.directoryProfile?.logo??''};
+ return {...profile,instagram:partnerInstagram(profile)};
 }
 const profileSchema=applicationSchema.omit({email:true,consent:true,productIds:true,honeypot:true,password:true}).extend({
  removeLogo:z.boolean().default(false),

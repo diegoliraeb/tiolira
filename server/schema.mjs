@@ -1,3 +1,4 @@
+import {instagramUrl,partnerInstagram} from '../lib/instagram.mjs';
 import {sortProducts} from '../lib/product-order.mjs';
 import {normalizeProductSlug} from '../lib/product-slug.mjs';
 import {z} from 'zod';
@@ -6,6 +7,7 @@ const id=z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/,'Identificador inválido: 
 const productSlug=z.string().transform(normalizeProductSlug).pipe(z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/,'Endereço da obra: use de 1 a 100 letras, números ou hífens, começando com letra ou número. Exemplo: mini-presepio. Cole o link do MakerWorld em “Link de download / assinatura”.'));
 function validHttps(v){try{const u=new URL(v);return u.protocol==='https:'&&!u.username&&!u.password}catch{return false}}
 export const httpsUrl=text(1800).refine(v=>!v||validHttps(v),'Use um endereço HTTPS válido.');
+export const instagramSchema=text(1800).refine(v=>!v||Boolean(instagramUrl(v)),'Informe seu @usuario ou um link de perfil do Instagram.').transform(instagramUrl);
 const imageUrl=text(1800).refine(v=>!v||/^\/assets\/[a-zA-Z0-9._/-]+$/.test(v)||/^\/api\/media\?path=images%2F[a-zA-Z0-9%._-]+$/.test(v)||validHttps(v),'Imagem inválida.');
 const translation=z.object({name:text().optional(),description:text(16000).optional(),heroTitle:text(180).optional(),heroDescription:text(1200).optional(),announcement:text(200).optional(),clubDescription:text(1800).optional(),about:text(3000).optional()});
 const translations=z.object({en:translation.optional(),es:translation.optional()}).default({});
@@ -14,13 +16,13 @@ export const collectionSchema=z.object({id,name:text().min(1),description:text(2
 export const planSchema=z.object({id,name:text().min(1),description:text(3000),priceLabel:text(100),url:httpsUrl,status:z.enum(['soon','active']),collectionIds:z.array(id).max(100),license:text(8000),translations}).refine(p=>p.status!=='active'||Boolean(p.url),'Plano ativo precisa de um link de assinatura.');
 const serviceCity=z.object({id:text(30).min(1),name:text(200),stateId:text(30).min(1),state:text(200),stateCode:text(30).default('')});
 const serviceArea=z.object({scope:z.enum(['country','state','city','cities']),countryCode:z.string().regex(/^[A-Z]{2}$/),stateId:text(30).default(''),state:text(200).default(''),stateCode:text(30).default(''),cities:z.array(serviceCity).max(200).default([])}).superRefine((a,ctx)=>{if(a.scope==='state'&&!a.stateId||['city','cities'].includes(a.scope)&&(!a.cities.length||a.scope==='city'&&a.cities.length!==1))ctx.addIssue({code:'custom',message:'Selecione a área atendida.'})});
-const storeBase={id,logo:z.string().regex(/^\/api\/store-logo\?id=[a-f0-9-]{36}$/).or(z.literal('')).default(''),countryCode:z.string().regex(/^[A-Z]{2}$/).optional(),stateId:text(30).optional(),stateCode:text(30).optional(),cityId:text(30).optional(),region:text(100).optional(),serviceArea:serviceArea.nullable().optional(),name:text().min(1),city:text(120).min(1),state:text(120).min(1),country:text(100).min(1),whatsapp:z.string().regex(/^\d{10,15}$/),website:httpsUrl.default(''),email:z.email().max(254),description:text(2000),delivery:text(16000),productIds:z.array(id).max(200).default([]),licenseProof:text(3000).default(''),licenseUntil:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).default(''),status:z.enum(['pending','approved','paused','rejected']),consent:z.literal(true),partnershipConsent:z.boolean().default(false),createdAt:text(50)};
+const storeBase={id,logo:z.string().regex(/^\/api\/store-logo\?id=[a-f0-9-]{36}$/).or(z.literal('')).default(''),countryCode:z.string().regex(/^[A-Z]{2}$/).optional(),stateId:text(30).optional(),stateCode:text(30).optional(),cityId:text(30).optional(),region:text(100).optional(),serviceArea:serviceArea.nullable().optional(),name:text().min(1),city:text(120).min(1),state:text(120).min(1),country:text(100).min(1),whatsapp:z.string().regex(/^\d{10,15}$/),website:httpsUrl.default(''),instagram:instagramSchema.optional(),email:z.email().max(254),description:text(2000),delivery:text(16000),productIds:z.array(id).max(200).default([]),licenseProof:text(3000).default(''),licenseUntil:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).default(''),status:z.enum(['pending','approved','paused','rejected']),consent:z.literal(true),partnershipConsent:z.boolean().default(false),createdAt:text(50)};
 export const storeSchema=z.object(storeBase);
 export const applicationSchema=storeSchema.omit({id:true,status:true,createdAt:true,licenseUntil:true,licenseProof:true,logo:true}).extend({password:z.string().min(12,'Use uma senha de pelo menos 12 caracteres.').max(200).optional(),logoData:z.string().max(2_800_000).optional(),honeypot:text().optional()});
 export const clubRegistrationSchema=z.object({
  name:text().min(1),email:z.email().max(254),password:z.string().min(12,'Use uma senha de pelo menos 12 caracteres.').max(200),
  countryCode:z.string().regex(/^[A-Z]{2}$/),stateId:text(30).min(1),stateCode:text(30).optional(),cityId:text(30).min(1),region:text(100).optional(),
- city:text(120).min(1),state:text(120).min(1),country:text(100).min(1),whatsapp:z.string().regex(/^\d{10,15}$/),website:httpsUrl.default(''),description:text(2000),delivery:text(16000),
+ city:text(120).min(1),state:text(120).min(1),country:text(100).min(1),whatsapp:z.string().regex(/^\d{10,15}$/),website:httpsUrl.default(''),instagram:instagramSchema.optional(),description:text(2000),delivery:text(16000),
  partnershipConsent:z.boolean().default(false),consent:z.literal(true),directoryConsent:z.boolean().default(false)
 });
 export const settingsSchema=z.object({heroTitle:text(180),heroDescription:text(1200),announcement:text(200),clubDescription:text(1800),about:text(3000),instagram:httpsUrl,contactEmail:z.email(),storesOpen:z.boolean().default(true),translations});
@@ -30,6 +32,6 @@ export function publicCatalog(data,now=new Date(),clickCounts={}){
  const products=sortProducts(data.products.filter(p=>p.published&&collectionIds.has(p.collection)).map(({filePath,...p})=>({...p,hasFile:Boolean(filePath),clickCount:clickCounts[p.id]||0})));
  const validIds=new Set(products.map(p=>p.id));
  const freeIds=new Set(products.filter(p=>p.collection==='presepio'||(p.allowPhysicalSales===true||collections.some(c=>c.id===p.collection&&c.free))&&['site','maker'].includes(p.access)).map(p=>p.id));
- const stores=data.stores.filter(s=>s.status==='approved'&&s.consent).map(({email,licenseProof,licenseUntil,status,consent,partnershipConsent,createdAt,...s})=>({...s,offeringsUnspecified:!s.productIds?.length,productIds:(s.productIds||[]).filter(id=>validIds.has(id)&&(freeIds.has(id)||(licenseProof&&licenseUntil>=now.toISOString().slice(0,10))))})).filter(s=>s.offeringsUnspecified||s.productIds.length);
+ const stores=data.stores.filter(s=>s.status==='approved'&&s.consent).map(({email,licenseProof,licenseUntil,status,consent,partnershipConsent,createdAt,...s})=>({...s,instagram:partnerInstagram(s),offeringsUnspecified:!s.productIds?.length,productIds:(s.productIds||[]).filter(id=>validIds.has(id)&&(freeIds.has(id)||(licenseProof&&licenseUntil>=now.toISOString().slice(0,10))))})).filter(s=>s.offeringsUnspecified||s.productIds.length);
  return {settings:data.settings,collections,products,plans:data.plans,stores};
 }

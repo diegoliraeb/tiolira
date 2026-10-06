@@ -76,13 +76,13 @@ test('network and Club share one partner account',async t=>{
    const before=(await readRecord('club-members.json')).data.members.find(m=>m.email===email);
    const license=await issueLicense(before,data.products[0]);
    await updateRecord('catalog.json',old=>{const s=old.stores.find(s=>s.email===email);s.status='approved';s.productIds=[data.products[0].id];s.licenseProof='kept';return old});
-   const input={...profile,name:'Nome atualizado',description:'Descrição atualizada',email:'attacker@example.invalid',id:'forged',hash:'forged',version:'forged',status:'rejected',consent:false,licenseProof:'forged',productIds:[]};
+   const input={...profile,name:'Nome atualizado',instagram:'@Atelie.Teste',description:'Descrição atualizada',email:'attacker@example.invalid',id:'forged',hash:'forged',version:'forged',status:'rejected',consent:false,licenseProof:'forged',productIds:[]};
    assert.equal((await call('club/profile',{method:'PUT',body:input})).status,401);
    const result=await call('club/profile',{method:'PUT',cookie,body:input});assert.equal(result.status,200,JSON.stringify(result.body));
    assert.equal(result.body.member.name,input.name);assert.equal(result.body.member.email,email);assert.equal(result.body.member.id,before.id);
    assert.equal(result.body.licenses[0].code,license.code);assert.ok(!('hash' in result.body.member));assert.ok(result.body.collections.every(c=>c.published));
    const after=(await readRecord('club-members.json')).data.members.find(m=>m.id===before.id);assert.equal(after.hash,before.hash);assert.equal(after.version,before.version);assert.equal(after.profilePending,undefined);
-   const store=(await readRecord('catalog.json')).data.stores.find(s=>s.email===email);assert.equal(store.name,input.name);assert.equal(store.description,input.description);assert.equal(store.status,'approved');assert.equal(store.licenseProof,'kept');assert.deepEqual(store.productIds,[data.products[0].id]);
+   const store=(await readRecord('catalog.json')).data.stores.find(s=>s.email===email);assert.equal(store.name,input.name);assert.equal(store.instagram,'https://www.instagram.com/atelie.teste/');assert.equal(result.body.member.instagram,store.instagram);assert.equal(store.description,input.description);assert.equal(store.status,'approved');assert.equal(store.licenseProof,'kept');assert.deepEqual(store.productIds,[data.products[0].id]);
    assert.notEqual((await readRecord('catalog.json')).data.stores.find(s=>s.email==='stores@example.invalid').name,input.name);
    const invalid=await call('club/profile',{method:'PUT',cookie,body:{...input,cityId:'missing'}});assert.equal(invalid.status,400);assert.equal((await readRecord('club-members.json')).data.members.find(m=>m.id===before.id).name,input.name);
    const logoData='data:image/png;base64,'+(await sharp({create:{width:10,height:10,channels:3,background:'white'}}).png().toBuffer()).toString('base64');
@@ -92,6 +92,7 @@ test('network and Club share one partner account',async t=>{
    assert.equal((await call(logoRoute,{method:'GET'})).status,404);
    assert.ok(Buffer.isBuffer((await call(logoRoute,{method:'GET',cookie})).body));
    const otherLogin=await call('club/login',{body:{email:'stores@example.invalid',password}});assert.equal((await call(logoRoute,{method:'GET',cookie:otherLogin.headers['Set-Cookie'].split(';')[0]})).status,404);
+   const cleared=await call('club/profile',{method:'PUT',cookie,body:{...input,instagram:''}});assert.equal(cleared.body.member.instagram,'');assert.equal((await readRecord('catalog.json')).data.stores.find(s=>s.email===email).instagram,'');
    const removed=await call('club/profile',{method:'PUT',cookie,body:{...input,removeLogo:true}});assert.equal(removed.body.member.logo,'');assert.equal((await readRecord('catalog.json')).data.stores.find(s=>s.email===email).logo,'');
   });
   await t.test('interrupted listing write can recover from saved consent without duplicates',async()=>{

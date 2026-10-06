@@ -24,6 +24,7 @@ export default function PartnerProfile({lang,t,member,onSave}){
  <LogoUpload lang={lang} value={logo??profile.logo??''} onChange={setLogo} onBusyChange={setLogoBusy} disabled={saving}/>
  <LocationFields lang={lang} value={profile} required onChange={value=>setProfile(p=>({...p,...value,...(value.countryCode!==p.countryCode&&p.serviceArea?{serviceArea:{scope:'country',countryCode:value.countryCode,stateId:'',cities:[]}}:{})}))}/>
  <label>{t.whatsapp}<input required inputMode="tel" maxLength={15} pattern="[0-9]{10,15}" value={profile.whatsapp||''} onChange={e=>change('whatsapp',e.target.value.replace(/\D/g,''))}/></label>
+ <label className="full">{t.partnerInstagram}<input name="instagram" autoCapitalize="none" spellCheck={false} maxLength={1800} placeholder="@seuusuario" value={profile.instagram||''} onChange={e=>change('instagram',e.target.value)}/><small>{t.partnerInstagramHelp}</small></label>
  <label className="full">{t.website}<input type="url" maxLength={1800} value={profile.website||''} onChange={e=>change('website',e.target.value)}/></label>
  {profile.serviceArea?<DeliveryFields key={profile.countryCode} lang={lang} value={profile.serviceArea} onChange={value=>change('serviceArea',value)}/>:<label className="full">{t.delivery}<input maxLength={16000} value={profile.delivery||''} onChange={e=>change('delivery',e.target.value)}/></label>}
  <label className="full">{t.description}<textarea maxLength={2000} value={profile.description||''} onChange={e=>change('description',e.target.value)}/></label>

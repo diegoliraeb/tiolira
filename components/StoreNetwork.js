@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
+import {partnerInstagram} from '../lib/instagram.mjs';
 import LogoUpload from './LogoUpload';
 import LocationFields from './LocationFields';
 import DeliveryFields from './DeliveryFields';
@@ -62,7 +63,7 @@ export default function StoreNetwork({lang,catalog}){
     <button className="store-register" onClick={openRegistration}>{t.join} ↗</button>
    </div>
    <div className="store-results-panel" ref={results}><span className="network-label">{t.join} · {t.freeNativity}</span>
-    <p className="store-result-count" role="status">{found.length} {found.length===1?t.storeCountOne:t.storeCount}</p><div className="store-results" aria-live="polite">{!found.length?<div className="store-empty"><span>⌖</span><h3>{catalog.stores.length?t.noMatch:t.noStores}</h3><p>{t.joinIntro}</p></div>:found.map(s=><article className="store-card" key={s.id}><div className="store-identity">{s.logo&&<img className="store-logo" src={s.logo} alt={`${t.logoOf} ${s.name}`} loading="lazy" width="72" height="72"/>}<h3>{s.name}</h3></div><p>{s.city}, {s.state} · {s.country}</p><p>{s.description}</p><p className="store-delivery">{s.serviceArea?deliveryLabel(s.serviceArea,lang):s.delivery}</p>{s.offeringsUnspecified&&<p className="store-availability">{t.confirmAvailability}</p>}<a className="store-contact" href={quoteUrl(s)} target="_blank" rel="noreferrer">{t.quote} ↗</a></article>)}</div>
+    <p className="store-result-count" role="status">{found.length} {found.length===1?t.storeCountOne:t.storeCount}</p><div className="store-results" aria-live="polite">{!found.length?<div className="store-empty"><span>⌖</span><h3>{catalog.stores.length?t.noMatch:t.noStores}</h3><p>{t.joinIntro}</p></div>:found.map(s=><article className="store-card" key={s.id}><div className="store-identity">{s.logo&&<img className="store-logo" src={s.logo} alt={`${t.logoOf} ${s.name}`} loading="lazy" width="72" height="72"/>}<h3>{s.name}</h3></div><p>{s.city}, {s.state} · {s.country}</p><p>{s.description}</p><p className="store-delivery">{s.serviceArea?deliveryLabel(s.serviceArea,lang):s.delivery}</p>{s.offeringsUnspecified&&<p className="store-availability">{t.confirmAvailability}</p>}<div className="store-card-actions"><a className="store-contact" href={quoteUrl(s)} target="_blank" rel="noreferrer">{t.quote} ↗</a>{partnerInstagram(s)&&<a className="store-instagram" href={partnerInstagram(s)} target="_blank" rel="noopener noreferrer">{t.viewInstagram} ↗</a>}</div></article>)}</div>
     <p className="store-disclaimer">{t.disclaimer}</p>
    </div>
   </div>
@@ -81,6 +82,7 @@ export default function StoreNetwork({lang,catalog}){
      <LogoUpload lang={lang} value={logo} onChange={setLogo} onBusyChange={setLogoBusy} disabled={busy}/>
      <LocationFields lang={lang} value={address} required onChange={value=>{setAddress(value);if(value.countryCode!==address.countryCode)setServiceArea({scope:'city',countryCode:value.countryCode,stateId:'',cities:[]})}}/>
      <label>{t.whatsapp}<input name="whatsapp" type="tel" required placeholder="55 82 99999-9999" maxLength={30}/></label>
+     <label className="full">{t.partnerInstagram}<input name="instagram" autoCapitalize="none" spellCheck={false} maxLength={1800} placeholder="@seuusuario"/><span className="field-help">{t.partnerInstagramHelp}</span></label>
      <label className="full">{t.website}<input name="website" type="url" placeholder="https://" pattern="https://.*"/></label>
      <DeliveryFields key={address.countryCode} lang={lang} value={serviceArea} onChange={setServiceArea}/><p className="field-help full">{t.locationSources}: <a href="https://servicodados.ibge.gov.br/api/docs/localidades" target="_blank" rel="noreferrer">IBGE</a> · <a href="/geography/README.txt" target="_blank" rel="noreferrer">Countries States Cities Database (ODbL)</a></p>
      <label className="full">{t.description}<textarea name="description" required maxLength={2000}/></label>
