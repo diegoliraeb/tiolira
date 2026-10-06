@@ -35,6 +35,7 @@ test('registration without models persists pending, preserves privacy and become
   assert.equal(matchesStore(published,'Recife','all',seed.products),false);
   assert.equal(matchesStore(published,'','unknown',seed.products),false);
   assert.equal(matchesStore(published,'','collection:unknown',seed.products),false);
+  for(const c of data.collections)if(c.id!=='presepio')c.free=false;
   store.productIds=[seed.products.find(p=>p.collection!=='presepio').id];store.licenseProof='';store.licenseUntil='';
   assert.equal(publicCatalog(data).stores.length,0,'expired or unauthorized offerings must not become unspecified');
  }finally{for(const key of envKeys){if(saved[key]===undefined)delete process.env[key];else process.env[key]=saved[key]}await rm(dir,{recursive:true,force:true})}

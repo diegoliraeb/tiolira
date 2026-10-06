@@ -29,7 +29,7 @@ export function publicCatalog(data,now=new Date(),clickCounts={}){
  const collections=data.collections.filter(c=>c.published),collectionIds=new Set(collections.map(c=>c.id));
  const products=sortProducts(data.products.filter(p=>p.published&&collectionIds.has(p.collection)).map(({filePath,...p})=>({...p,hasFile:Boolean(filePath),clickCount:clickCounts[p.id]||0})));
  const validIds=new Set(products.map(p=>p.id));
- const freeIds=new Set(products.filter(p=>p.collection==='presepio'||p.allowPhysicalSales===true&&['site','maker'].includes(p.access)).map(p=>p.id));
+ const freeIds=new Set(products.filter(p=>p.collection==='presepio'||(p.allowPhysicalSales===true||collections.some(c=>c.id===p.collection&&c.free))&&['site','maker'].includes(p.access)).map(p=>p.id));
  const stores=data.stores.filter(s=>s.status==='approved'&&s.consent).map(({email,licenseProof,licenseUntil,status,consent,partnershipConsent,createdAt,...s})=>({...s,offeringsUnspecified:!s.productIds?.length,productIds:(s.productIds||[]).filter(id=>validIds.has(id)&&(freeIds.has(id)||(licenseProof&&licenseUntil>=now.toISOString().slice(0,10))))})).filter(s=>s.offeringsUnspecified||s.productIds.length);
  return {settings:data.settings,collections,products,plans:data.plans,stores};
 }

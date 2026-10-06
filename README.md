@@ -115,3 +115,11 @@ O link vence em 30 minutos, pode ser usado uma única vez e carrega o segredo no
 4. Faça uma nova publicação para carregar as variáveis. Com uma conta de teste cadastrada no Clube, use **Esqueci minha senha**, confira a chegada do e-mail e conclua a troca da senha. Até esse teste real, a entrega de e-mails ainda não está validada.
 
 Não é necessário escolher fornecedores de filamento para ativar a área: a seção de cupons permanece vazia até cadastrar ofertas reais em **Administração → Cupons de descontos**.
+
+### Menu do parceiro e licença das coleções
+
+A área usa menu lateral com Meu cadastro, Coleções (filtro por coleção), Cupons de desconto e Minhas licenças. O formulário Meu cadastro atualiza nome, logo, localização, contatos, descrição e área atendida no registro privado e no perfil da rede. O e-mail de acesso, status de aprovação, obras autorizadas e licenças não podem ser alterados por esse formulário. Atualizações interrompidas da rede são retomadas no próximo acesso.
+
+A opção **Coleção gratuita — licença de venda automática para parceiros** no administrador emite um código por parceiro e coleção publicada no próximo acesso à área. O Presépio Tio Lira já é gratuito. As licenças da coleção ficam no mesmo registro privado das licenças individuais, que continuam válidas e disponíveis no histórico. Alterações posteriores na coleção não apagam documentos já emitidos. Somente peças disponibilizadas gratuitamente são cobertas; não há permissão para revender ou redistribuir os arquivos digitais.
+
+Os e-mails de recuperação são enviados em HTML e texto, com logo PNG, cabeçalho e rodapé Tio Lira, botão e link alternativo. Os links continuam expirando após 30 minutos, com uso único.

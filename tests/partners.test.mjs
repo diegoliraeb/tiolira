@@ -8,6 +8,7 @@ import handler from '../server/handler.mjs';
 import {readRecord,writeRecord,updateRecord} from '../server/store.mjs';
 import {ensurePartnerListing,registerPartner,partnerForRecovery} from '../server/partners.mjs';
 import {issueLicense} from '../server/club.mjs';
+import sharp from 'sharp';
 import seed from '../data/catalog.json' with {type:'json'};
 
 test('network and Club share one partner account',async t=>{
@@ -18,7 +19,7 @@ test('network and Club share one partner account',async t=>{
  Object.assign(process.env,{LOCAL_DATA_DIR:dir,ADMIN_SESSION_SECRET:'unified-partner-tests-only-secret-longer-than-32',RESEND_API_KEY:'test',EMAIL_FROM:'test@example.invalid',SITE_URL:'https://example.invalid'});
  let count=0;
  const call=async(route,{body={},method='POST',cookie=''}={})=>{
-  let result;const headers={};await handler({url:`/api/${route}`,method,body,headers:{host:'localhost',origin:'http://localhost',cookie},socket:{remoteAddress:`test-${count++}`}},{setHeader(k,v){headers[k]=v},set statusCode(v){this.status=v},end(v){result={status:this.status,body:JSON.parse(v),headers}}});return result;
+  let result;const headers={};await handler({url:`/api/${route}`,method,body,headers:{host:'localhost',origin:'http://localhost',cookie},socket:{remoteAddress:`test-${count++}`}},{setHeader(k,v){headers[k]=v},set statusCode(v){this.status=v},end(v){result={status:this.status,body:Buffer.isBuffer(v)?v:JSON.parse(v),headers}}});return result;
  };
  const profile={name:'Parceiro teste',email:'new@example.invalid',countryCode:'BR',stateId:'AL',cityId:'2704302',city:'Maceió',state:'Alagoas',country:'Brasil',whatsapp:'5582999999999',description:'Peças impressas',delivery:'Retirada',consent:true};
  const password='Partner-test-password-123';
@@ -68,6 +69,30 @@ test('network and Club share one partner account',async t=>{
    assert.equal((await call('club/network',{cookie,body:{consent:true}})).status,400);
    assert.equal((await call('club/me',{method:'GET',cookie})).status,200);
    assert.equal((await readRecord('club-members.json')).data.members.find(m=>m.id===member.id).directoryConsent,false);
+  });
+  await t.test('profile changes synchronize only the signed-in partner and preserve protected fields and licenses',async()=>{
+   const email='club@example.invalid';
+   const login=await call('club/login',{body:{email,password}});const cookie=login.headers['Set-Cookie'].split(';')[0];
+   const before=(await readRecord('club-members.json')).data.members.find(m=>m.email===email);
+   const license=await issueLicense(before,data.products[0]);
+   await updateRecord('catalog.json',old=>{const s=old.stores.find(s=>s.email===email);s.status='approved';s.productIds=[data.products[0].id];s.licenseProof='kept';return old});
+   const input={...profile,name:'Nome atualizado',description:'Descrição atualizada',email:'attacker@example.invalid',id:'forged',hash:'forged',version:'forged',status:'rejected',consent:false,licenseProof:'forged',productIds:[]};
+   assert.equal((await call('club/profile',{method:'PUT',body:input})).status,401);
+   const result=await call('club/profile',{method:'PUT',cookie,body:input});assert.equal(result.status,200,JSON.stringify(result.body));
+   assert.equal(result.body.member.name,input.name);assert.equal(result.body.member.email,email);assert.equal(result.body.member.id,before.id);
+   assert.equal(result.body.licenses[0].code,license.code);assert.ok(!('hash' in result.body.member));assert.ok(result.body.collections.every(c=>c.published));
+   const after=(await readRecord('club-members.json')).data.members.find(m=>m.id===before.id);assert.equal(after.hash,before.hash);assert.equal(after.version,before.version);assert.equal(after.profilePending,undefined);
+   const store=(await readRecord('catalog.json')).data.stores.find(s=>s.email===email);assert.equal(store.name,input.name);assert.equal(store.description,input.description);assert.equal(store.status,'approved');assert.equal(store.licenseProof,'kept');assert.deepEqual(store.productIds,[data.products[0].id]);
+   assert.notEqual((await readRecord('catalog.json')).data.stores.find(s=>s.email==='stores@example.invalid').name,input.name);
+   const invalid=await call('club/profile',{method:'PUT',cookie,body:{...input,cityId:'missing'}});assert.equal(invalid.status,400);assert.equal((await readRecord('club-members.json')).data.members.find(m=>m.id===before.id).name,input.name);
+   const logoData='data:image/png;base64,'+(await sharp({create:{width:10,height:10,channels:3,background:'white'}}).png().toBuffer()).toString('base64');
+   await updateRecord('catalog.json',old=>{old.stores.find(s=>s.email===email).status='pending';return old});
+   const withLogo=await call('club/profile',{method:'PUT',cookie,body:{...input,logoData}});assert.equal(withLogo.status,200);
+   const logoRoute=withLogo.body.member.logo.replace('/api/','');
+   assert.equal((await call(logoRoute,{method:'GET'})).status,404);
+   assert.ok(Buffer.isBuffer((await call(logoRoute,{method:'GET',cookie})).body));
+   const otherLogin=await call('club/login',{body:{email:'stores@example.invalid',password}});assert.equal((await call(logoRoute,{method:'GET',cookie:otherLogin.headers['Set-Cookie'].split(';')[0]})).status,404);
+   const removed=await call('club/profile',{method:'PUT',cookie,body:{...input,removeLogo:true}});assert.equal(removed.body.member.logo,'');assert.equal((await readRecord('catalog.json')).data.stores.find(s=>s.email===email).logo,'');
   });
   await t.test('interrupted listing write can recover from saved consent without duplicates',async()=>{
    const member=await registerPartner({...profile,email:'resume@example.invalid'},{password});

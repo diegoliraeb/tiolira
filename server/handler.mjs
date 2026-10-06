@@ -1,3 +1,4 @@
+import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
 import {clubDashboard,clubProducts,issueLicense,couponSchema,requestPasswordReset,resetPassword} from './club.mjs';
 import {readClickCounts,recordProductClick} from './product-clicks.mjs';
@@ -28,7 +29,7 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='store-logo'){
    const id=url.searchParams.get('id');if(!/^[a-f0-9-]{36}$/.test(id||''))fail('Logo não encontrada.',404);
    const {data}=await getCatalog();const approved=publicCatalog(data).stores.some(s=>s.logo===logoPath(id));
-   if(!approved){try{await requireAdmin(req)}catch{fail('Logo não encontrada.',404)}}
+   if(!approved){try{await requireAdmin(req)}catch{try{const member=await requireClub(req);if(partnerProfile(member,data).logo!==logoPath(id))fail('Logo não encontrada.',404);}catch{fail('Logo não encontrada.',404)}}}
    const record=await readRecord(`logos/${id}.json`);if(!record)fail('Logo não encontrada.',404);
    res.setHeader('Content-Type','image/webp');res.setHeader('Cache-Control',approved?'public, max-age=60':'private, no-store');return res.end(Buffer.from(record.data.base64,'base64'));
   }
@@ -57,6 +58,11 @@ export default async function handler(req,res){
    const product=clubProducts((await getCatalog()).data).find(p=>p.id===input.productId&&p.canLicense);
    if(!product)fail('Licença de venda não disponível para esta peça.',403);
    return json(res,200,{license:await issueLicense(member,product)});
+  }
+  if(method==='PUT'&&route==='club/profile'){
+   const member=await requireClub(req);
+   const updated=await updatePartnerProfile(member,input);
+   return json(res,200,await clubDashboard(updated,(await getCatalog()).data));
   }
   if(method==='POST'&&route==='club/network'){
    const member=await requireClub(req);
@@ -122,7 +128,7 @@ export default async function handler(req,res){
   if(method==='DELETE'){
    if(kind==='collections'&&current.data.products.some(p=>p.collection===input.id))fail('Mova as obras antes de excluir esta coleção.');
    current.data[kind]=current.data[kind].filter(item=>item.id!==input.id);
-  }else{let parsed=schemas[kind].parse(input.item);if(kind==='stores'){parsed=await normalizeStoreLocation(parsed);if(input.logoData)parsed.logo=await saveLogo(randomUUID(),await encodeLogo(input.logoData));}if(kind==='stores'&&parsed.status==='approved'){const paid=parsed.productIds.some(id=>!current.data.products.some(p=>p.id===id&&(p.collection==='presepio'||p.allowPhysicalSales===true&&['site','maker'].includes(p.access))));if(paid&&(!parsed.licenseProof||!parsed.licenseUntil))fail('Para obras fora do presépio, registre a autorização e sua validade.');}if(kind==='products'){
+  }else{let parsed=schemas[kind].parse(input.item);if(kind==='stores'){parsed=await normalizeStoreLocation(parsed);if(input.logoData)parsed.logo=await saveLogo(randomUUID(),await encodeLogo(input.logoData));}if(kind==='stores'&&parsed.status==='approved'){const paid=parsed.productIds.some(id=>!current.data.products.some(p=>p.id===id&&(p.collection==='presepio'||(p.allowPhysicalSales===true||current.data.collections.some(c=>c.id===p.collection&&c.published&&c.free))&&['site','maker'].includes(p.access))));if(paid&&(!parsed.licenseProof||!parsed.licenseUntil))fail('Para obras fora do presépio, registre a autorização e sua validade.');}if(kind==='products'){
    if(!current.data.collections.some(c=>c.id===parsed.collection))fail('Coleção não encontrada.');
    if(parsed.collection==='presepio'&&parsed.access==='members')fail('O presépio é gratuito e não pode exigir assinatura.');
    if(current.data.products.some(p=>p.id!==parsed.id&&p.slug===parsed.slug))fail('Já existe uma obra com este endereço.');
