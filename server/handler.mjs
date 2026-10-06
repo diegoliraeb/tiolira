@@ -1,3 +1,4 @@
+import {clubDashboard,clubProducts,issueLicense,couponSchema,requestPasswordReset,resetPassword} from './club.mjs';
 import {readClickCounts,recordProductClick} from './product-clicks.mjs';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
@@ -11,8 +12,6 @@ const schemas={products:productSchema,collections:collectionSchema,plans:planSch
 function fail(message,status=400){throw Object.assign(new Error(message),{status});}
 async function body(req){if(req.body!==undefined)return typeof req.body==='string'?JSON.parse(req.body):req.body;let data='',bytes=0;for await(const part of req){bytes+=part.length;if(bytes>40_000_000)fail('Conteúdo muito grande.',413);data+=part;}return data?JSON.parse(data):{};}
 function json(res,status,data){res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(data));}
-function publicClubMember(member){const {hash,version,...profile}=member;return profile;}
-function clubDownloads(data){return data.products.filter(p=>p.published&&p.access==='site'&&!p.exclusive&&p.filePath).map(({filePath,...p})=>({...p,downloadUrl:`/api/download?id=${p.id}`}));}
 export default async function handler(req,res){
  res.setHeader('Cache-Control','private, no-store');res.setHeader('X-Content-Type-Options','nosniff');
  try{
@@ -21,7 +20,8 @@ export default async function handler(req,res){
   const method=req.method;
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
-  if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,{member:publicClubMember(member),downloads:clubDownloads(data)});}
+  if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
+  if(method==='GET'&&route==='admin/coupons'){await requireAdmin(req);const record=await readRecord('partner-coupons.json');return json(res,200,{coupons:record?.data?.coupons||[],revision:record?.etag||null});}
   if(method==='GET'&&route==='admin/status'){const auth=await readRecord('admin.json');let loggedIn=false;try{await requireAdmin(req);loggedIn=true;}catch{}return json(res,200,{configured:configured(),initialized:Boolean(auth),loggedIn,setupReady:await setupReady()});}
   if(method==='GET'&&route==='admin/catalog'){await requireAdmin(req);const {data,etag}=await getCatalog();return json(res,200,{...data,revision:etag});}
   if(method==='GET'&&route==='store-logo'){
@@ -42,6 +42,21 @@ export default async function handler(req,res){
    const {data}=await getCatalog();if(!publicCatalog(data).products.some(p=>p.id===input.id))fail('Obra não encontrada.',404);
    await recordProductClick(req,input.id);return json(res,200,{ok:true});
   }
+  if(method==='POST'&&route==='club/forgot-password'){
+   if(!configured())fail('O Clube ainda não está conectado ao armazenamento seguro.',503);
+   await rateLimit(req,'club-forgot-password',5,15*60_000);
+   await requestPasswordReset(input);return json(res,200,{ok:true});
+  }
+  if(method==='POST'&&route==='club/reset-password'){
+   await rateLimit(req,'club-reset-password',10,15*60_000);
+   await resetPassword(input);res.setHeader('Set-Cookie',clubSessionCookie('',true));return json(res,200,{ok:true});
+  }
+  if(method==='POST'&&route==='club/licenses'){
+   const member=await requireClub(req);
+   const product=clubProducts((await getCatalog()).data).find(p=>p.id===input.productId&&p.canLicense);
+   if(!product)fail('Licença de venda não disponível para esta peça.',403);
+   return json(res,200,{license:await issueLicense(member,product)});
+  }
   if(method==='POST'&&route==='club/register'){
    if(!configured())fail('O Clube ainda não está conectado ao armazenamento seguro.',503);
    await rateLimit(req,'club-register',5,15*60_000);
@@ -50,14 +65,14 @@ export default async function handler(req,res){
    const {password,...profile}=parsed;
    const member={...profile,email,hash:await passwordHash(password),id:randomUUID(),version:randomUUID(),createdAt:new Date().toISOString(),lastLoginAt:new Date().toISOString()};
    await updateRecord('club-members.json',old=>{const members=old?.members||[];if(members.some(item=>safeEqual(item.email,email)))fail('Já existe uma conta do Clube com este e-mail.',409);return {members:[...members,member]};});
-   res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));return json(res,201,{ok:true,member:publicClubMember(member),downloads:clubDownloads((await getCatalog()).data)});
+   res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));return json(res,201,{ok:true,...await clubDashboard(member,(await getCatalog()).data)});
   }
   if(method==='POST'&&route==='club/login'){
    if(!configured())fail('O Clube ainda não está conectado ao armazenamento seguro.',503);
    await rateLimit(req,'club-login',8,15*60_000);
    const email=typeof input.email==='string'?input.email.trim().toLowerCase():'';const record=await readRecord('club-members.json');const member=record?.data?.members?.find(item=>safeEqual(item.email,email));
    if(!member||typeof input.password!=='string'||input.password.length>200||!await verifyPassword(input.password,member.hash))fail('E-mail ou senha incorretos.',401);
-   res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));return json(res,200,{ok:true,member:publicClubMember(member),downloads:clubDownloads((await getCatalog()).data)});
+   res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));return json(res,200,{ok:true,...await clubDashboard(member,(await getCatalog()).data)});
   }
   if(method==='POST'&&route==='club/logout'){res.setHeader('Set-Cookie',clubSessionCookie('',true));return json(res,200,{ok:true});}
   if(method==='POST'&&route==='admin/setup'){
@@ -80,6 +95,13 @@ export default async function handler(req,res){
    for(let attempt=0;attempt<5;attempt++){const current=await getCatalog();try{current.data.stores.push(entry);await writeRecord('catalog.json',current.data,current.etag);return json(res,201,{ok:true});}catch(e){if(!(e instanceof Conflict)||attempt===4)throw e;}}
   }
   await requireAdmin(req);
+  if(route==='admin/coupons'&&['PUT','DELETE'].includes(method)){
+   const current=await readRecord('partner-coupons.json');if((current?.etag||null)!==input.revision)throw new Conflict();
+   let coupons=current?.data?.coupons||[];
+   if(method==='DELETE')coupons=coupons.filter(c=>c.id!==input.id);
+   else{const coupon=couponSchema.parse(input.item);coupons=[...coupons.filter(c=>c.id!==coupon.id),coupon];}
+   const revision=await writeRecord('partner-coupons.json',{coupons},current?.etag);return json(res,200,{coupons,revision});
+  }
   if(method==='POST'&&route==='admin/upload'){
    if(!process.env.BLOB_READ_WRITE_TOKEN)fail('Uploads exigem o armazenamento Vercel Blob conectado.',503);
    const kind=input.kind;const extension=String(input.name||'').split('.').pop().toLowerCase();const allowed=kind==='image'?['jpg','jpeg','png','webp']:['stl','3mf','zip','pdf'];if(!allowed.includes(extension))fail('Formato não permitido.');
@@ -95,7 +117,7 @@ export default async function handler(req,res){
   if(method==='DELETE'){
    if(kind==='collections'&&current.data.products.some(p=>p.collection===input.id))fail('Mova as obras antes de excluir esta coleção.');
    current.data[kind]=current.data[kind].filter(item=>item.id!==input.id);
-  }else{let parsed=schemas[kind].parse(input.item);if(kind==='stores'){parsed=await normalizeStoreLocation(parsed);if(input.logoData)parsed.logo=await saveLogo(randomUUID(),await encodeLogo(input.logoData));}if(kind==='stores'&&parsed.status==='approved'){const paid=parsed.productIds.some(id=>!current.data.products.some(p=>p.id===id&&p.collection==='presepio'));if(paid&&(!parsed.licenseProof||!parsed.licenseUntil))fail('Para obras fora do presépio, registre a autorização e sua validade.');}if(kind==='products'){
+  }else{let parsed=schemas[kind].parse(input.item);if(kind==='stores'){parsed=await normalizeStoreLocation(parsed);if(input.logoData)parsed.logo=await saveLogo(randomUUID(),await encodeLogo(input.logoData));}if(kind==='stores'&&parsed.status==='approved'){const paid=parsed.productIds.some(id=>!current.data.products.some(p=>p.id===id&&(p.collection==='presepio'||p.allowPhysicalSales===true&&['site','maker'].includes(p.access))));if(paid&&(!parsed.licenseProof||!parsed.licenseUntil))fail('Para obras fora do presépio, registre a autorização e sua validade.');}if(kind==='products'){
    if(!current.data.collections.some(c=>c.id===parsed.collection))fail('Coleção não encontrada.');
    if(parsed.collection==='presepio'&&parsed.access==='members')fail('O presépio é gratuito e não pode exigir assinatura.');
    if(current.data.products.some(p=>p.id!==parsed.id&&p.slug===parsed.slug))fail('Já existe uma obra com este endereço.');

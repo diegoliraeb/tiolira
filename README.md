@@ -90,3 +90,26 @@ Publicação inicial autorizada no repositório do próprio criador. Imagens e m
 As obras disponíveis aparecem antes das indisponíveis; dentro de cada grupo, a ordem é pelo total de cliques, depois pela ordem editorial. Obras marcadas como `soon` ou sem link/arquivo recebem o selo traduzido “Em breve”.
 
 Cliques na imagem ou em “Conhecer a obra” são registrados por `POST /api/products/click`. A contagem começa com esta implementação e não importa estatísticas do MakerWorld. `analytics/product-clicks.json` guarda os totais separadamente do catálogo, usando o mesmo armazenamento configurado (Neon em produção). Cliques repetidos da mesma origem/navegador na mesma obra são deduplicados por 30 minutos com HMAC, sem gravar o IP em texto. Robôs identificados são ignorados. Nenhuma migração adicional é necessária.
+
+## Área do parceiro: cupons, licenças e recuperação de senha
+
+A área `/{idioma}/clube` reúne peças disponíveis (com links diretos do MakerWorld ou downloads protegidos), cupons e licenças. O cadastro da rede pública continua separado e sujeito à revisão; a área oferece acesso à rede para receber indicações por cidade.
+
+Em **Administração → Cupons de descontos**, cadastre fornecedor, código, condições, link HTTPS e validade opcional. Os cupons são privados para parceiros autenticados; os inativos e vencidos não são exibidos. A data final considera o fim do dia no horário de Brasília. Nenhum fornecedor ou desconto fictício é cadastrado automaticamente.
+
+Em **Obras**, a opção **Permitir que parceiros obtenham licença gratuita para vender as peças impressas** autoriza a emissão para aquela obra. O presépio já tem essa autorização. Somente obras publicadas, disponíveis e gratuitas (`maker` ou `site`) podem emitir licenças. O parceiro seleciona a peça e gera um código persistente e único para o par conta/obra. Repetir a operação recupera o mesmo código; a API ignora qualquer identidade de parceiro enviada pelo navegador e usa a sessão autenticada. O histórico guarda nome do parceiro, obra, emissão e termos vigentes, mesmo se o catálogo mudar. A autorização se refere a peças físicas, sem redistribuição dos arquivos digitais.
+
+Os dados usam o armazenamento já configurado, sem nova migração: `partner-coupons.json` e `club-licenses/<member-id>.json`. Hashes e dados de recuperação ficam privados em `club-members.json` e não entram na resposta da área do parceiro.
+
+O fluxo **Esqueci minha senha** está integrado à [API de envio do Resend](https://resend.com/docs/api-reference/emails/send-email). Para ativar o envio, configure no ambiente do site `RESEND_API_KEY`, `EMAIL_FROM` (remetente de um domínio verificado) e `SITE_URL` (origem HTTPS oficial). Não salve essas credenciais no repositório. Sem configuração, a interface informa que a recuperação por e-mail não está disponível; não simula um envio bem-sucedido.
+
+O link vence em 30 minutos, pode ser usado uma única vez e carrega o segredo no fragmento da URL, removido assim que a tela abre. O banco guarda somente seu hash. Ao trocar a senha, as sessões antigas são invalidadas. Há limite de tentativas e intervalo entre envios. Testes usam um serviço de envio simulado, sem mandar e-mails reais.
+
+### Ativar os e-mails na hospedagem
+
+1. Crie sua conta no Resend e adicione um domínio ou subdomínio de envio que você controla. Siga a [verificação de domínio](https://resend.com/docs/dashboard/domains/introduction), copiando os registros DNS fornecidos para o painel onde seu domínio é administrado. Aguarde o estado verificado.
+2. Crie uma [chave de API](https://resend.com/docs/dashboard/api-keys/introduction) para envio, restrita ao domínio escolhido. Guarde a chave diretamente no painel de hospedagem; não a envie em conversas nem a coloque em arquivos públicos.
+3. No projeto do site na Vercel, configure as variáveis de ambiente: `RESEND_API_KEY` com essa chave, `EMAIL_FROM` com um remetente do domínio verificado (formato `Tio Lira <remetente@seu-dominio.com>`) e `SITE_URL` com o endereço HTTPS atual do site. Use valores apropriados para cada ambiente.
+4. Faça uma nova publicação para carregar as variáveis. Com uma conta de teste cadastrada no Clube, use **Esqueci minha senha**, confira a chegada do e-mail e conclua a troca da senha. Até esse teste real, a entrega de e-mails ainda não está validada.
+
+Não é necessário escolher fornecedores de filamento para ativar a área: a seção de cupons permanece vazia até cadastrar ofertas reais em **Administração → Cupons de descontos**.
