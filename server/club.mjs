@@ -1,3 +1,4 @@
+import {partnerForRecovery,ensurePartnerListing} from './partners.mjs';
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {readRecord,updateRecord} from './store.mjs';
@@ -28,7 +29,7 @@ export async function issueLicense(member,product){
 }
 export async function clubDashboard(member,data){
  const [licenses,coupons]=await Promise.all([readRecord(`club-licenses/${member.id}.json`),readRecord('partner-coupons.json')]);
- return {member:publicClubMember(member),downloads:clubProducts(data),licenses:licenses?.data?.licenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
+ return {member:publicClubMember(member),network:await ensurePartnerListing(member),downloads:clubProducts(data),licenses:licenses?.data?.licenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
 }
 export const couponSchema=z.object({
  id:z.string().uuid(),supplier:z.string().trim().min(1).max(150),code:z.string().trim().min(1).max(100),
@@ -49,8 +50,8 @@ const resetCopy={
 };
 export async function requestPasswordReset(input){
  const email=z.email().max(254).parse(input.email).trim().toLowerCase();
- const config=emailConfig(),record=await readRecord('club-members.json');
- const member=record?.data?.members?.find(m=>m.email===email);
+ const config=emailConfig();
+ const member=await partnerForRecovery(email);
  if(!member)return;
  const token=randomBytes(32).toString('hex'),tokenHash=digest(token),now=Date.now();
  const updated=await updateRecord('club-members.json',old=>{

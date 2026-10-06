@@ -1,3 +1,4 @@
+import {registerPartner,joinPartnerNetwork} from './partners.mjs';
 import {clubDashboard,clubProducts,issueLicense,couponSchema,requestPasswordReset,resetPassword} from './club.mjs';
 import {readClickCounts,recordProductClick} from './product-clicks.mjs';
 import { randomUUID } from 'node:crypto';
@@ -57,14 +58,16 @@ export default async function handler(req,res){
    if(!product)fail('Licença de venda não disponível para esta peça.',403);
    return json(res,200,{license:await issueLicense(member,product)});
   }
+  if(method==='POST'&&route==='club/network'){
+   const member=await requireClub(req);
+   if(input.consent!==true)fail('Autorize a publicação dos seus dados comerciais.');
+   return json(res,200,{network:await joinPartnerNetwork(member)});
+  }
   if(method==='POST'&&route==='club/register'){
    if(!configured())fail('O Clube ainda não está conectado ao armazenamento seguro.',503);
    await rateLimit(req,'club-register',5,15*60_000);
    const parsed=await normalizeStoreLocation(clubRegistrationSchema.parse(input));
-   const email=parsed.email.trim().toLowerCase();
-   const {password,...profile}=parsed;
-   const member={...profile,email,hash:await passwordHash(password),id:randomUUID(),version:randomUUID(),createdAt:new Date().toISOString(),lastLoginAt:new Date().toISOString()};
-   await updateRecord('club-members.json',old=>{const members=old?.members||[];if(members.some(item=>safeEqual(item.email,email)))fail('Já existe uma conta do Clube com este e-mail.',409);return {members:[...members,member]};});
+   const member=await registerPartner(parsed,{password:parsed.password,directoryConsent:parsed.directoryConsent});
    res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));return json(res,201,{ok:true,...await clubDashboard(member,(await getCatalog()).data)});
   }
   if(method==='POST'&&route==='club/login'){
@@ -90,9 +93,11 @@ export default async function handler(req,res){
    if(input.honeypot)return json(res,201,{ok:true});await rateLimit(req,'store-application',3,3600_000);
    const parsed=await normalizeStoreLocation(applicationSchema.parse(input));const {data}=await getCatalog();if(!data.settings.storesOpen)fail('Os cadastros estão temporariamente fechados.',409);
    if(parsed.productIds.some(id=>!data.products.some(p=>p.id===id&&p.published)))fail('Selecione obras válidas.');
-   const {logoData,...details}=parsed;const logo=logoData?await encodeLogo(logoData):null;
-   const entry={...details,id:randomUUID(),status:'pending',licenseProof:'',licenseUntil:'',createdAt:new Date().toISOString()};delete entry.honeypot;entry.logo=logo?await saveLogo(randomUUID(),logo):'';
-   for(let attempt=0;attempt<5;attempt++){const current=await getCatalog();try{current.data.stores.push(entry);await writeRecord('catalog.json',current.data,current.etag);return json(res,201,{ok:true});}catch(e){if(!(e instanceof Conflict)||attempt===4)throw e;}}
+   const {logoData,password,...details}=parsed;const logo=logoData?await encodeLogo(logoData):null;
+   const directoryProfile={logo:logo?await saveLogo(randomUUID(),logo):'',productIds:details.productIds};
+   const member=await registerPartner(details,{password,directoryConsent:true,directoryProfile});
+   if(password)res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));
+   return json(res,201,{ok:true});
   }
   await requireAdmin(req);
   if(route==='admin/coupons'&&['PUT','DELETE'].includes(method)){
@@ -123,5 +128,5 @@ export default async function handler(req,res){
    if(current.data.products.some(p=>p.id!==parsed.id&&p.slug===parsed.slug))fail('Já existe uma obra com este endereço.');
   }const index=current.data[kind].findIndex(item=>item.id===parsed.id);if(index<0)current.data[kind].push(parsed);else current.data[kind][index]=parsed;}
   current.data.updatedAt=new Date().toISOString();const revision=await writeRecord('catalog.json',current.data,current.etag);return json(res,200,{ok:true,revision});
- }catch(error){const status=error.status|| (error.name==='ZodError'||error instanceof SyntaxError?400:500);if(status===500)console.error('API failure',error.name,error.code||'internal');return json(res,status,{...(error.code==='INVALID_LOGO'?{code:'INVALID_LOGO'}:{}),error:status===500?'Não foi possível concluir. Tente novamente.':error.issues?.map(i=>i.message).join(' ')||error.message});}
+ }catch(error){const status=error.status|| (error.name==='ZodError'||error instanceof SyntaxError?400:500);if(status===500)console.error('API failure',error.name,error.code||'internal');return json(res,status,{...(['INVALID_LOGO','PARTNER_EXISTS'].includes(error.code)?{code:error.code}:{}),error:status===500?'Não foi possível concluir. Tente novamente.':error.issues?.map(i=>i.message).join(' ')||error.message});}
 }

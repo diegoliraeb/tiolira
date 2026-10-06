@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
+import Link from 'next/link';
 import LogoUpload from './LogoUpload';
 import LocationFields from './LocationFields';
 import DeliveryFields from './DeliveryFields';
@@ -42,7 +43,7 @@ export default function StoreNetwork({lang,catalog}){
   try{
    const r=await fetch('/api/stores/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
    const result=await r.json();
-   if(!r.ok||result.ok!==true){setMessage(result.code==='INVALID_LOGO'?t.logoError:r.status===429?t.registrationLimit:r.status===409?t.registrationClosed:t.registrationError);return;}
+   if(!r.ok||result.ok!==true){setMessage(result.code==='PARTNER_EXISTS'?t.clubExistingPartner:result.code==='INVALID_LOGO'?t.logoError:r.status===429?t.registrationLimit:r.status===409?t.registrationClosed:t.registrationError);return;}
    form.reset();setSent(true);
   }catch{setMessage(t.registrationError)}
   finally{submitting.current=false;setBusy(false)}
@@ -68,20 +69,22 @@ export default function StoreNetwork({lang,catalog}){
   <dialog className="seller-form" ref={dialog} aria-labelledby="join-title">
    <button className="close-dialog" aria-label={t.close} onClick={()=>dialog.current.close()}>×</button>
    {sent?<div className="registration-success" ref={feedback} tabIndex={-1} role="status">
-    <span className="registration-success-icon" aria-hidden="true">✓</span><h2 id="join-title">{t.sent}</h2><p>{t.registrationReview}</p><button className="button primary" onClick={()=>dialog.current.close()}>{t.close}</button>
+    <span className="registration-success-icon" aria-hidden="true">✓</span><h2 id="join-title">{t.sent}</h2><p>{t.registrationReview}</p><p>{t.clubUnifiedAccount}</p><Link className="button primary" href={`/${lang}/clube`}>{t.clubLoginSubmit}</Link><button className="button primary" onClick={()=>dialog.current.close()}>{t.close}</button>
    </div>:<>
-    <p className="eyebrow">{t.join}</p><h2 id="join-title">{t.joinTitle}</h2><p>{t.joinIntro}</p><p className="registration-benefit">✦ {t.networkBenefit}</p>
+    <p className="eyebrow">{t.join}</p><h2 id="join-title">{t.joinTitle}</h2><p>{t.clubUnifiedAccount}</p><p><Link href={`/${lang}/clube#senha`}>{t.clubExistingPartner}</Link></p><p className="registration-benefit">✦ {t.networkBenefit}</p>
     {!catalog.registrationReady&&<p className="notice">{t.previewForm}</p>}
     {message&&<p className="notice registration-error" ref={feedback} tabIndex={-1} role="alert">{message}</p>}
     <form onSubmit={submit} className="form-grid" aria-busy={busy}>
      <label>{t.name}<input name="name" required maxLength={200}/></label>
      <label>{t.email}<input name="email" type="email" required maxLength={254}/></label>
+     <label className="full">{t.clubPassword}<input name="password" type="password" required minLength={12} maxLength={200} autoComplete="new-password"/></label>
      <LogoUpload lang={lang} value={logo} onChange={setLogo} onBusyChange={setLogoBusy} disabled={busy}/>
      <LocationFields lang={lang} value={address} required onChange={value=>{setAddress(value);if(value.countryCode!==address.countryCode)setServiceArea({scope:'city',countryCode:value.countryCode,stateId:'',cities:[]})}}/>
      <label>{t.whatsapp}<input name="whatsapp" type="tel" required placeholder="55 82 99999-9999" maxLength={30}/></label>
      <label className="full">{t.website}<input name="website" type="url" placeholder="https://" pattern="https://.*"/></label>
      <DeliveryFields key={address.countryCode} lang={lang} value={serviceArea} onChange={setServiceArea}/><p className="field-help full">{t.locationSources}: <a href="https://servicodados.ibge.gov.br/api/docs/localidades" target="_blank" rel="noreferrer">IBGE</a> · <a href="/geography/README.txt" target="_blank" rel="noreferrer">Countries States Cities Database (ODbL)</a></p>
      <label className="full">{t.description}<textarea name="description" required maxLength={2000}/></label>
+     <p className="field-help full">{t.clubConsent}</p>
      <label className="check full"><input type="checkbox" name="consent" required/>{t.consent}</label>
      <label className="check full"><input type="checkbox" name="partnershipConsent"/>{t.partnership}</label>
      <div className="honey" aria-hidden="true"><label>Website confirmation<input name="honeypot" tabIndex={-1} autoComplete="off"/></label></div>

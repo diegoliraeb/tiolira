@@ -93,6 +93,8 @@ Cliques na imagem ou em “Conhecer a obra” são registrados por `POST /api/pr
 
 ## Área do parceiro: cupons, licenças e recuperação de senha
 
+O Clube é a área do parceiro, com uma única conta. Os formulários do Clube e da rede usam o mesmo cadastro. Perfis comerciais só são enviados para revisão com consentimento explícito; contas antigas do Clube podem autorizar o uso do perfil no próprio painel. Parceiros que já estavam na rede definem a primeira senha usando o e-mail cadastrado em **Definir ou recuperar senha**. A recuperação vincula a conta ao perfil existente sem alterar aprovação, logo ou obras; a senha só é definida após confirmar o link recebido. Inscrever novamente um e-mail já cadastrado não permite assumir a conta. Um envio interrompido do perfil para revisão é retomado no próximo acesso.
+
 A área `/{idioma}/clube` reúne peças disponíveis (com links diretos do MakerWorld ou downloads protegidos), cupons e licenças. O cadastro da rede pública continua separado e sujeito à revisão; a área oferece acesso à rede para receber indicações por cidade.
 
 Em **Administração → Cupons de descontos**, cadastre fornecedor, código, condições, link HTTPS e validade opcional. Os cupons são privados para parceiros autenticados; os inativos e vencidos não são exibidos. A data final considera o fim do dia no horário de Brasília. Nenhum fornecedor ou desconto fictício é cadastrado automaticamente.
