@@ -30,13 +30,13 @@ test('registration stores logos outside the catalog and only serves pending logo
   result.status??=200;return result;
  };
  try{
-  const body={name:'Logo Test',city:'Maceió',state:'AL',country:'Brasil',email:'test@example.invalid',whatsapp:'5582000000000',description:'Teste',delivery:'Retirada',consent:true,logoData:await png()};
+  const body={name:'Logo Test',city:'Maceió',state:'AL',country:'Brasil',email:'test@example.invalid',whatsapp:'5582000000000',description:'Teste',delivery:'Retirada',consent:true,directoryConsent:false,logoData:await png()};
   const response=await call('/api/stores/apply','POST',body);assert.equal(response.status,201);
   let catalog=await readRecord('catalog.json');const store=catalog.data.stores[0];assert.ok(store.logo.startsWith('/api/store-logo?id='));assert.ok(!JSON.stringify(catalog.data).includes('base64'));assert.ok(!('logoData' in store));
   assert.equal((await call(store.logo)).status,404);
   await writeRecord('admin.json',{version:'logo-test-admin'},null);const cookie=`${cookieName}=${await makeSession('logo-test-admin')}`;
   const privateLogo=await call(store.logo,'GET',undefined,cookie);assert.equal(privateLogo.status,200);assert.equal(privateLogo.headers['Cache-Control'],'private, no-store');
-  let result=await call('/api/admin/stores','PUT',{item:{...store,status:'approved'},revision:catalog.etag},cookie);assert.equal(result.status,200);
+  let result=await call('/api/admin/stores','PUT',{item:{...store,status:'approved',consent:true},revision:catalog.etag},cookie);assert.equal(result.status,200);
   const publicLogo=await call(store.logo);assert.equal(publicLogo.status,200);assert.equal(publicLogo.headers['Content-Type'],'image/webp');assert.ok(Buffer.isBuffer(publicLogo.body));
   catalog=await readRecord('catalog.json');assert.equal(catalog.data.stores[0].logo,store.logo);
   result=await call('/api/admin/stores','PUT',{item:{...catalog.data.stores[0],logo:''},revision:catalog.etag},cookie);assert.equal(result.status,200);assert.equal((await call(store.logo)).status,404);

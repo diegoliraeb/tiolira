@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {partnerInstagram} from '../lib/instagram.mjs';
 import LogoUpload from './LogoUpload';
+import DirectoryConsent from './DirectoryConsent';
 import LocationFields from './LocationFields';
 import DeliveryFields from './DeliveryFields';
 import {countryName,deliveryLabel} from '../lib/geography.mjs';
@@ -17,6 +18,7 @@ export default function StoreNetwork({lang,catalog}){
  const [serviceArea,setServiceArea]=useState({scope:'city',countryCode:'BR',stateId:'',cities:[]});
  const [piece,setPiece]=useState('all');
  const [logo,setLogo]=useState(''),[logoBusy,setLogoBusy]=useState(false);
+ const [directoryPublished,setDirectoryPublished]=useState(false);
  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[sent,setSent]=useState(false);
  const found=catalog.stores.filter(s=>matchesStore(s,location,piece,catalog.products));
  useEffect(()=>{
@@ -37,7 +39,7 @@ export default function StoreNetwork({lang,catalog}){
   if(!address.stateId||!address.cityId){setMessage(t.registrationError);return;}
   if(['city','cities'].includes(serviceArea.scope)&&!serviceArea.cities.length){setMessage(t.chooseDeliveryCity);return;}
   if(logo)data.logoData=logo;
-  data.consent=f.has('consent');data.partnershipConsent=f.has('partnershipConsent');
+  data.consent=f.has('consent');data.directoryConsent=f.get('directoryConsent')==='yes';data.partnershipConsent=f.has('partnershipConsent');
   data.whatsapp=data.whatsapp.replace(/\D/g,'');
   if(!/^\d{10,15}$/.test(data.whatsapp)){setMessage(t.whatsappHelp);return;}
   submitting.current=true;setBusy(true);setMessage('');
@@ -45,14 +47,14 @@ export default function StoreNetwork({lang,catalog}){
    const r=await fetch('/api/stores/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
    const result=await r.json();
    if(!r.ok||result.ok!==true){setMessage(result.code==='PARTNER_EXISTS'?t.clubExistingPartner:result.code==='INVALID_LOGO'?t.logoError:r.status===429?t.registrationLimit:r.status===409?t.registrationClosed:t.registrationError);return;}
-   form.reset();setSent(true);
+   setDirectoryPublished(data.directoryConsent);form.reset();setSent(true);
   }catch{setMessage(t.registrationError)}
   finally{submitting.current=false;setBusy(false)}
  }
  return <section className="store-section wrap section" id="lojas">
   <div className="store-heading"><div><p className="eyebrow">{t.shopEyebrow}</p><h2>{t.shopTitle}</h2></div><p>{t.shopIntro}</p></div>
   <div className="network-benefit"><span aria-hidden="true">✦</span><div><h3>{t.networkBenefitTitle}</h3><p>{t.networkBenefit}</p></div><button className="button primary" onClick={openRegistration}>{t.join} ↗</button></div>
-  {sent&&<p className="notice registration-receipt" role="status">{t.sent} {t.registrationReview}</p>}
+  {sent&&<p className="notice registration-receipt" role="status">{t.sent} {directoryPublished?t.directoryPublished:t.directoryPending}</p>}
   <div className="store-shell">
    <div className="store-search-panel"><span className="store-icon">⌖</span><h3>{t.stores}</h3>
     <form onSubmit={e=>{e.preventDefault();results.current?.scrollIntoView({behavior:'smooth',block:'nearest'})}}>
@@ -70,7 +72,7 @@ export default function StoreNetwork({lang,catalog}){
   <dialog className="seller-form" ref={dialog} aria-labelledby="join-title">
    <button className="close-dialog" aria-label={t.close} onClick={()=>dialog.current.close()}>×</button>
    {sent?<div className="registration-success" ref={feedback} tabIndex={-1} role="status">
-    <span className="registration-success-icon" aria-hidden="true">✓</span><h2 id="join-title">{t.sent}</h2><p>{t.registrationReview}</p><p>{t.clubUnifiedAccount}</p><Link className="button primary" href={`/${lang}/clube`}>{t.clubLoginSubmit}</Link><button className="button primary" onClick={()=>dialog.current.close()}>{t.close}</button>
+    <span className="registration-success-icon" aria-hidden="true">✓</span><h2 id="join-title">{t.sent}</h2><p>{directoryPublished?t.directoryPublished:t.directoryPending}</p><p>{t.clubUnifiedAccount}</p><Link className="button primary" href={`/${lang}/clube`}>{t.clubLoginSubmit}</Link><button className="button primary" onClick={()=>dialog.current.close()}>{t.close}</button>
    </div>:<>
     <p className="eyebrow">{t.join}</p><h2 id="join-title">{t.joinTitle}</h2><p>{t.clubUnifiedAccount}</p><p><Link href={`/${lang}/clube#senha`}>{t.clubExistingPartner}</Link></p><p className="registration-benefit">✦ {t.networkBenefit}</p>
     {!catalog.registrationReady&&<p className="notice">{t.previewForm}</p>}
@@ -86,8 +88,8 @@ export default function StoreNetwork({lang,catalog}){
      <label className="full">{t.website}<input name="website" type="url" placeholder="https://" pattern="https://.*"/></label>
      <DeliveryFields key={address.countryCode} lang={lang} value={serviceArea} onChange={setServiceArea}/><p className="field-help full">{t.locationSources}: <a href="https://servicodados.ibge.gov.br/api/docs/localidades" target="_blank" rel="noreferrer">IBGE</a> · <a href="/geography/README.txt" target="_blank" rel="noreferrer">Countries States Cities Database (ODbL)</a></p>
      <label className="full">{t.description}<textarea name="description" required maxLength={2000}/></label>
-     <p className="field-help full">{t.clubConsent}</p>
-     <label className="check full"><input type="checkbox" name="consent" required/>{t.consent}</label>
+     <label className="check full"><input type="checkbox" name="consent" required/>{t.clubConsent}</label>
+     <DirectoryConsent t={t} disabled={busy}/>
      <label className="check full"><input type="checkbox" name="partnershipConsent"/>{t.partnership}</label>
      <div className="honey" aria-hidden="true"><label>Website confirmation<input name="honeypot" tabIndex={-1} autoComplete="off"/></label></div>
      <button className="button primary full" disabled={busy||logoBusy||!catalog.registrationReady}>{busy?t.loading:t.submit}</button>

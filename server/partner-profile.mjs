@@ -15,7 +15,7 @@ export function partnerProfile(member,data){
  const profile={...pick(member),...pick(store||{}),...(member.profilePending||{}),id:member.id,email:member.email,createdAt:member.createdAt,logo:member.profilePending?.logo??store?.logo??member.directoryProfile?.logo??''};
  return {...profile,instagram:partnerInstagram(profile)};
 }
-const profileSchema=applicationSchema.omit({email:true,consent:true,productIds:true,honeypot:true,password:true}).extend({
+const profileSchema=applicationSchema.omit({email:true,consent:true,productIds:true,honeypot:true,password:true,directoryConsent:true}).extend({
  removeLogo:z.boolean().default(false),
  countryCode:z.string().regex(/^[A-Z]{2}$/),stateId:z.string().min(1).max(30),cityId:z.string().min(1).max(30)
 });

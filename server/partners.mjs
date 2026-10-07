@@ -10,7 +10,8 @@ const profileOf=source=>Object.fromEntries(profileKeys.filter(k=>source[k]!==und
 const listingOf=(member,data)=>data.stores.find(s=>(member.storeId&&s.id===member.storeId)||partnerEmail(s.email)===partnerEmail(member.email));
 
 function partnerListing(member){
- const result=storeSchema.safeParse({...profileOf(member),...member.directoryProfile,email:member.email,id:member.id,status:'pending',consent:true,createdAt:member.createdAt});
+ const consent=member.directoryConsent===true;
+ const result=storeSchema.safeParse({...profileOf(member),...member.directoryProfile,email:member.email,id:member.id,status:consent?'approved':'pending',consent,createdAt:member.createdAt});
  if(!result.success)throw Object.assign(new Error('Seu perfil está incompleto. Entre em contato com o Tio Lira para atualizar seus dados comerciais.'),{status:400});
  return result.data;
 }
@@ -19,11 +20,11 @@ function partnerListing(member){
 export async function ensurePartnerListing(member){
  const {data}=await getCatalog();
  let listing=listingOf(member,data);
- if(!listing&&member.directoryConsent&&data.settings.storesOpen){
+ if(!listing&&(member.directoryConsent||member.directoryChoiceAt)&&(!member.directoryConsent||data.settings.storesOpen)){
   const entry=partnerListing(member);
   const updated=await updateRecord('catalog.json',old=>{
    const current=old||data;
-   if(current.settings.storesOpen&&!listingOf(member,current))current.stores.push(entry);
+   if((!member.directoryConsent||current.settings.storesOpen)&&!listingOf(member,current))current.stores.push(entry);
    return current;
   });
   listing=listingOf(member,updated);
@@ -31,17 +32,18 @@ export async function ensurePartnerListing(member){
  return listing?{status:listing.status}:null;
 }
 
-export async function registerPartner(profile,{password,directoryConsent=false,directoryProfile}={}){
+export async function registerPartner(profile,{password,directoryConsent,directoryProfile}={}){
  const email=partnerEmail(profile.email),{data}=await getCatalog();
  if(data.stores.some(s=>partnerEmail(s.email)===email))duplicate();
  if(directoryConsent&&!data.settings.storesOpen)throw Object.assign(new Error('Os cadastros estão temporariamente fechados.'),{status:409});
- const member={...profileOf(profile),email,id:randomUUID(),version:randomUUID(),createdAt:new Date().toISOString(),hash:password?await passwordHash(password):null,directoryConsent,...(directoryProfile?{directoryProfile}: {})};
+ const member={...profileOf(profile),email,id:randomUUID(),version:randomUUID(),createdAt:new Date().toISOString(),hash:password?await passwordHash(password):null,directoryConsent:directoryConsent===true,...(typeof directoryConsent==='boolean'?{directoryChoiceAt:new Date().toISOString()}:{}),...(directoryProfile?{directoryProfile}: {})};
  await updateRecord('club-members.json',old=>{
   const members=old?.members||[];
   if(members.some(m=>partnerEmail(m.email)===email))duplicate();
   return {...old,members:[...members,member]};
  });
- // If the second write fails, the persisted consent/profile lets the next login retry safely.
+ // Record an explicit choice separately so old incomplete Club accounts stay usable.
+ // If the second write fails, the persisted choice/profile lets the next login retry safely.
  await ensurePartnerListing(member);
  return member;
 }
@@ -65,12 +67,19 @@ export async function joinPartnerNetwork(member){
  const {data}=await getCatalog();
  if(!listingOf(member,data)){
   if(!data.settings.storesOpen)throw Object.assign(new Error('Os cadastros estão temporariamente fechados.'),{status:409});
-  partnerListing(member);
+  partnerListing({...member,directoryConsent:true});
  }
  const updated=await updateRecord('club-members.json',old=>{
   const current=old?.members?.find(m=>m.id===member.id&&m.version===member.version);
   if(!current)throw Object.assign(new Error('Entre novamente na sua conta.'),{status:401});
-  current.directoryConsent=true;return old;
+  current.directoryConsent=true;current.directoryChoiceAt=new Date().toISOString();return old;
+ });
+ // An explicit opt-in can publish a previously private pending profile, never an admin pause/rejection.
+ const listing=listingOf(member,data);
+ if(listing?.status==='pending'&&!listing.consent)await updateRecord('catalog.json',old=>{
+  const store=listingOf(member,old||data);
+  if(store?.status==='pending'&&!store.consent){store.consent=true;store.status='approved';}
+  return old||data;
  });
  return ensurePartnerListing(updated.members.find(m=>m.id===member.id));
 }

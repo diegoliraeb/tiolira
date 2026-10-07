@@ -20,14 +20,14 @@ test('registration without models persists pending, preserves privacy and become
   await handler({url:'/api/stores/apply',method:'POST',headers:{host:'localhost',origin:'http://localhost'},socket:{remoteAddress:'test'},body},{setHeader(){},set statusCode(value){this.status=value},end(value){response={status:this.status,body:JSON.parse(value)}}});
   return response;
  };
- const input={name:'Teste de cadastro',city:'Maceió',state:'AL',country:'Brasil',email:'test@example.invalid',whatsapp:'5582000000000',description:'Teste',delivery:'Retirada',consent:true};
+ const input={name:'Teste de cadastro',city:'Maceió',state:'AL',country:'Brasil',email:'test@example.invalid',whatsapp:'5582000000000',description:'Teste',delivery:'Retirada',consent:true,directoryConsent:false};
  try{
   const invalid=await call({...input,consent:false});assert.equal(invalid.status,400);assert.equal(await readRecord('catalog.json'),null);
   const response=await call(input);assert.equal(response.status,201);assert.equal(response.body.ok,true);
   const {data}=await readRecord('catalog.json');assert.equal(data.stores.length,1);
   const store=data.stores[0];assert.deepEqual(store.productIds,[]);assert.equal(store.status,'pending');assert.equal(store.partnershipConsent,false);
   assert.equal(publicCatalog(data).stores.length,0);
-  store.status='approved';
+  store.status='approved';assert.equal(publicCatalog(data).stores.length,0,'approval cannot publish a profile without consent');store.consent=true;
   const published=publicCatalog(data).stores[0];assert.equal(published.offeringsUnspecified,true);assert.ok(!('email' in published));assert.ok(!('partnershipConsent' in published));
   assert.equal(matchesStore(published,'maceio','all',seed.products),true);
   assert.equal(matchesStore(published,'maceio','collection:presepio',seed.products),true);

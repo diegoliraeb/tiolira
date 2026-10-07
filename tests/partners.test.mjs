@@ -7,6 +7,7 @@ import {randomUUID} from 'node:crypto';
 import handler from '../server/handler.mjs';
 import {readRecord,writeRecord,updateRecord} from '../server/store.mjs';
 import {ensurePartnerListing,registerPartner,partnerForRecovery} from '../server/partners.mjs';
+import {publicCatalog} from '../server/schema.mjs';
 import {issueLicense} from '../server/club.mjs';
 import sharp from 'sharp';
 import seed from '../data/catalog.json' with {type:'json'};
@@ -25,17 +26,48 @@ test('network and Club share one partner account',async t=>{
  const password='Partner-test-password-123';
  try{
   const data=structuredClone(seed);data.stores=[];data.settings.storesOpen=true;await writeRecord('catalog.json',data,null);
-  await t.test('both forms create one account and one pending listing, with no credentials in catalog',async()=>{
+  await t.test('both forms create one account and auto-approve an explicitly requested listing, with no credentials in catalog',async()=>{
    for(const route of ['club/register','stores/apply']){
     const email=`${route.split('/')[0]}@example.invalid`;
     const response=await call(route,{body:{...profile,email,password,directoryConsent:true}});assert.equal(response.status,201,JSON.stringify(response.body));assert.ok(response.headers['Set-Cookie']);
-    const login=await call('club/login',{body:{email,password}});assert.equal(login.status,200);assert.equal(login.body.network.status,'pending');
+    const login=await call('club/login',{body:{email,password}});assert.equal(login.status,200);assert.equal(login.body.network.status,'approved');
     const member=(await readRecord('club-members.json')).data.members.find(m=>m.email===email);
-    const listing=(await readRecord('catalog.json')).data.stores.find(s=>s.email===email);assert.equal(listing.id,member.id);
-    for(const key of ['password','hash','version','directoryProfile','directoryConsent'])assert.ok(!(key in listing),key);
+    const listing=(await readRecord('catalog.json')).data.stores.find(s=>s.email===email);assert.equal(listing.id,member.id);assert.equal(listing.consent,true);assert.ok(publicCatalog((await readRecord('catalog.json')).data).stores.some(s=>s.id===listing.id));
+    for(const key of ['password','hash','version','directoryProfile','directoryConsent','directoryChoiceAt'])assert.ok(!(key in listing),key);
     const duplicate=await call(route==='club/register'?'stores/apply':'club/register',{body:{...profile,email,password,directoryConsent:true}});assert.equal(duplicate.status,409);assert.equal(duplicate.body.code,'PARTNER_EXISTS');
    }
    assert.equal((await readRecord('club-members.json')).data.members.length,2);assert.equal((await readRecord('catalog.json')).data.stores.length,2);
+  });
+  await t.test('No stays pending and private in both forms, independent of marketing consent',async()=>{
+   for(const route of ['club/register','stores/apply']){
+    const email=`private-${route.split('/')[0]}@example.invalid`;
+    const response=await call(route,{body:{...profile,email,password,directoryConsent:false,partnershipConsent:true,status:'approved'}});
+    assert.equal(response.status,201,JSON.stringify(response.body));
+    const login=await call('club/login',{body:{email,password}});assert.equal(login.status,200);assert.equal(login.body.network.status,'pending');
+    assert.ok(login.body.collectionLicenses.some(l=>l.collectionId==='presepio'));
+    const catalog=(await readRecord('catalog.json')).data,store=catalog.stores.find(s=>s.email===email);
+    assert.equal(store.status,'pending');assert.equal(store.consent,false);assert.equal(store.partnershipConsent,true);
+    assert.ok(!publicCatalog(catalog).stores.some(s=>s.id===store.id));
+    const cookie=login.headers['Set-Cookie'].split(';')[0];
+    await call('club/me',{method:'GET',cookie});
+    assert.equal((await readRecord('catalog.json')).data.stores.find(s=>s.id===store.id).status,'pending');
+   }
+  });
+  await t.test('both forms require an explicit boolean publication choice',async()=>{
+   for(const route of ['club/register','stores/apply'])for(const choice of [undefined,'yes','false',null]){
+    const r=await call(route,{body:{...profile,email:'missing-choice@example.invalid',password,directoryConsent:choice}});
+    assert.equal(r.status,400,JSON.stringify(r.body));
+   }
+   assert.ok(!(await readRecord('club-members.json')).data.members.some(m=>m.email==='missing-choice@example.invalid'));
+  });
+  await t.test('login preserves existing moderation decisions instead of approving them retroactively',async()=>{
+   for(const status of ['pending','paused','rejected']){
+    const member=await registerPartner({...profile,email:`moderated-${status}@example.invalid`},{password,directoryConsent:true});
+    await updateRecord('catalog.json',old=>{old.stores.find(s=>s.id===member.id).status=status;return old});
+    const login=await call('club/login',{body:{email:member.email,password}});assert.equal(login.body.network.status,status);
+    const cookie=login.headers['Set-Cookie'].split(';')[0];
+    assert.equal((await call('club/network',{cookie,body:{consent:true}})).body.network.status,status);
+   }
   });
   await t.test('legacy partners prove email ownership and keep their listing unchanged',async()=>{
    const legacy={...profile,email:'LEGACY@EXAMPLE.INVALID',id:randomUUID(),status:'approved',logo:`/api/store-logo?id=${randomUUID()}`,productIds:[data.products[0].id],createdAt:'2024-01-01',licenseProof:'existing approval',licenseUntil:'2027-12-31'};
@@ -58,7 +90,7 @@ test('network and Club share one partner account',async t=>{
    const cookie=login.headers['Set-Cookie'].split(';')[0];
    assert.equal((await call('club/network',{cookie,body:{consent:false}})).status,400);
    assert.equal((await call('club/network',{body:{consent:true}})).status,401);
-   assert.equal((await call('club/network',{cookie,body:{consent:true}})).body.network.status,'pending');
+   assert.equal((await call('club/network',{cookie,body:{consent:true}})).body.network.status,'approved');
    await call('club/network',{cookie,body:{consent:true}});
    const dashboard=await call('club/me',{cookie,method:'GET'});assert.equal(dashboard.body.member.id,member.id);assert.equal(dashboard.body.licenses[0].code,license.code);
    assert.equal((await readRecord('catalog.json')).data.stores.filter(s=>s.email===member.email).length,1);

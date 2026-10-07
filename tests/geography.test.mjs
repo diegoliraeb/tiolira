@@ -33,7 +33,7 @@ test('admin filters combine approval and region, state, city and accent-insensit
  for(const filters of [{status:'approved'},{region:'Sul'},{state:'BR:PE'},{city:'Recife'},{query:'inexistente'}])assert.equal(matchesAdminStore(store,filters),false);
 });
 test('service area requires cities and validates empty scopes',()=>{
- const input={name:'Loja',...maceio,country:'Brasil',whatsapp:'5582000000000',email:'test@example.invalid',description:'Teste',delivery:'',consent:true,serviceArea:{scope:'cities',countryCode:'BR',cities:[]}};
+ const input={name:'Loja',...maceio,country:'Brasil',whatsapp:'5582000000000',email:'test@example.invalid',description:'Teste',delivery:'',consent:true,directoryConsent:false,serviceArea:{scope:'cities',countryCode:'BR',cities:[]}};
  assert.equal(applicationSchema.safeParse(input).success,false);
  input.serviceArea.cities=[areaCity(maceio),areaCity(recife)];assert.equal(applicationSchema.safeParse(input).success,true);
 });

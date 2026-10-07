@@ -101,7 +101,7 @@ export default async function handler(req,res){
    if(parsed.productIds.some(id=>!data.products.some(p=>p.id===id&&p.published)))fail('Selecione obras válidas.');
    const {logoData,password,...details}=parsed;const logo=logoData?await encodeLogo(logoData):null;
    const directoryProfile={logo:logo?await saveLogo(randomUUID(),logo):'',productIds:details.productIds};
-   const member=await registerPartner(details,{password,directoryConsent:true,directoryProfile});
+   const member=await registerPartner(details,{password,directoryConsent:details.directoryConsent,directoryProfile});
    if(password)res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));
    return json(res,201,{ok:true});
   }

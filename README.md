@@ -16,7 +16,7 @@ A página inicial redireciona para `/pt`. Também existem `/en`, `/es`, `/admin`
 - Catálogo com busca, filtros, páginas individuais, imagens e descrições nos três idiomas.
 - Presépio gratuito e autorização do criador para vender **peças físicas**, sem assinatura. Arquivos digitais não podem ser revendidos ou redistribuídos.
 - Arquivos gratuitos hospedados no site exigem cadastro e login no Clube; links oficiais do MakerWorld continuam levando diretamente para a plataforma.
-- Rede por cidade e obra, sem lojas fictícias. Cadastro gratuito para pessoas e lojas; consentimento separado para futuras parcerias. Cadastro sem seleção de peças, com confirmação explícita e revisão antes da publicação. Busca por peça ou coleção completa (todas as peças já lançadas); participantes sem catálogo também aparecem, com aviso para consultar disponibilidade. O pedido escolhido segue na mensagem de orçamento do WhatsApp.
+- Rede por cidade e obra, sem lojas fictícias. Cadastro gratuito para pessoas e lojas; consentimento separado para futuras parcerias. Cadastro sem seleção de peças, com escolha Sim/Não para publicação e aprovação automática ao escolher Sim. Busca por peça ou coleção completa (todas as peças já lançadas); participantes sem catálogo também aparecem, com aviso para consultar disponibilidade. O pedido escolhido segue na mensagem de orçamento do WhatsApp.
 - Calculadora com material, energia, depreciação, manutenção, falhas, trabalho, taxas e margem. Salva simulações no navegador.
 - Painel demonstrável: editar obras, coleções, planos, traduções e textos; revisar participantes; exportar catálogo JSON e CSV de contatos que aceitaram parcerias.
 - Marca TL vetorial em `public/assets/tl-monogram.svg`.
@@ -34,7 +34,7 @@ A migração cria o schema isolado `tiolira`, a tabela `records` e importa o cat
 
 Na primeira migração são gerados um segredo de sessão e um hash do código de configuração, guardados no banco. O código original é salvo **apenas no arquivo local ignorado** `.local-data/admin-setup.txt`. O primeiro administrador deve abrir `/admin`, informar esse código e escolher seu próprio e-mail e senha. Nenhuma senha padrão é criada. Uma conta existente impede novas configurações, mesmo que o código seja reutilizado. A autenticação usa scrypt, cookies HttpOnly, validação de origem, limite de tentativas e sessão de 8 horas.
 
-O cadastro gratuito fica ativo quando o banco e a configuração de segurança estão disponíveis. Cada inscrição entra como `pending`; o administrador revisa antes de publicar. E-mail, consentimento de parcerias e dados de autorização ficam privados. Nunca coloque a conexão do banco em variáveis `NEXT_PUBLIC_*` ou no GitHub.
+O cadastro gratuito fica ativo quando o banco e a configuração de segurança estão disponíveis. O cadastro exige a escolha explícita de publicação: **Sim** salva `consent: true` e aprova automaticamente (`approved`); **Não** salva `consent: false` e mantém o perfil `pending`, fora da busca pública. O consentimento para contatos sobre futuras parcerias é independente. Perfis existentes não são aprovados retroativamente no login. E-mail, consentimento de parcerias e dados de autorização ficam privados. Nunca coloque a conexão do banco em variáveis `NEXT_PUBLIC_*` ou no GitHub.
 
 Sem banco ou armazenamento configurado, `/admin` continua mostrando uma demonstração pública com somente o catálogo público. Rascunhos ficam no navegador e não alteram o site. Na versão conectada, a demonstração é substituída pelo login real; rascunhos locais não são importados automaticamente.
 
@@ -58,7 +58,7 @@ O painel Rede de Lojas tem filtros combinados por situação, região brasileira
 
 As localidades são snapshots servidos pelo próprio site, sem enviar dados de compradores ou lojistas a serviços externos. Brasil: 27 UFs e 5.571 municípios do IBGE. Outros países: Countries States Cities Database, com atribuição e ODbL em `public/geography/`. A base comunitária pode ter lacunas; localidades ausentes mostram uma orientação de contato. A API valida a relação entre país, estado e município, e grava os nomes canônicos. Os registros existentes são preservados, sem migração destrutiva.
 
-A aprovação na rede serve para revisar as informações do cadastro. Não exige assinatura nem comprovante para o presépio. Obras de outras coleções só aparecem no diretório após registrar a autorização comercial correspondente. O consentimento para parcerias é privado e separado do consentimento de publicação na rede.
+A aprovação automática na rede depende da autorização de publicação informada no cadastro. Não exige assinatura nem comprovante para o presépio. Obras de outras coleções só aparecem no diretório após registrar a autorização comercial correspondente. O consentimento para parcerias é privado e separado do consentimento de publicação na rede.
 
 ## Desenvolvimento
 
@@ -93,9 +93,9 @@ Cliques na imagem ou em “Conhecer a obra” são registrados por `POST /api/pr
 
 ## Área do parceiro: cupons, licenças e recuperação de senha
 
-O Clube é a área do parceiro, com uma única conta. Os formulários do Clube e da rede usam o mesmo cadastro. Perfis comerciais só são enviados para revisão com consentimento explícito; contas antigas do Clube podem autorizar o uso do perfil no próprio painel. Parceiros que já estavam na rede definem a primeira senha usando o e-mail cadastrado em **Definir ou recuperar senha**. A recuperação vincula a conta ao perfil existente sem alterar aprovação, logo ou obras; a senha só é definida após confirmar o link recebido. Inscrever novamente um e-mail já cadastrado não permite assumir a conta. Um envio interrompido do perfil para revisão é retomado no próximo acesso.
+O Clube é a área do parceiro, com uma única conta. Os formulários do Clube e da rede usam o mesmo cadastro. Perfis comerciais só aparecem na rede com autorização explícita; contas antigas do Clube podem autorizar o uso do perfil no próprio painel. Parceiros que já estavam na rede definem a primeira senha usando o e-mail cadastrado em **Definir ou recuperar senha**. A recuperação vincula a conta ao perfil existente sem alterar aprovação, logo ou obras; a senha só é definida após confirmar o link recebido. Inscrever novamente um e-mail já cadastrado não permite assumir a conta. Um envio interrompido do perfil para revisão é retomado no próximo acesso.
 
-A área `/{idioma}/clube` reúne peças disponíveis (com links diretos do MakerWorld ou downloads protegidos), cupons e licenças. O cadastro da rede pública continua separado e sujeito à revisão; a área oferece acesso à rede para receber indicações por cidade.
+A área `/{idioma}/clube` reúne peças disponíveis (com links diretos do MakerWorld ou downloads protegidos), cupons e licenças. Os dois formulários usam a mesma escolha de publicação; a área oferece acesso à rede para receber indicações por cidade.
 
 Em **Administração → Cupons de descontos**, cadastre fornecedor, código, condições, link HTTPS e validade opcional. Os cupons são privados para parceiros autenticados; os inativos e vencidos não são exibidos. A data final considera o fim do dia no horário de Brasília. Nenhum fornecedor ou desconto fictício é cadastrado automaticamente.
 
