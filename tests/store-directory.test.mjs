@@ -43,3 +43,17 @@ test('IBGE map has exactly one nonempty geometry and finite labels per UF',()=>{
  assert.deepEqual(geometry.map(g=>g.code).sort(),brStates.map(s=>s.code).sort());
  for(const g of geometry){assert.match(g.path,/^M/);assert.ok(g.center.concat(g.label).every(Number.isFinite))}
 });
+
+test('random ordering preserves every partner without mutating the input',async()=>{
+ const {shuffleStores}=await import('../lib/store-directory.mjs');
+ const input=Object.freeze([{id:'a'},{id:'b'},{id:'c'}]);
+ const orders=new Set();
+ for(const first of [0,1/3,2/3])for(const second of [0,0.5]){
+  const values=[first,second];const shuffled=shuffleStores(input,()=>values.shift());
+  assert.deepEqual(shuffled.map(s=>s.id).sort(),['a','b','c']);
+  orders.add(shuffled.map(s=>s.id).join(''));
+ }
+ assert.equal(orders.size,6);
+ assert.deepEqual(input.map(s=>s.id),['a','b','c']);
+ assert.deepEqual(shuffleStores([]),[]);assert.deepEqual(shuffleStores([input[0]]),[input[0]]);
+});

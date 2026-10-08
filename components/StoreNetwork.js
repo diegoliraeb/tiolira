@@ -1,14 +1,14 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
-import {partnerInstagram} from '../lib/instagram.mjs';
 import LogoUpload from './LogoUpload';
 import DirectoryConsent from './DirectoryConsent';
 import LocationFields from './LocationFields';
 import DeliveryFields from './DeliveryFields';
 import {brStates,countryName,deliveryLabel} from '../lib/geography.mjs';
-import {directoryCounts,directorySelected,directoryStores} from '../lib/store-directory.mjs';
+import {directoryCounts,directorySelected,directoryStores,shuffleStores} from '../lib/store-directory.mjs';
 import StoreMap from './StoreMap';
+import PartnerDirectoryList from './PartnerDirectoryList';
 import {dictionaries,localized} from '../lib/i18n';
 
 export default function StoreNetwork({lang,catalog}){
@@ -16,6 +16,8 @@ export default function StoreNetwork({lang,catalog}){
  const dialog=useRef(null),results=useRef(null),feedback=useRef(null),submitting=useRef(false);
  const [location,setLocation]=useState({countryCode:'BR',stateId:'',cityId:'',city:''});
  const [region,setRegion]=useState('');
+ const [listing,setListing]=useState({visible:false,ids:[],revision:0});
+ const pendingFocus=useRef(false);
  const [address,setAddress]=useState({countryCode:'BR',stateId:'',state:'',cityId:'',city:''});
  const [serviceArea,setServiceArea]=useState({scope:'city',countryCode:'BR',stateId:'',cities:[]});
  const [piece,setPiece]=useState('all');
@@ -23,13 +25,27 @@ export default function StoreNetwork({lang,catalog}){
  const [directoryPublished,setDirectoryPublished]=useState(false);
  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[sent,setSent]=useState(false);
  const hasSelection=directorySelected(location,region);
- const found=directoryStores(catalog.stores,location,region,piece,catalog.products);
+ const ranks=new Map(listing.ids.map((id,index)=>[id,index]));
+ const found=directoryStores(catalog.stores,location,region,piece,catalog.products).sort((a,b)=>(ranks.get(a.id)??Infinity)-(ranks.get(b.id)??Infinity));
+ const showList=hasSelection&&listing.visible;
  const counts=directoryCounts(catalog.stores,piece,catalog.products);
  const regions=['Norte','Nordeste','Centro-Oeste','Sudeste','Sul'];
  const regionName=value=>t.mapRegions[regions.indexOf(value)]||value;
  const selectionName=location.city||brStates.find(s=>s.id===location.stateId&&location.countryCode==='BR')?.name||location.state||(region?regionName(region):location.countryCode?countryName(location.countryCode,lang):'');
- function changeLocation(value){if(value.countryCode!==location.countryCode)setRegion('');setLocation(value)}
- function selectState(state){setRegion('');setLocation({countryCode:'BR',stateId:state.id,state:state.name,stateCode:state.code,cityId:'',city:''})}
+ function search(nextLocation=location,nextRegion=region,nextPiece=piece,focus=false){
+  const ids=shuffleStores(directoryStores(catalog.stores,nextLocation,nextRegion,nextPiece,catalog.products)).map(s=>s.id);
+  pendingFocus.current=focus;
+  setListing(previous=>({visible:directorySelected(nextLocation,nextRegion),ids,revision:previous.revision+1}));
+ }
+ function changeLocation(value){const nextRegion=value.countryCode!==location.countryCode?'':region;setRegion(nextRegion);setLocation(value);search(value,nextRegion)}
+ function changeRegion(value){const next={countryCode:'BR',stateId:'',cityId:'',city:''};setRegion(value);setLocation(next);search(next,value)}
+ function changePiece(value){setPiece(value);search(location,region,value)}
+ function selectState(state){const next={countryCode:'BR',stateId:state.id,state:state.name,stateCode:state.code,cityId:'',city:''};setRegion('');setLocation(next);search(next,'',piece,true)}
+ function backToMap(){pendingFocus.current=true;setListing(previous=>({...previous,visible:false}));}
+ function clearFilters(){setLocation({countryCode:'BR',stateId:'',cityId:'',city:''});setRegion('');setPiece('all');setListing(previous=>({visible:false,ids:[],revision:previous.revision+1}));}
+ useEffect(()=>{
+  if(pendingFocus.current){pendingFocus.current=false;results.current?.focus({preventScroll:true});results.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}
+ },[listing]);
  useEffect(()=>{
   if(sent||message){dialog.current.scrollTop=0;feedback.current?.focus();}
  },[sent,message]);
@@ -66,20 +82,24 @@ export default function StoreNetwork({lang,catalog}){
   {sent&&<p className="notice registration-receipt" role="status">{t.sent} {directoryPublished?t.directoryPublished:t.directoryPending}</p>}
   <div className="store-shell">
    <div className="store-search-panel"><span className="store-icon">⌖</span><h3>{t.stores}</h3>
-    <form onSubmit={e=>{e.preventDefault();results.current?.scrollIntoView({behavior:'smooth',block:'nearest'})}}>
+    <form onSubmit={e=>{e.preventDefault();search(location,region,piece,true)}}>
      <p className="field-help">{t.mapSearchHelp}</p>
-     <LocationFields lang={lang} value={location} onChange={changeLocation} stateFilter={location.countryCode==='BR'&&region?s=>brStates.some(b=>b.id===s.id&&b.region===region):undefined}>{location.countryCode==='BR'&&<label>{t.mapRegion}<select value={region} onChange={e=>{setRegion(e.target.value);setLocation({countryCode:'BR',stateId:'',cityId:'',city:''})}}><option value="">{t.mapChooseRegion}</option>{regions.map(r=><option key={r} value={r}>{regionName(r)}</option>)}</select></label>}</LocationFields>
-     <label htmlFor="store-piece">{t.piece}</label><select id="store-piece" value={piece} onChange={e=>setPiece(e.target.value)}><option value="all">{t.all}</option><optgroup label={t.collections}>{catalog.collections.map(c=><option key={c.id} value={`collection:${c.id}`}>{localized(c,lang).name} — {t.completeCollection}</option>)}</optgroup><optgroup label={t.works}>{catalog.products.filter(p=>p.access!=='soon').map(p=><option key={p.id} value={p.id}>{localized(p,lang).name}</option>)}</optgroup></select>
-     <p className="collection-search-note">{t.collectionSearchNote}</p><button className="button primary">{t.find} →</button><button type="button" className="text-link" onClick={()=>{setLocation({countryCode:'BR',stateId:'',cityId:'',city:''});setRegion('');setPiece('all')}}>{t.clearFilters}</button>
+     <LocationFields lang={lang} value={location} onChange={changeLocation} stateFilter={location.countryCode==='BR'&&region?s=>brStates.some(b=>b.id===s.id&&b.region===region):undefined}>{location.countryCode==='BR'&&<label>{t.mapRegion}<select value={region} onChange={e=>changeRegion(e.target.value)}><option value="">{t.mapChooseRegion}</option>{regions.map(r=><option key={r} value={r}>{regionName(r)}</option>)}</select></label>}</LocationFields>
+     <label htmlFor="store-piece">{t.piece}</label><select id="store-piece" value={piece} onChange={e=>changePiece(e.target.value)}><option value="all">{t.all}</option><optgroup label={t.collections}>{catalog.collections.map(c=><option key={c.id} value={`collection:${c.id}`}>{localized(c,lang).name} — {t.completeCollection}</option>)}</optgroup><optgroup label={t.works}>{catalog.products.filter(p=>p.access!=='soon').map(p=><option key={p.id} value={p.id}>{localized(p,lang).name}</option>)}</optgroup></select>
+     <p className="collection-search-note">{t.collectionSearchNote}</p><button className="button primary">{t.find} →</button><button type="button" className="text-link" onClick={clearFilters}>{t.clearFilters}</button>
     </form>
     <button className="store-register" onClick={openRegistration}>{t.join} ↗</button>
    </div>
-   <div className="store-results-panel">
-    {(!location.countryCode||location.countryCode==='BR')&&<StoreMap counts={counts} stateId={location.stateId} region={region} onSelect={selectState} t={t}/>}
-    <div className="store-directory-results" ref={results}>
-    {hasSelection&&<div className="store-directory-heading"><h3>{selectionName}</h3><p className="store-result-count" role="status">{found.length} {found.length===1?t.storeCountOne:t.storeCount}</p></div>}
-    <div className="store-results" aria-live="polite">{!hasSelection?<div className="store-empty"><span aria-hidden="true">⌖</span><h3>{t.mapEmptyTitle}</h3><p>{t.mapEmptyHelp}</p></div>:!found.length?<div className="store-empty"><span aria-hidden="true">⌖</span><h3>{catalog.stores.length?t.noMatch:t.noStores}</h3><p>{t.mapNoMatchHelp}</p></div>:found.map(s=><article className="store-card" key={s.id}><div className="store-identity">{s.logo&&<img className="store-logo" src={s.logo} alt={`${t.logoOf} ${s.name}`} loading="lazy" width="72" height="72"/>}<h3>{s.name}</h3></div><p>{s.city}, {s.state} · {s.country}</p><p>{s.description}</p><p className="store-delivery">{s.serviceArea?deliveryLabel(s.serviceArea,lang):s.delivery}</p>{s.offeringsUnspecified&&<p className="store-availability">{t.confirmAvailability}</p>}<div className="store-card-actions"><a className="store-contact" href={quoteUrl(s)} target="_blank" rel="noreferrer">{t.quote} ↗</a>{partnerInstagram(s)&&<a className="store-instagram" href={partnerInstagram(s)} target="_blank" rel="noopener noreferrer">{t.viewInstagram} ↗</a>}</div></article>)}</div>
-    </div>
+   <div className="store-results-panel" ref={results} tabIndex={-1}>
+    {!showList?<>
+     <StoreMap counts={counts} stateId={location.countryCode==='BR'?location.stateId:''} region={region} onSelect={selectState} t={t}/>
+     <div className="store-empty"><h3>{t.mapEmptyTitle}</h3><p>{t.mapEmptyHelp}</p></div>
+    </>:<div className="store-directory-results store-directory-list-view">
+     <button type="button" className="store-back-map" onClick={backToMap}>← {t.backToMap}</button>
+     <div className="store-directory-heading"><h3>{t.partnersIn} {selectionName}</h3><p className="store-result-count" role="status">{found.length} {found.length===1?t.storeCountOne:t.storeCount}</p></div>
+     {found.length>0&&<p className="partner-directory-help">{t.expandPartner}</p>}
+     {!found.length?<div className="store-empty"><span aria-hidden="true">⌖</span><h3>{catalog.stores.length?t.noMatch:t.noStores}</h3><p>{t.mapNoMatchHelp}</p></div>:<PartnerDirectoryList key={listing.revision} stores={found} lang={lang} t={t} quoteUrl={quoteUrl}/>}
+    </div>}
     <p className="store-disclaimer">{t.disclaimer}</p>
    </div>
   </div>
