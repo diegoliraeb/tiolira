@@ -6,21 +6,30 @@ import LogoUpload from './LogoUpload';
 import DirectoryConsent from './DirectoryConsent';
 import LocationFields from './LocationFields';
 import DeliveryFields from './DeliveryFields';
-import {countryName,deliveryLabel} from '../lib/geography.mjs';
-import {matchesStore} from '../lib/store-search.mjs';
+import {brStates,countryName,deliveryLabel} from '../lib/geography.mjs';
+import {directoryCounts,directorySelected,directoryStores} from '../lib/store-directory.mjs';
+import StoreMap from './StoreMap';
 import {dictionaries,localized} from '../lib/i18n';
 
 export default function StoreNetwork({lang,catalog}){
  const t=dictionaries[lang];
  const dialog=useRef(null),results=useRef(null),feedback=useRef(null),submitting=useRef(false);
  const [location,setLocation]=useState({countryCode:'BR',stateId:'',cityId:'',city:''});
+ const [region,setRegion]=useState('');
  const [address,setAddress]=useState({countryCode:'BR',stateId:'',state:'',cityId:'',city:''});
  const [serviceArea,setServiceArea]=useState({scope:'city',countryCode:'BR',stateId:'',cities:[]});
  const [piece,setPiece]=useState('all');
  const [logo,setLogo]=useState(''),[logoBusy,setLogoBusy]=useState(false);
  const [directoryPublished,setDirectoryPublished]=useState(false);
  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[sent,setSent]=useState(false);
- const found=catalog.stores.filter(s=>matchesStore(s,location,piece,catalog.products));
+ const hasSelection=directorySelected(location,region);
+ const found=directoryStores(catalog.stores,location,region,piece,catalog.products);
+ const counts=directoryCounts(catalog.stores,piece,catalog.products);
+ const regions=['Norte','Nordeste','Centro-Oeste','Sudeste','Sul'];
+ const regionName=value=>t.mapRegions[regions.indexOf(value)]||value;
+ const selectionName=location.city||brStates.find(s=>s.id===location.stateId&&location.countryCode==='BR')?.name||location.state||(region?regionName(region):location.countryCode?countryName(location.countryCode,lang):'');
+ function changeLocation(value){if(value.countryCode!==location.countryCode)setRegion('');setLocation(value)}
+ function selectState(state){setRegion('');setLocation({countryCode:'BR',stateId:state.id,state:state.name,stateCode:state.code,cityId:'',city:''})}
  useEffect(()=>{
   if(sent||message){dialog.current.scrollTop=0;feedback.current?.focus();}
  },[sent,message]);
@@ -58,14 +67,19 @@ export default function StoreNetwork({lang,catalog}){
   <div className="store-shell">
    <div className="store-search-panel"><span className="store-icon">⌖</span><h3>{t.stores}</h3>
     <form onSubmit={e=>{e.preventDefault();results.current?.scrollIntoView({behavior:'smooth',block:'nearest'})}}>
-     <p className="field-help">{t.storeSearchHelp}</p><LocationFields lang={lang} value={location} onChange={setLocation}/>
+     <p className="field-help">{t.mapSearchHelp}</p>
+     <LocationFields lang={lang} value={location} onChange={changeLocation} stateFilter={location.countryCode==='BR'&&region?s=>brStates.some(b=>b.id===s.id&&b.region===region):undefined}>{location.countryCode==='BR'&&<label>{t.mapRegion}<select value={region} onChange={e=>{setRegion(e.target.value);setLocation({countryCode:'BR',stateId:'',cityId:'',city:''})}}><option value="">{t.mapChooseRegion}</option>{regions.map(r=><option key={r} value={r}>{regionName(r)}</option>)}</select></label>}</LocationFields>
      <label htmlFor="store-piece">{t.piece}</label><select id="store-piece" value={piece} onChange={e=>setPiece(e.target.value)}><option value="all">{t.all}</option><optgroup label={t.collections}>{catalog.collections.map(c=><option key={c.id} value={`collection:${c.id}`}>{localized(c,lang).name} — {t.completeCollection}</option>)}</optgroup><optgroup label={t.works}>{catalog.products.filter(p=>p.access!=='soon').map(p=><option key={p.id} value={p.id}>{localized(p,lang).name}</option>)}</optgroup></select>
-     <p className="collection-search-note">{t.collectionSearchNote}</p><button className="button primary">{t.find} →</button><button type="button" className="text-link" onClick={()=>{setLocation({countryCode:'',stateId:'',cityId:'',city:''});setPiece('all')}}>{t.clearFilters}</button>
+     <p className="collection-search-note">{t.collectionSearchNote}</p><button className="button primary">{t.find} →</button><button type="button" className="text-link" onClick={()=>{setLocation({countryCode:'BR',stateId:'',cityId:'',city:''});setRegion('');setPiece('all')}}>{t.clearFilters}</button>
     </form>
     <button className="store-register" onClick={openRegistration}>{t.join} ↗</button>
    </div>
-   <div className="store-results-panel" ref={results}><span className="network-label">{t.join} · {t.freeNativity}</span>
-    <p className="store-result-count" role="status">{found.length} {found.length===1?t.storeCountOne:t.storeCount}</p><div className="store-results" aria-live="polite">{!found.length?<div className="store-empty"><span>⌖</span><h3>{catalog.stores.length?t.noMatch:t.noStores}</h3><p>{t.joinIntro}</p></div>:found.map(s=><article className="store-card" key={s.id}><div className="store-identity">{s.logo&&<img className="store-logo" src={s.logo} alt={`${t.logoOf} ${s.name}`} loading="lazy" width="72" height="72"/>}<h3>{s.name}</h3></div><p>{s.city}, {s.state} · {s.country}</p><p>{s.description}</p><p className="store-delivery">{s.serviceArea?deliveryLabel(s.serviceArea,lang):s.delivery}</p>{s.offeringsUnspecified&&<p className="store-availability">{t.confirmAvailability}</p>}<div className="store-card-actions"><a className="store-contact" href={quoteUrl(s)} target="_blank" rel="noreferrer">{t.quote} ↗</a>{partnerInstagram(s)&&<a className="store-instagram" href={partnerInstagram(s)} target="_blank" rel="noopener noreferrer">{t.viewInstagram} ↗</a>}</div></article>)}</div>
+   <div className="store-results-panel">
+    {(!location.countryCode||location.countryCode==='BR')&&<StoreMap counts={counts} stateId={location.stateId} region={region} onSelect={selectState} t={t}/>}
+    <div className="store-directory-results" ref={results}>
+    {hasSelection&&<div className="store-directory-heading"><h3>{selectionName}</h3><p className="store-result-count" role="status">{found.length} {found.length===1?t.storeCountOne:t.storeCount}</p></div>}
+    <div className="store-results" aria-live="polite">{!hasSelection?<div className="store-empty"><span aria-hidden="true">⌖</span><h3>{t.mapEmptyTitle}</h3><p>{t.mapEmptyHelp}</p></div>:!found.length?<div className="store-empty"><span aria-hidden="true">⌖</span><h3>{catalog.stores.length?t.noMatch:t.noStores}</h3><p>{t.mapNoMatchHelp}</p></div>:found.map(s=><article className="store-card" key={s.id}><div className="store-identity">{s.logo&&<img className="store-logo" src={s.logo} alt={`${t.logoOf} ${s.name}`} loading="lazy" width="72" height="72"/>}<h3>{s.name}</h3></div><p>{s.city}, {s.state} · {s.country}</p><p>{s.description}</p><p className="store-delivery">{s.serviceArea?deliveryLabel(s.serviceArea,lang):s.delivery}</p>{s.offeringsUnspecified&&<p className="store-availability">{t.confirmAvailability}</p>}<div className="store-card-actions"><a className="store-contact" href={quoteUrl(s)} target="_blank" rel="noreferrer">{t.quote} ↗</a>{partnerInstagram(s)&&<a className="store-instagram" href={partnerInstagram(s)} target="_blank" rel="noopener noreferrer">{t.viewInstagram} ↗</a>}</div></article>)}</div>
+    </div>
     <p className="store-disclaimer">{t.disclaimer}</p>
    </div>
   </div>
