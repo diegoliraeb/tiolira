@@ -1,3 +1,4 @@
+import {memberOwnedIds,isPaidProduct,purchaseLicenses} from './commerce.mjs';
 import {passwordResetEmail} from './club-email.mjs';
 import {partnerProfile,syncPartnerProfile} from './partner-profile.mjs';
 import {partnerForRecovery,ensurePartnerListing} from './partners.mjs';
@@ -13,11 +14,11 @@ export function publicClubMember(member){
  const {id,name,email,city,state,country,createdAt}=member;
  return {id,name,email,city,state,country,createdAt};
 }
-export function clubProducts(data){
+export function clubProducts(data,owned=new Set()){
  const collections=new Set(data.collections.filter(c=>c.published).map(c=>c.id));
- return data.products.filter(p=>p.published&&collections.has(p.collection)&&['site','maker'].includes(p.access)&&isAvailable(p)).map(({filePath,...p})=>({
-  ...p,downloadUrl:p.access==='site'&&filePath&&!p.exclusive?`/api/download?id=${encodeURIComponent(p.id)}`:p.url,
-  canLicense:p.collection==='presepio'||p.allowPhysicalSales===true||data.collections.some(c=>c.id===p.collection&&c.free)
+ return data.products.filter(p=>p.published&&collections.has(p.collection)&&['site','maker','paid'].includes(p.access)&&isAvailable(p)).map(({filePath,...p})=>({
+  ...p,downloadUrl:isPaidProduct(p)&&!owned.has(p.id)?'':['site','paid'].includes(p.access)&&filePath&&!p.exclusive?`/api/download?id=${encodeURIComponent(p.id)}`:p.url,
+  canLicense:isPaidProduct(p)?owned.has(p.id):p.collection==='presepio'||p.allowPhysicalSales===true||data.collections.some(c=>c.id===p.collection&&c.free)
  }));
 }
 export const licenseTerms='Autorizada a impressão e venda das peças físicas desta obra pelo parceiro identificado. Esta licença é pessoal e intransferível. Não autoriza revender, compartilhar ou redistribuir os arquivos digitais.';
@@ -42,8 +43,9 @@ export async function ensureCollectionLicenses(member,data){
 }
 export async function clubDashboard(member,data){
  if(member.profilePending){member=await syncPartnerProfile(member);data=(await getCatalog()).data;}
- const [licenses,coupons]=await Promise.all([ensureCollectionLicenses(member,data),readRecord('partner-coupons.json')]);
- return {member:partnerProfile(member,data),collections:data.collections.filter(c=>c.published),network:await ensurePartnerListing(member),downloads:clubProducts(data),licenses:licenses.licenses||[],collectionLicenses:licenses.collectionLicenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
+ const owned=await memberOwnedIds(member);
+ const [licenses,coupons,purchases]=await Promise.all([ensureCollectionLicenses(member,data),readRecord('partner-coupons.json'),purchaseLicenses(member)]);
+ return {member:partnerProfile(member,data),collections:data.collections.filter(c=>c.published),network:await ensurePartnerListing(member),downloads:clubProducts(data,owned),licenses:[...(licenses.licenses||[]).filter(l=>!data.products.some(p=>p.id===l.productId&&isPaidProduct(p))),...purchases],collectionLicenses:licenses.collectionLicenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
 }
 export const couponSchema=z.object({
  id:z.string().uuid(),supplier:z.string().trim().min(1).max(150),code:z.string().trim().min(1).max(100),

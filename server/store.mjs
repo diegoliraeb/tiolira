@@ -4,6 +4,7 @@ import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
 import { readFile, writeFile, mkdir, rename, rm } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import {setTimeout as delay} from 'node:timers/promises';
 
 export class Conflict extends Error { constructor(){super('Os dados mudaram. Recarregue antes de salvar.');this.status=409;} }
 export function configured(){return Boolean(databaseUrl() || process.env.BLOB_READ_WRITE_TOKEN || (!process.env.VERCEL && process.env.LOCAL_DATA_DIR));}
@@ -27,5 +28,5 @@ export async function writeRecord(key,data,etag){
  }
  try {const item=await put(`studio/${key}`,JSON.stringify(data),{access:'private',contentType:'application/json',addRandomSuffix:false,allowOverwrite:Boolean(etag),...(etag?{ifMatch:etag}:{}),cacheControlMaxAge:0});return item.etag;}catch(e){if(e instanceof BlobPreconditionFailedError||/already exists/i.test(e.message))throw new Conflict();throw e;}
 }
-export async function updateRecord(key,fn){for(let attempt=0;attempt<5;attempt++){const record=await readRecord(key);try{const next=await fn(record?.data??null);await writeRecord(key,next,record?.etag);return next;}catch(e){if(!(e instanceof Conflict)||attempt===4)throw e;}}}
+export async function updateRecord(key,fn){for(let attempt=0;attempt<5;attempt++){const record=await readRecord(key);try{const next=await fn(record?.data??null);await writeRecord(key,next,record?.etag);return next;}catch(e){if(!(e instanceof Conflict)||attempt===4)throw e;await delay(10*(attempt+1));}}}
 export async function getCatalog(){const record=await readRecord('catalog.json');if(record)return record;return {data:structuredClone(seed),etag:null};}
