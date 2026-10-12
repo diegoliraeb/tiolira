@@ -2,12 +2,17 @@
 import {useEffect,useRef,useState} from 'react';
 import PartnerProfile from './PartnerProfile';
 import PartnerShop,{money} from './PartnerShop';
+import usePartnerCart from './usePartnerCart';
+import {cartSelection} from '../lib/cart-lines.mjs';
 
 function MenuIcon({kind}){
  const paths={profile:'M20 21v-2a7 7 0 0 0-14 0v2 M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',collections:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',coupons:'M3 7h18v4a2 2 0 0 0 0 4v4H3v-4a2 2 0 0 0 0-4z M15 7v12',licenses:'M6 3h9l4 4v14H6z M14 3v5h5 M9 14l2 2 4-4'};
  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={paths[kind]}/></svg>;
 }
 export default function PartnerDashboard({lang,t,member,collections,applyDashboard,downloads,coupons,licenses,collectionLicenses,setLicenses,logout,busy}){
+ const cartState=usePartnerCart(member.id);
+ const cartSummary=cartSelection(cartState.data,cartState.cart);
+ const cartCount=cartSummary.lines.length;
  const [selected,setSelected]=useState(null),[issuing,setIssuing]=useState(false),[message,setMessage]=useState(''),[copyMessage,setCopyMessage]=useState('');
  const [requestedProductId,setRequestedProductId]=useState(null);
  const [section,setSection]=useState('colecoes'),[collection,setCollection]=useState('all'),[collectionsOpen,setCollectionsOpen]=useState(true);
@@ -30,6 +35,7 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
   window.history.pushState(null,'',`#${hash}`);
   requestAnimationFrame(()=>{const top=content.current?.getBoundingClientRect().top;if(top<0||innerWidth<=600)content.current?.scrollIntoView({block:'start',behavior:'smooth'});});
  }
+ function openCart(){navigate('compras');requestAnimationFrame(()=>document.getElementById('partner-cart')?.scrollIntoView({block:'start',behavior:'smooth'}));}
  function buy(item){setRequestedProductId(item.id);if(dialog.current?.open)dialog.current.close();navigate('compras');}
  async function copy(code){try{await navigator.clipboard.writeText(code);setCopyMessage(t.clubCopied)}catch{setCopyMessage(t.clubCopyError)}}
  async function generate(){setIssuing(true);setMessage('');try{const r=await fetch('/api/club/licenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:selected.id})}),result=await r.json();if(!r.ok)throw Error(result.error||t.clubError);setLicenses(current=>[...current.filter(l=>l.productId!==result.license.productId),result.license]);}catch(e){setMessage(e.message)}finally{setIssuing(false)}}
@@ -37,6 +43,7 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
  function receipt(item){return <div className="partner-license-receipt"><p className="eyebrow">{item.kind==='collection'?t.partnerCollectionLicense:t.clubLicenseCode}</p>{item.collectionName&&<h3>{item.collectionName}</h3>}<code>{item.code}</code><p>{t.clubLicensePartner}: <strong>{item.partnerName}</strong></p><p>{t.clubLicenseIssued} {date(item.issuedAt)}</p>{item.source==='purchase'&&<p className="notice">{item.status==='active'?'Licença de venda ativa · emitida automaticamente após a compra':'Licença suspensa · compra estornada ou cancelada'}</p>}<p>{item.source==='purchase'?item.terms:item.kind==='collection'?t.partnerCollectionLicenseTerms:t.clubLicenseTerms}</p>{item.productTerms&&<p>{item.productTerms}</p>}<button className="button outline" onClick={()=>copy(item.code)}>{t.clubCopy}</button></div>}
 
  return <section className="partner-workspace">
+ <div className="partner-cart-topbar"><button type="button" className="partner-cart-shortcut" onClick={openCart} aria-label={`Abrir carrinho: ${cartCount} ${cartCount===1?'item':'itens'}, ${money(cartSummary.total)}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h2l3 12h11l3-9H6M9 20h.01M18 20h.01"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>Meu carrinho</span><span className="partner-cart-summary" role="status" aria-live="polite" aria-atomic="true"><span className="partner-cart-count">{cartCount}</span><strong>{cartState.data?money(cartSummary.total):'—'}</strong></span></button></div>
  <aside className="partner-sidebar">
   <div className="partner-identity"><span className="partner-avatar" aria-hidden="true">{member.name?.charAt(0).toUpperCase()}</span><div><strong>{member.name}</strong><small>{t.clubArea}</small></div></div>
   <nav aria-label={t.clubArea} className="partner-side-nav">
@@ -50,7 +57,7 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
   <button className="partner-signout" onClick={logout} disabled={busy}>{t.clubLogout} <span aria-hidden="true">↗</span></button>
  </aside>
  <div className="partner-content" ref={content}>
- {section==='compras'&&<PartnerShop memberId={member.id} requestedProductId={requestedProductId} onProductConsumed={()=>setRequestedProductId(null)} onRefresh={async()=>{const r=await fetch('/api/club/me');if(r.ok)applyDashboard(await r.json());}}/>}
+ {section==='compras'&&<PartnerShop cartState={cartState} requestedProductId={requestedProductId} onProductConsumed={()=>setRequestedProductId(null)} onRefresh={async()=>{const r=await fetch('/api/club/me');if(r.ok)applyDashboard(await r.json());}}/>}
  {section==='cadastro'&&<PartnerProfile lang={lang} t={t} member={member} onSave={applyDashboard}/>}
  {section==='colecoes'&&<section className="club-library" aria-labelledby="partner-collection-title"><header className="partner-panel-heading"><p className="eyebrow">{t.collections}</p><h2 id="partner-collection-title">{currentCollection?.name||t.clubLibraryTitle}</h2><p>{currentCollection?.description||t.partnerCollectionsIntro}</p></header>{currentCollectionLicense&&<div className="partner-collection-license"><span>{t.partnerCollectionLicensed}</span><button className="text-link" onClick={()=>navigate('licencas')}>{t.partnerViewLicense} →</button></div>}{visibleItems.length?<div className="club-download-grid">{visibleItems.map(item=><article className="club-download-card" key={item.id}><button className="partner-piece-image" aria-label={`${t.details}: ${item.name}`} onClick={()=>setSelected(item)}><img src={item.image} alt="" loading="lazy"/></button><div><h3>{item.name}</h3>{item.access==='paid'&&item.priceCents>0&&!item.downloadUrl&&<p className="shop-price">{money(item.priceCents)}</p>}{item.canPurchase&&<button className="button primary" onClick={()=>buy(item)}>Adicionar ao carrinho</button>}<button className="button outline" onClick={()=>setSelected(item)}>{item.canLicense?t.clubLicenseView:t.details}</button></div></article>)}</div>:<p className="notice">{t.clubNoFiles}</p>}</section>}
  {section==='cupons'&&<section className="club-library" aria-labelledby="partner-coupons-title"><header className="partner-panel-heading"><p className="eyebrow">{t.clubArea}</p><h2 id="partner-coupons-title">{t.clubCoupons}</h2><p>{t.clubCouponsIntro}</p></header>{coupons.length?<div className="partner-coupon-grid">{coupons.map(c=><article className="partner-coupon" key={c.id}><p className="eyebrow">{c.supplier}</p><h3>{c.description}</h3><code>{c.code}</code>{c.expiresAt&&<p>{t.clubCouponExpires} {date(c.expiresAt)}</p>}<div className="partner-actions"><button className="button outline" onClick={()=>copy(c.code)}>{t.clubCopy}</button><a className="button primary" href={c.url} target="_blank" rel="noreferrer">{t.clubCouponStore} ↗</a></div></article>)}</div>:<div className="partner-empty"><MenuIcon kind="coupons"/><h3>{t.partnerCouponsSoon}</h3><p>{t.clubNoCoupons}</p></div>}</section>}
