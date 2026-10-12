@@ -5,12 +5,19 @@ export const money=cents=>new Intl.NumberFormat('pt-BR',{style:'currency',curren
 export const statuses={creating:'Conferindo cobrança',pending:'Aguardando pagamento',overdue:'Vencido',paid:'Pagamento confirmado',revoked:'Acesso suspenso por estorno',cancelled:'Cancelado',failed:'Não concluído',review:'Em análise'};
 const blankCard=()=>({holderName:'',number:'',expiryMonth:'',expiryYear:'',ccv:'',name:'',email:'',cpfCnpj:'',postalCode:'',addressNumber:'',phone:''});
 async function api(path,body){const r=await fetch('/api/'+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'}),data=await r.json();if(!r.ok)throw Error(data.error||'Não foi possível concluir.');return data;}
-export default function PartnerShop({memberId,onRefresh}){
+export default function PartnerShop({memberId,onRefresh,requestedProductId,onProductConsumed}){
  const [data,setData]=useState(null),[cart,setCart]=useState([]),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[cpf,setCpf]=useState(''),[billingType,setBillingType]=useState('PIX'),[overlap,setOverlap]=useState(false),[requestId,setRequestId]=useState(''),[card,setCard]=useState(blankCard),[payment,setPayment]=useState(null);
  const key=`tiolira-cart:${memberId}`;
  async function load(){const next=await api('club/shop');setData(next);return next;}
  useEffect(()=>{load().catch(e=>setMessage(e.message));try{const saved=JSON.parse(sessionStorage.getItem(key));if(Array.isArray(saved?.cart))setCart(saved.cart);setRequestId(saved?.requestId||crypto.randomUUID());}catch{setRequestId(crypto.randomUUID());}},[key]);
  useEffect(()=>{if(requestId)try{sessionStorage.setItem(key,JSON.stringify({cart,requestId}));}catch{}},[cart,requestId,key]);
+ useEffect(()=>{
+  if(!data||!requestedProductId)return;
+  const item=data.products.find(p=>p.id===requestedProductId&&!p.owned);
+  if(item)add({...item,kind:'product',productIds:[item.id]});
+  else setMessage('Esta peça não está disponível para compra ou já pertence à sua biblioteca.');
+  onProductConsumed?.();
+ },[data,requestedProductId]);
  const activeOrder=data?.orders.find(o=>o.id===payment?.order?.id)||payment?.order;
  // Poll our own order state while the webhook confirms payment, without repeated Asaas calls.
  useEffect(()=>{
