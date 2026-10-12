@@ -1,3 +1,4 @@
+import {timingSafeEqual} from 'node:crypto';
 // Private API key stays on the server. Card data is forwarded only in memory, never stored or logged.
 export function asaasConfig(){
  const environment=process.env.ASAAS_ENVIRONMENT||'sandbox';
@@ -18,4 +19,15 @@ export async function asaas(path,{method='GET',body,timeoutMs=15000}={}){
 export function invoiceUrl(value){
  try{const u=new URL(value);if(u.protocol==='https:'&&!u.username&&!u.password&&['www.asaas.com','asaas.com','sandbox.asaas.com','www.sandbox.asaas.com'].includes(u.hostname))return u.href;}catch{}
  return '';
+}
+export async function checkAsaasConnection(webhookUrl){
+ const {environment}=asaasConfig();
+ if(!paymentsReady())return {connected:false,environment,configured:false};
+ const result=await asaas('/webhooks?limit=100');
+ const webhook=result.data?.find(w=>w.url===webhookUrl);
+ const expected=Buffer.from(process.env.ASAAS_WEBHOOK_TOKEN),actual=Buffer.from(webhook?.authToken||'');
+ // Return only diagnostics; provider payloads may contain authentication tokens.
+ return {configured:true,connected:true,environment,webhookFound:Boolean(webhook),webhookEnabled:webhook?.enabled===true,queueActive:webhook?.interrupted===false,
+  tokenMatches:webhook?.authToken?actual.length===expected.length&&timingSafeEqual(actual,expected):null,
+  eventsReady:['PAYMENT_CONFIRMED','PAYMENT_RECEIVED','PAYMENT_REFUNDED','PAYMENT_PARTIALLY_REFUNDED','PAYMENT_CHARGEBACK_REQUESTED'].every(event=>webhook?.events?.includes(event))};
 }
