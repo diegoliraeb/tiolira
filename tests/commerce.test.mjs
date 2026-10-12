@@ -50,7 +50,7 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
    const payload=input();const results=await Promise.all([checkout(a,payload),checkout(a,payload)]);assert.equal(posts,1);assert.equal(results[0].id,results[1].id);first=await checkout(a,payload);assert.equal(first.totalCents,1490);assert.equal(first.status,'pending');
    const other=await checkout(a,input());assert.equal(other.id,first.id);assert.equal(posts,1);
    assert.equal(await purchaseAccess(a,'saci'),false);assert.equal((await call('download?id=saci')).status,403);
-   assert.equal((await call('admin/sales')).status,401);assert.equal((await shop(b)).orders.length,0);
+   assert.equal((await call('admin/sales')).status,401);assert.equal((await call('admin/asaas-status')).status,401);assert.equal((await shop(b)).orders.length,0);
    assert.equal((await paymentDetails(a,first.id)).pix.payload,'000201-test-pix');await assert.rejects(()=>paymentDetails(b,first.id),/não encontrado/);assert.equal((await purchaseLicenses(a)).length,0);
   });
   await t.test('authenticated webhook, verified amount, duplicate delivery and paid access',async()=>{

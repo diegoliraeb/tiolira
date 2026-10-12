@@ -1,4 +1,5 @@
 import {shop,checkout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,salesReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
+import {checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
 import {clubDashboard,clubProducts,issueLicense,couponSchema,requestPasswordReset,resetPassword} from './club.mjs';
@@ -24,6 +25,7 @@ export default async function handler(req,res){
   if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req));return json(res,200,{received:true});}
   if(method==='GET'&&route==='club/shop'){return json(res,200,await shop(await requireClub(req)));}
   if(method==='GET'&&route==='admin/sales'){await requireAdmin(req);return json(res,200,await salesReport());}
+  if(method==='GET'&&route==='admin/asaas-status'){await requireAdmin(req);await rateLimit(req,'asaas-status',6,60_000);return json(res,200,await checkAsaasConnection(new URL('/api/webhooks/asaas',url.origin).href));}
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
   if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
