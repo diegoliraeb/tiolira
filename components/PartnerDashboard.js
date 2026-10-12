@@ -12,7 +12,7 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
  const [section,setSection]=useState('colecoes'),[collection,setCollection]=useState('all'),[collectionsOpen,setCollectionsOpen]=useState(true);
  const dialog=useRef(null),content=useRef(null),locale={pt:'pt-BR',en:'en-US',es:'es-ES'}[lang];
  const localized=item=>({...item,...item.translations?.[lang]});
- const items=downloads.map(localized),groups=collections.map(localized),eligible=items.filter(item=>item.canLicense&&!collectionLicenses.some(l=>l.collectionId===item.collection)),license=collectionLicenses.find(l=>l.collectionId===selected?.collection)||licenses.find(l=>l.productId===selected?.id&&l.status!=='suspended');
+ const items=downloads.map(localized),groups=collections.map(localized),eligible=items.filter(item=>item.canLicense&&!collectionLicenses.some(l=>l.collectionId===item.collection)&&!licenses.some(l=>l.productId===item.id&&l.status!=='suspended')),license=collectionLicenses.find(l=>l.collectionId===selected?.collection)||licenses.find(l=>l.productId===selected?.id&&l.status!=='suspended');
  const currentCollectionLicense=collectionLicenses.find(l=>l.collectionId===collection);
  const currentCollection=groups.find(c=>c.id===collection),visibleItems=collection==='all'?items:items.filter(item=>item.collection===collection);
  useEffect(()=>{if(selected){setMessage('');setCopyMessage('');dialog.current.showModal();}},[selected]);
