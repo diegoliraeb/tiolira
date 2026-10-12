@@ -1,16 +1,14 @@
 'use client';
 import {useEffect,useState} from 'react';
+import {cartSelection} from '../lib/cart-lines.mjs';
 
 export const money=cents=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((cents||0)/100);
 export const statuses={creating:'Conferindo cobrança',pending:'Aguardando pagamento',overdue:'Vencido',paid:'Pagamento confirmado',revoked:'Acesso suspenso por estorno',cancelled:'Cancelado',failed:'Não concluído',review:'Em análise'};
 const blankCard=()=>({holderName:'',number:'',expiryMonth:'',expiryYear:'',ccv:'',name:'',email:'',cpfCnpj:'',postalCode:'',addressNumber:'',phone:''});
 async function api(path,body){const r=await fetch('/api/'+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'}),data=await r.json();if(!r.ok)throw Error(data.error||'Não foi possível concluir.');return data;}
-export default function PartnerShop({memberId,onRefresh,requestedProductId,onProductConsumed}){
- const [data,setData]=useState(null),[cart,setCart]=useState([]),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[cpf,setCpf]=useState(''),[billingType,setBillingType]=useState('PIX'),[overlap,setOverlap]=useState(false),[requestId,setRequestId]=useState(''),[card,setCard]=useState(blankCard),[payment,setPayment]=useState(null);
- const key=`tiolira-cart:${memberId}`;
- async function load(){const next=await api('club/shop');setData(next);return next;}
- useEffect(()=>{load().catch(e=>setMessage(e.message));try{const saved=JSON.parse(sessionStorage.getItem(key));if(Array.isArray(saved?.cart))setCart(saved.cart);setRequestId(saved?.requestId||crypto.randomUUID());}catch{setRequestId(crypto.randomUUID());}},[key]);
- useEffect(()=>{if(requestId)try{sessionStorage.setItem(key,JSON.stringify({cart,requestId}));}catch{}},[cart,requestId,key]);
+export default function PartnerShop({cartState,onRefresh,requestedProductId,onProductConsumed}){
+ const {data,setData,cart,setCart,requestId,setRequestId,load,error}=cartState;
+ const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[cpf,setCpf]=useState(''),[billingType,setBillingType]=useState('PIX'),[overlap,setOverlap]=useState(false),[card,setCard]=useState(blankCard),[payment,setPayment]=useState(null);
  useEffect(()=>{
   if(!data||!requestedProductId)return;
   const item=data.products.find(p=>p.id===requestedProductId&&!p.owned);
@@ -25,10 +23,8 @@ export default function PartnerShop({memberId,onRefresh,requestedProductId,onPro
   let stopped=false;const timer=setInterval(async()=>{if(document.hidden)return;try{const next=await api('club/shop');if(stopped)return;setData(next);const order=next.orders.find(o=>o.id===activeOrder.id);if(order?.status==='paid'){setMessage('Pagamento confirmado! Arquivos e licenças de venda liberados.');await onRefresh?.();}}catch{}},12000);
   return()=>{stopped=true;clearInterval(timer)};
  },[activeOrder?.id,activeOrder?.status]);
- const offers=data?[...data.collections.map(x=>({...x,kind:'collection'})),...data.products.map(x=>({...x,kind:'product',productIds:[x.id]}))]:[];
- const selected=cart.map(c=>offers.find(x=>x.id===c.id&&x.kind===c.kind)).filter(Boolean),selectedCollections=selected.filter(x=>x.kind==='collection');
- const lines=selected.filter(x=>x.kind==='collection'||!selectedCollections.some(c=>c.productIds.includes(x.id)));
- const total=lines.reduce((n,x)=>n+x.priceCents,0),partlyOwned=selectedCollections.some(c=>c.productIds.some(id=>data.products.some(p=>p.id===id&&p.owned))&&!c.owned);
+ const {offers,selected,selectedCollections,lines,total}=cartSelection(data,cart);
+ const partlyOwned=selectedCollections.some(c=>c.productIds.some(id=>data.products.some(p=>p.id===id&&p.owned))&&!c.owned);
  function change(next){setCart(next);setRequestId(crypto.randomUUID());setOverlap(false);setMessage('');}
  function add(item){if(cart.some(x=>x.id===item.id&&x.kind===item.kind))return;change([...cart.filter(x=>item.kind!=='collection'||x.kind!=='product'||!item.productIds.includes(x.id)),{id:item.id,kind:item.kind}]);}
  async function showPayment(order){setPayment({order});if(['pending','overdue'].includes(order.status)&&order.billingType!=='CREDIT_CARD')setPayment(await api('club/orders/payment',{id:order.id}));}
@@ -48,7 +44,7 @@ export default function PartnerShop({memberId,onRefresh,requestedProductId,onPro
  return <section className="partner-shop">
   <header className="partner-panel-heading"><p className="eyebrow">ÁREA DO PARCEIRO</p><h2>Loja e carrinho</h2><p>Escolha uma peça ou leve a coleção completa. Após o pagamento, seus arquivos e a licença para vender as peças impressas são liberados automaticamente.</p></header>
   {message&&<p className="notice" role="status">{message}</p>}
-  {!data?<p>Carregando loja…</p>:<>
+  {!data?(error?<p className="notice" role="alert">{error} <button type="button" onClick={()=>load().catch(e=>setMessage(e.message))}>Tentar novamente</button></p>:<p>Carregando loja…</p>):<>
    {!data.paymentsReady&&<p className="notice">Os pagamentos estarão disponíveis em breve.</p>}
    {activeOrder&&<section className="shop-payment admin-panel" aria-label="Pagamento do pedido"><h3>{statuses[activeOrder.status]||activeOrder.status}</h3><p>{activeOrder.items.map(i=>i.name).join(', ')} · <strong>{money(activeOrder.totalCents)}</strong></p>
     {activeOrder.status==='paid'?<p>Compra concluída. Os arquivos estão logo abaixo e suas autorizações estão em <a href="#licencas">Minhas licenças</a>.</p>:['pending','overdue'].includes(activeOrder.status)?<>
@@ -60,7 +56,7 @@ export default function PartnerShop({memberId,onRefresh,requestedProductId,onPro
    </section>}
    <div className="shop-offers">{offers.filter(x=>!x.owned).map(item=><article className="shop-offer" key={item.kind+item.id}><img src={item.image} alt="" loading="lazy"/><div><span className="eyebrow">{item.kind==='collection'?`COLEÇÃO · ${item.productIds.length} PEÇAS`:'PEÇA AVULSA'}</span><h3>{item.name}</h3><strong className="shop-price">{money(item.priceCents)}</strong><button className="button outline" disabled={busy||cart.some(x=>x.id===item.id&&x.kind===item.kind)||item.kind==='product'&&selectedCollections.some(c=>c.productIds.includes(item.id))} onClick={()=>add(item)}>{cart.some(x=>x.id===item.id&&x.kind===item.kind)?'No carrinho':'Adicionar ao carrinho'}</button></div></article>)}</div>
    {!offers.length&&<p className="notice">As peças estão sendo preparadas. Elas aparecerão aqui quando os arquivos forem disponibilizados.</p>}
-   <form className="shop-cart admin-panel" onSubmit={purchase}>
+   <form id="partner-cart" className="shop-cart admin-panel" onSubmit={purchase}>
     <h3>Seu carrinho</h3>
     {lines.length?lines.map(item=><div className="shop-cart-row" key={item.kind+item.id}><span>{item.name}<small>{item.kind==='collection'?`${item.productIds.length} peças incluídas`:'Arquivo digital'} · licença para venda de impressos</small></span><strong>{money(item.priceCents)}</strong><button type="button" disabled={busy} onClick={()=>change(cart.filter(x=>x.id!==item.id||x.kind!==item.kind))} aria-label={`Remover ${item.name}`}>Remover</button></div>):<p>Seu carrinho está vazio.</p>}
     {cart.length!==selected.length&&<p className="notice">Um item deixou de estar disponível. <button type="button" onClick={()=>change(selected.map(({kind,id})=>({kind,id})))}>Atualizar carrinho</button></p>}
