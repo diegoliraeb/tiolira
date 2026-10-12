@@ -21,7 +21,7 @@ const cartSchema=z.array(z.object({kind:z.enum(['product','collection']),id})).m
 const state=old=>old||{orders:[],downloads:{},recentDownloads:[]};
 const paid=o=>o.status==='paid'&&o.environment===asaasConfig().environment;
 export const isPaidProduct=p=>p.access==='paid'||Number(p.priceCents)>0;
-const available=(p,data)=>p.published&&!p.exclusive&&p.access==='paid'&&p.filePath&&p.priceCents>0&&data.collections.some(c=>c.id===p.collection&&c.published&&!c.comingSoon&&!c.free);
+export const canPurchaseProduct=(p,data)=>Boolean(p.published&&!p.exclusive&&p.access==='paid'&&p.filePath&&p.priceCents>0&&data.collections.some(c=>c.id===p.collection&&c.published&&!c.free));
 export function ownedIds(orders,memberId){return new Set(orders.filter(o=>o.memberId===memberId&&paid(o)).flatMap(o=>o.productIds));}
 export function quoteCart(data,input,owned=new Set()){
  const selections=cartSchema.parse(input),seen=new Set(),included=new Set(),items=[];
@@ -31,13 +31,13 @@ export function quoteCart(data,input,owned=new Set()){
   if(selection.kind==='collection'){
    const c=data.collections.find(c=>c.id===selection.id&&c.published&&!c.free&&!c.comingSoon&&c.priceCents>0);
    const products=data.products.filter(p=>p.collection===selection.id&&p.published);
-   if(!c||!products.length||products.some(p=>!available(p,data)))fail('A coleção ainda não está disponível para compra.');
+   if(!c||!products.length||products.some(p=>!canPurchaseProduct(p,data)))fail('A coleção ainda não está disponível para compra.');
    if(products.every(p=>owned.has(p.id)))fail('Você já possui esta coleção.');
    products.forEach(p=>included.add(p.id));items.push({kind:'collection',id:c.id,name:c.name,priceCents:c.priceCents,products:products.map(p=>({id:p.id,name:p.name}))});
   }else{
    if(included.has(selection.id))continue;
    const p=data.products.find(p=>p.id===selection.id);
-   if(!p||!available(p,data))fail('Uma peça do carrinho ainda não está disponível.');
+   if(!p||!canPurchaseProduct(p,data))fail('Uma peça do carrinho ainda não está disponível.');
    if(owned.has(p.id))fail('Você já possui uma das peças. Remova-a do carrinho.');
    included.add(p.id);items.push({kind:'product',id:p.id,name:p.name,priceCents:p.priceCents,products:[{id:p.id,name:p.name}]});
   }
@@ -50,8 +50,8 @@ export function quoteCart(data,input,owned=new Set()){
 function safeOrder(o){return {id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null};}
 export async function shop(member){
  const [{data},record]=await Promise.all([getCatalog(),readRecord(KEY)]),orders=state(record?.data).orders,owned=ownedIds(orders,member.id);
- const products=data.products.filter(p=>available(p,data)||owned.has(p.id)&&p.published&&p.filePath).map(p=>({id:p.id,name:p.name,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
- const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>available(p,data))?[{id:c.id,name:c.name,image:c.image,priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
+ const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&p.filePath).map(p=>({id:p.id,name:p.name,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
+ const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>canPurchaseProduct(p,data))?[{id:c.id,name:c.name,image:c.image,priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
  return {products,collections,orders:orders.filter(o=>o.memberId===member.id&&o.environment===asaasConfig().environment).map(safeOrder).reverse(),paymentsReady:paymentsReady()};
 }
 export async function memberOwnedIds(member){return ownedIds(state((await readRecord(KEY))?.data).orders,member.id);}

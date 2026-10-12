@@ -7,6 +7,7 @@ import {randomUUID} from 'node:crypto';
 import {checkout,quoteCart,shop,paymentDetails,paymentContext,purchaseLicenses,purchaseAccess,receiveWebhook,applyPayment,refreshOrder,recordDownload,salesReport} from '../server/commerce.mjs';
 import {readRecord,writeRecord} from '../server/store.mjs';
 import {invoiceUrl} from '../server/asaas.mjs';
+import {clubProducts} from '../server/club.mjs';
 import {makeSession} from '../server/auth.mjs';
 import handler from '../server/handler.mjs';
 import seed from '../data/catalog.json' with {type:'json'};
@@ -39,6 +40,17 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
  const input=(items=[{kind:'product',id:'saci'}])=>({items,requestId:randomUUID(),billingType:'PIX',cpfCnpj:'12345678901',totalCents:1});
  try{
   await writeRecord('catalog.json',data,null);await writeRecord('club-members.json',{members:[a,b]},null);
+  await t.test('published singles remain purchasable while their collection is in preparation',async()=>{
+   const draft=structuredClone(data);draft.collections.find(c=>c.id==='folclore-test').comingSoon=true;
+   draft.products.find(p=>p.id==='curupira').priceCents=1790;
+   draft.products.find(p=>p.id==='mula').published=false;
+   await writeRecord('catalog.json',draft,(await readRecord('catalog.json')).etag);
+   const offers=await shop(b);assert.equal(offers.products.find(p=>p.id==='curupira').priceCents,1790);assert.ok(!offers.products.some(p=>p.id==='mula'));assert.ok(!offers.collections.some(c=>c.id==='folclore-test'));
+   assert.equal(quoteCart(draft,[{kind:'product',id:'curupira'}]).totalCents,1790);assert.throws(()=>quoteCart(draft,[{kind:'collection',id:'folclore-test'}]));
+   assert.equal(clubProducts(draft).find(p=>p.id==='curupira').canPurchase,true);assert.equal(clubProducts(draft,new Set(['curupira'])).find(p=>p.id==='curupira').canPurchase,false);
+   draft.products.find(p=>p.id==='curupira').filePath='';assert.throws(()=>quoteCart(draft,[{kind:'product',id:'curupira'}]));assert.ok(!clubProducts(draft).some(p=>p.id==='curupira'));
+   await writeRecord('catalog.json',data,(await readRecord('catalog.json')).etag);
+  });
   await t.test('server prices and no duplicate bundle billing',()=>{
    const q=quoteCart(data,[{kind:'product',id:'saci'},{kind:'product',id:'saci'},{kind:'collection',id:'folclore-test'}]);assert.equal(q.totalCents,4990);assert.equal(q.items.length,1);assert.equal(q.productIds.length,5);
    assert.throws(()=>quoteCart(data,[{kind:'product',id:'missing'}]));
