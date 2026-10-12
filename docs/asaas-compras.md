@@ -27,7 +27,7 @@ Mantenha essas variáveis privadas na Vercel. Nunca use prefixo `NEXT_PUBLIC_`, 
 
 No Asaas, em **Integrações → Webhooks**, configure a URL final HTTPS do ambiente:
 
-`https://tiolira.com.br/api/webhooks/asaas`
+`https://www.tiolira.com.br/api/webhooks/asaas`
 
 Em Preview/Sandbox, substitua o domínio pelo endereço público do ambiente de teste. Não aponte o Sandbox para a produção. Defina o mesmo token de `ASAAS_WEBHOOK_TOKEN` e envio sequencial. Habilite eventos de cobrança: `PAYMENT_UPDATED`, `PAYMENT_AWAITING_RISK_ANALYSIS`, `PAYMENT_REPROVED_BY_RISK_ANALYSIS`, `PAYMENT_CREDIT_CARD_CAPTURE_REFUSED`, `PAYMENT_CONFIRMED`, `PAYMENT_RECEIVED`, `PAYMENT_OVERDUE`, `PAYMENT_DELETED`, `PAYMENT_RESTORED`, `PAYMENT_REFUNDED`, `PAYMENT_PARTIALLY_REFUNDED`, `PAYMENT_REFUND_IN_PROGRESS`, `PAYMENT_CHARGEBACK_REQUESTED`, `PAYMENT_CHARGEBACK_DISPUTE` e `PAYMENT_AWAITING_CHARGEBACK_REVERSAL`.
 
