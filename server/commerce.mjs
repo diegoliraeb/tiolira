@@ -1,3 +1,4 @@
+import {cartCoupons,couponCodeSchema,discountQuote} from './cart-coupons.mjs';
 import {createHash,randomUUID,timingSafeEqual} from 'node:crypto';
 import {z} from 'zod';
 import {isIP} from 'node:net';
@@ -47,7 +48,7 @@ export function quoteCart(data,input,owned=new Set()){
  if(!Number.isSafeInteger(totalCents)||totalCents<=0||totalCents>10_000_000)fail('Valor de compra inválido.');
  return {items,totalCents,productIds:[...included].sort(),overlap:[...included].filter(x=>owned.has(x))};
 }
-function safeOrder(o){return {id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null};}
+function safeOrder(o){return {id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null};}
 export async function shop(member){
  const [{data},record]=await Promise.all([getCatalog(),readRecord(KEY)]),orders=state(record?.data).orders,owned=ownedIds(orders,member.id);
  const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&p.filePath).map(p=>({id:p.id,name:p.name,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
@@ -56,24 +57,29 @@ export async function shop(member){
 }
 export async function memberOwnedIds(member){return ownedIds(state((await readRecord(KEY))?.data).orders,member.id);}
 export async function purchaseAccess(member,productId){return (await memberOwnedIds(member)).has(productId);}
+export async function quoteCheckout(member,input){
+ const [{data},coupons,owned]=await Promise.all([getCatalog(),cartCoupons(),memberOwnedIds(member)]);
+ return discountQuote(quoteCart(data,input.items,owned),input.couponCode,coupons.coupons);
+}
 export async function checkout(member,input,context={}){
  if(!paymentsReady())fail('Os pagamentos ainda não estão configurados.',503);
  const cpfCnpj=String(member.cpfCnpj||'').replace(/\D/g,'');
  if(!/^(\d{11}|\d{14})$/.test(cpfCnpj))fail('Preencha o CPF ou CNPJ em Meus dados antes de comprar.');
- const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),acceptOverlap:z.boolean().default(false),creditCard:cardSchema.optional(),creditCardHolderInfo:holderSchema.optional()}).parse(input);
+ const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive().optional(),acceptOverlap:z.boolean().default(false),creditCard:cardSchema.optional(),creditCardHolderInfo:holderSchema.optional()}).parse(input);
  if(parsed.billingType==='CREDIT_CARD'){
   if(!parsed.creditCard||!parsed.creditCardHolderInfo)fail('Preencha os dados do cartão e do titular.');
   if(!isIP(context.remoteIp||''))fail('Não foi possível identificar a conexão do comprador.');
   if(asaasConfig().environment==='production'&&!context.secure)fail('O pagamento com cartão exige uma conexão HTTPS.',400);
  }
- const {data}=await getCatalog(),environment=asaasConfig().environment;
+ const {data}=await getCatalog(),environment=asaasConfig().environment,coupons=await cartCoupons();
  const orderId=randomUUID();let chosenId;
  await updateRecord(KEY,old=>{
   const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.environment===environment&&o.requestId===parsed.requestId);
   if(existing){chosenId=existing.id;return s;}
-  const quote=quoteCart(data,parsed.items,ownedIds(s.orders,member.id));
+  const quote=discountQuote(quoteCart(data,parsed.items,ownedIds(s.orders,member.id)),parsed.couponCode,coupons.coupons);
+  if(parsed.couponCode&&parsed.expectedTotalCents!==quote.totalCents)fail('O desconto mudou. Confira o total atualizado antes de pagar.',409);
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme a compra pelo valor integral, sem abatimento.',409);
-  const fingerprint=createHash('sha256').update(JSON.stringify(quote.items)).digest('hex');
+  const fingerprint=createHash('sha256').update(JSON.stringify(quote.coupon?{items:quote.items,coupon:quote.coupon}:quote.items)).digest('hex');
   const pending=s.orders.find(o=>o.memberId===member.id&&o.environment===environment&&o.fingerprint===fingerprint&&['creating','pending','overdue','review'].includes(o.status));
   if(pending){chosenId=pending.id;return s;}
   chosenId=orderId;s.orders.push({id:orderId,requestId:parsed.requestId,memberId:member.id,memberName:member.name,memberEmail:member.email,createdAt:new Date().toISOString(),status:'creating',environment,billingType:parsed.billingType,fingerprint,...quote});return s;
@@ -146,7 +152,7 @@ export async function recordDownload(member,product){
 }
 export async function salesReport(){
  const s=state((await readRecord(KEY))?.data),{data}=await getCatalog(),rows=new Map(data.products.map(p=>[p.id,{id:p.id,name:p.name,individualSales:0,collectionSales:0,revenueCents:0,downloads:s.downloads[p.id]||0}]));
- for(const o of s.orders.filter(paid))for(const item of o.items)item.products.forEach((p,i)=>{if(!rows.has(p.id))rows.set(p.id,{...p,individualSales:0,collectionSales:0,revenueCents:0,downloads:s.downloads[p.id]||0});const row=rows.get(p.id);row[item.kind==='collection'?'collectionSales':'individualSales']++;row.revenueCents+=Math.floor(item.priceCents/item.products.length)+(i<item.priceCents%item.products.length?1:0);});
+ for(const o of s.orders.filter(paid))for(const item of o.items)item.products.forEach((p,i)=>{if(!rows.has(p.id))rows.set(p.id,{...p,individualSales:0,collectionSales:0,revenueCents:0,downloads:s.downloads[p.id]||0});const row=rows.get(p.id);row[item.kind==='collection'?'collectionSales':'individualSales']++;row.revenueCents+=Math.floor((item.totalCents??item.priceCents)/item.products.length)+(i<(item.totalCents??item.priceCents)%item.products.length?1:0);});
  return {paymentsReady:paymentsReady(),environment:asaasConfig().environment,totalCents:s.orders.filter(paid).reduce((n,o)=>n+o.totalCents,0),paidOrders:s.orders.filter(paid).length,products:[...rows.values()],orders:s.orders.filter(o=>o.environment===asaasConfig().environment).map(o=>({...safeOrder(o),memberName:o.memberName,memberEmail:o.memberEmail})).reverse(),recentDownloads:s.recentDownloads};
 }
 

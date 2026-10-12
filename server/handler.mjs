@@ -1,4 +1,5 @@
-import {shop,checkout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,salesReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
+import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
+import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,salesReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
 import {checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
@@ -29,6 +30,7 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
   if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
+  if(method==='GET'&&route==='admin/cart-coupons'){await requireAdmin(req);return json(res,200,await cartCoupons());}
   if(method==='GET'&&route==='admin/coupons'){await requireAdmin(req);const record=await readRecord('partner-coupons.json');return json(res,200,{coupons:record?.data?.coupons||[],revision:record?.etag||null});}
   if(method==='GET'&&route==='admin/status'){const auth=await readRecord('admin.json');let loggedIn=false;try{await requireAdmin(req);loggedIn=true;}catch{}return json(res,200,{configured:configured(),initialized:Boolean(auth),loggedIn,setupReady:await setupReady()});}
   if(method==='GET'&&route==='admin/catalog'){await requireAdmin(req);const {data,etag}=await getCatalog();return json(res,200,{...data,revision:etag});}
@@ -44,6 +46,7 @@ export default async function handler(req,res){
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req);
+  if(method==='POST'&&route==='club/cart-quote'){const member=await requireClub(req);await rateLimit(req,'cart-quote',40,60_000);return json(res,200,await quoteCheckout(member,input));}
   if(method==='POST'&&route==='club/checkout'){const member=await requireClub(req);await rateLimit(req,'checkout',10,60_000);return json(res,201,{order:await checkout(member,input,paymentContext(req))});}
   if(method==='POST'&&route==='club/orders/payment'){const member=await requireClub(req);await rateLimit(req,'payment-details',20,60_000);return json(res,200,await paymentDetails(member,input.id));}
   if(method==='POST'&&route==='club/orders/refresh'){const member=await requireClub(req);await rateLimit(req,'payment-refresh',20,60_000);return json(res,200,{order:await refreshOrder(member,input.id)});}
@@ -117,6 +120,7 @@ export default async function handler(req,res){
    return json(res,201,{ok:true});
   }
   await requireAdmin(req);
+  if(method==='PUT'&&route==='admin/cart-coupons')return json(res,200,await saveCartCoupon(input));
   if(route==='admin/coupons'&&['PUT','DELETE'].includes(method)){
    const current=await readRecord('partner-coupons.json');if((current?.etag||null)!==input.revision)throw new Conflict();
    let coupons=current?.data?.coupons||[];
