@@ -13,6 +13,9 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
  const cartState=usePartnerCart(member.id);
  const cartSummary=cartSelection(cartState.data,cartState.cart);
  const cartCount=cartSummary.lines.length;
+ const currentPurchase=cartState.data?.orders.find(o=>o.id===cartState.activeOrderId);
+ const showingPurchase=!cartCount&&currentPurchase;
+ const shortcutTotal=showingPurchase?currentPurchase.totalCents:cartState.couponQuote?.totalCents??cartSummary.total;
  const [selected,setSelected]=useState(null),[issuing,setIssuing]=useState(false),[message,setMessage]=useState(''),[copyMessage,setCopyMessage]=useState('');
  const [requestedProductId,setRequestedProductId]=useState(null),[returnToCart,setReturnToCart]=useState(false);
  const [section,setSection]=useState('colecoes'),[collection,setCollection]=useState('all'),[collectionsOpen,setCollectionsOpen]=useState(true);
@@ -35,17 +38,17 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
   window.history.pushState(null,'',`#${hash}`);
   requestAnimationFrame(()=>{const top=content.current?.getBoundingClientRect().top;if(top<0||innerWidth<=600)content.current?.scrollIntoView({block:'start',behavior:'smooth'});});
  }
- function openCart(){navigate('compras');requestAnimationFrame(()=>document.getElementById('partner-cart')?.scrollIntoView({block:'start',behavior:'smooth'}));}
+ function openCart(){if(cartCount)cartState.setActiveOrderId(null);cartState.setShopView('cart');navigate('compras');requestAnimationFrame(()=>document.getElementById('partner-cart')?.scrollIntoView({block:'start',behavior:'smooth'}));}
  function editBilling(){setReturnToCart(true);navigate('cadastro');requestAnimationFrame(()=>document.getElementById('partner-billing-document')?.focus());}
  function saveProfile(data){applyDashboard(data);if(returnToCart){setReturnToCart(false);openCart();}}
- function buy(item){setRequestedProductId(item.id);if(dialog.current?.open)dialog.current.close();navigate('compras');}
+ function buy(item){cartState.setActiveOrderId(null);cartState.setShopView('cart');setRequestedProductId(item.id);if(dialog.current?.open)dialog.current.close();navigate('compras');}
  async function copy(code){try{await navigator.clipboard.writeText(code);setCopyMessage(t.clubCopied)}catch{setCopyMessage(t.clubCopyError)}}
  async function generate(){setIssuing(true);setMessage('');try{const r=await fetch('/api/club/licenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:selected.id})}),result=await r.json();if(!r.ok)throw Error(result.error||t.clubError);setLicenses(current=>[...current.filter(l=>l.productId!==result.license.productId),result.license]);}catch(e){setMessage(e.message)}finally{setIssuing(false)}}
  const date=value=>new Date(value).toLocaleDateString(locale,{timeZone:'America/Maceio'});
  function receipt(item){return <div className="partner-license-receipt"><p className="eyebrow">{item.kind==='collection'?t.partnerCollectionLicense:t.clubLicenseCode}</p>{item.collectionName&&<h3>{item.collectionName}</h3>}<code>{item.code}</code><p>{t.clubLicensePartner}: <strong>{item.partnerName}</strong></p><p>{t.clubLicenseIssued} {date(item.issuedAt)}</p>{item.source==='purchase'&&<p className="notice">{item.status==='active'?'Licença de venda ativa · emitida automaticamente após a compra':'Licença suspensa · compra estornada ou cancelada'}</p>}<p>{item.source==='purchase'?item.terms:item.kind==='collection'?t.partnerCollectionLicenseTerms:t.clubLicenseTerms}</p>{item.productTerms&&<p>{item.productTerms}</p>}<button className="button outline" onClick={()=>copy(item.code)}>{t.clubCopy}</button></div>}
 
  return <section className="partner-workspace">
- <div className="partner-cart-topbar"><button type="button" className="partner-cart-shortcut" onClick={openCart} aria-label={`Abrir carrinho: ${cartCount} ${cartCount===1?'item':'itens'}, ${money(cartState.couponQuote?.totalCents??cartSummary.total)}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h2l3 12h11l3-9H6M9 20h.01M18 20h.01"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>Meu carrinho</span><span className="partner-cart-summary" role="status" aria-live="polite" aria-atomic="true"><span className="partner-cart-count">{cartCount}</span><strong>{cartState.data?money(cartState.couponQuote?.totalCents??cartSummary.total):'—'}</strong></span></button></div>
+ <div className="partner-cart-topbar"><button type="button" className="partner-cart-shortcut" onClick={openCart} aria-label={showingPurchase?`Acompanhar compra: ${money(shortcutTotal)}`:`Abrir carrinho: ${cartCount} ${cartCount===1?'item':'itens'}, ${money(shortcutTotal)}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h2l3 12h11l3-9H6M9 20h.01M18 20h.01"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>{showingPurchase?'Minha compra':'Meu carrinho'}</span><span className="partner-cart-summary" role="status" aria-live="polite" aria-atomic="true"><span className="partner-cart-count">{showingPurchase?'→':cartCount}</span><strong>{cartState.data?money(shortcutTotal):'—'}</strong></span></button></div>
  <aside className="partner-sidebar">
   <div className="partner-identity"><span className="partner-avatar" aria-hidden="true">{member.name?.charAt(0).toUpperCase()}</span><div><strong>{member.name}</strong><small>{t.clubArea}</small></div></div>
   <nav aria-label={t.clubArea} className="partner-side-nav">
