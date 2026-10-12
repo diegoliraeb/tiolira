@@ -1,11 +1,12 @@
 'use client';
+import AsaasPaymentNotice from './AsaasPaymentNotice';
 const methods={PIX:'Pix',BOLETO:'Boleto',CREDIT_CARD:'Cartão de crédito'};
 export default function ShopPayment({order,payment,products,collections,busy,loading,error,money,statuses,onRefresh,onCopy,onBrowse,onFiles,onOrders}){
  const pending=['creating','pending','overdue','review'].includes(order.status),paid=order.status==='paid';
  const instructions=payment?.order?.id===order.id?payment:null;
  return <section className="shop-payment-flow" aria-label="Pagamento do pedido">
   <header className="shop-view-heading"><div><p className="eyebrow">{paid?'TUDO PRONTO':'FINALIZE SUA COMPRA'}</p><h3>{paid?'Sua coleção ganhou vida.':'Pagamento do pedido'}</h3><p>{paid?'Seus arquivos e a licença de venda já estão disponíveis.':'Seu pedido está salvo. Acompanhe a confirmação por aqui.'}</p></div><span className={`shop-status shop-status-${order.status}`}>{statuses[order.status]||order.status}</span></header>
-  <div className="shop-payment-layout"><div className="shop-payment-main">
+  <div className="shop-payment-layout"><div className="shop-payment-main">{order.billingType==='CREDIT_CARD'&&<AsaasPaymentNotice compact/>}
    {paid?<div className="shop-success"><span aria-hidden="true">✓</span><h4>Pagamento confirmado</h4><p>Agora é só baixar os arquivos e começar a imprimir.</p><button className="button primary" onClick={onFiles}>Acessar meus arquivos</button><a className="text-link" href="#licencas">Ver minhas licenças →</a></div>:<>
     <div className="shop-payment-method-heading"><span className="shop-method-icon" aria-hidden="true">{order.billingType==='PIX'?'◇':order.billingType==='BOLETO'?'▥':'▭'}</span><div><h4>{methods[order.billingType]||'Pagamento'}</h4><p>{order.status==='overdue'?'O prazo deste pagamento venceu. Confira a situação antes de pagar.':order.billingType==='CREDIT_CARD'?'Acompanhe a aprovação do cartão.':'Use as instruções abaixo para concluir.'}</p></div></div>
     {loading&&<p className="notice" role="status">Carregando instruções de pagamento…</p>}
