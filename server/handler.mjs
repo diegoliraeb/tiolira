@@ -1,7 +1,7 @@
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
 import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,downloadablePurchaseLicense,salesReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
-import {checkAsaasConnection} from './asaas.mjs';
+import {configurePurchaseEmailWebhook,checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
 import {clubDashboard,clubProducts,issueLicense,couponSchema,requestPasswordReset,resetPassword} from './club.mjs';
@@ -24,6 +24,7 @@ export default async function handler(req,res){
   const url=new URL(req.url,'https://'+(req.headers.host||'localhost'));
   const route=String((Array.isArray(req.query?.route)?req.query.route.join('/'):req.query?.route)||url.searchParams.get('route')||url.pathname.replace(/^\/api\/?/,'')).replace(/^\/+|\/+$/g,'');
   const method=req.method;
+  if(method==='POST'&&route==='webhooks/purchase-email'){assertWebhook(req);await receiveWebhook(await body(req),{emailRequired:true});return json(res,200,{received:true});}
   if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req));return json(res,200,{received:true});}
   if(method==='GET'&&route==='club/licenses/download'){
    const member=await requireClub(req),license=await downloadablePurchaseLicense(member,url.searchParams.get('code'));
@@ -54,6 +55,7 @@ export default async function handler(req,res){
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req);
+  if(method==='POST'&&route==='admin/purchase-email-webhook'){await requireAdmin(req);await rateLimit(req,'configure-email-webhook',5,60_000);return json(res,200,await configurePurchaseEmailWebhook());}
   if(method==='POST'&&route==='club/cart-quote'){const member=await requireClub(req);await rateLimit(req,'cart-quote',40,60_000);return json(res,200,await quoteCheckout(member,input));}
   if(method==='POST'&&route==='club/checkout'){const member=await requireClub(req);await rateLimit(req,'checkout',10,60_000);return json(res,201,{order:await checkout(member,input,paymentContext(req))});}
   if(method==='POST'&&route==='club/orders/payment'){const member=await requireClub(req);await rateLimit(req,'payment-details',20,60_000);return json(res,200,await paymentDetails(member,input.id));}

@@ -1,3 +1,4 @@
+import {sendPurchaseEmail,purchaseEmailConfig} from './purchase-email.mjs';
 import {cartCoupons,couponCodeSchema,discountQuote} from './cart-coupons.mjs';
 import {createHash,randomUUID,timingSafeEqual} from 'node:crypto';
 import {z} from 'zod';
@@ -101,6 +102,8 @@ export async function checkout(member,input,context={}){
   if(!paymentAttempted||e.uncertain===false)await updateRecord(KEY,old=>{const o=old.orders.find(o=>o.id===orderId);if(o.status==='creating')o.status='failed';return old;});
   throw e;
  }
+ // A mail outage must never turn a successful payment into a checkout error.
+ await sendPurchaseEmail(orderId).catch(()=>{});
  return safeOrder(state((await readRecord(KEY))?.data).orders.find(o=>o.id===orderId));
 }
 export async function applyPayment(orderId,payment,eventId){
@@ -116,9 +119,11 @@ export async function applyPayment(orderId,payment,eventId){
   let next=revoked?'revoked':payment.deleted?'cancelled':['CONFIRMED','RECEIVED'].includes(payment.status)?'paid':['REPROVED_BY_RISK_ANALYSIS','CREDIT_CARD_CAPTURE_REFUSED'].includes(payment.status)?'failed':payment.status==='AWAITING_RISK_ANALYSIS'?'review':payment.status==='OVERDUE'?'overdue':'pending';
   // Revocation is sticky; delayed pre-payment events cannot remove a paid entitlement.
   if(o.status==='revoked')next='revoked';else if(o.status==='paid'&&['pending','overdue'].includes(next))next='paid';
+  const firstApproval=next==='paid'&&o.status!=='paid'&&!o.paidAt;
   o.status=next;o.paymentId=payment.id;o.paymentUrl=invoiceUrl(payment.invoiceUrl);o.updatedAt=new Date().toISOString();o.dueDate=payment.dueDate||o.dueDate;
   if(next==='paid'){
    if(!o.paidAt)o.paidAt=o.updatedAt;
+   if(firstApproval)o.purchaseEmail={status:'pending',createdAt:o.paidAt};
    // Licenses and entitlements commit atomically with the verified payment.
    if(!o.licenses)o.licenses=o.items.flatMap(i=>i.products).map(p=>({code:`TL-COMPRA-${randomUUID().toUpperCase()}`,orderId:o.id,memberId:o.memberId,partnerName:o.memberName,productId:p.id,productName:p.name,issuedAt:o.paidAt,terms:purchaseLicenseTerms,source:'purchase'}));
   }
@@ -132,6 +137,7 @@ export async function refreshOrder(member,orderId){
  if(o.paymentId)payment=await asaas(`/payments/${encodeURIComponent(o.paymentId)}`);
  else{const result=await asaas(`/payments?externalReference=${encodeURIComponent(o.id)}&limit=100`);if(result.data?.length>1)fail('Mais de uma cobrança encontrada. Contate o suporte.',409);payment=result.data?.[0];}
  if(payment)await applyPayment(o.id,payment);
+ await sendPurchaseEmail(o.id).catch(()=>{});
  return safeOrder(state((await readRecord(KEY))?.data).orders.find(x=>x.id===o.id));
 }
 export function assertWebhook(req){
@@ -139,13 +145,16 @@ export function assertWebhook(req){
  if(typeof expected!=='string'||expected.length<32||typeof received!=='string')fail('Webhook não autorizado.',401);
  const a=Buffer.from(expected),b=Buffer.from(received);if(a.length!==b.length||!timingSafeEqual(a,b))fail('Webhook não autorizado.',401);
 }
-export async function receiveWebhook(input){
+export async function receiveWebhook(input,{emailRequired=false}={}){
+ const notify=id=>sendPurchaseEmail(id).catch(e=>{if(emailRequired)throw e;});
  const event=z.object({id:z.string().min(1).max(300),event:z.string().max(100),payment:z.object({id:z.string().regex(/^pay_[\w-]+$/),externalReference:z.string().optional()}).passthrough()}).parse(input);
  const orders=state((await readRecord(KEY))?.data).orders,o=orders.find(o=>o.paymentId===event.payment.id||o.id===event.payment.externalReference);
  if(!o||o.environment!==asaasConfig().environment)return;
- if(o.events?.includes(event.id))return;
+ if(o.events?.includes(event.id)){await notify(o.id);return;}
  const payment=await asaas(`/payments/${encodeURIComponent(event.payment.id)}`);
  await applyPayment(o.id,payment,event.id);
+ // Only the separate email webhook retries mail failures; the payment queue stays healthy.
+ await notify(o.id);
 }
 export async function recordDownload(member,product){
  await updateRecord(KEY,old=>{const s=state(old);s.downloads[product.id]=(s.downloads[product.id]||0)+1;s.recentDownloads=[{productId:product.id,productName:product.name,memberId:member.id,memberName:member.name,at:new Date().toISOString()},...s.recentDownloads].slice(0,500);return s;});
@@ -153,7 +162,7 @@ export async function recordDownload(member,product){
 export async function salesReport(){
  const s=state((await readRecord(KEY))?.data),{data}=await getCatalog(),rows=new Map(data.products.map(p=>[p.id,{id:p.id,name:p.name,individualSales:0,collectionSales:0,revenueCents:0,downloads:s.downloads[p.id]||0}]));
  for(const o of s.orders.filter(paid))for(const item of o.items)item.products.forEach((p,i)=>{if(!rows.has(p.id))rows.set(p.id,{...p,individualSales:0,collectionSales:0,revenueCents:0,downloads:s.downloads[p.id]||0});const row=rows.get(p.id);row[item.kind==='collection'?'collectionSales':'individualSales']++;row.revenueCents+=Math.floor((item.totalCents??item.priceCents)/item.products.length)+(i<(item.totalCents??item.priceCents)%item.products.length?1:0);});
- return {paymentsReady:paymentsReady(),environment:asaasConfig().environment,totalCents:s.orders.filter(paid).reduce((n,o)=>n+o.totalCents,0),paidOrders:s.orders.filter(paid).length,products:[...rows.values()],orders:s.orders.filter(o=>o.environment===asaasConfig().environment).map(o=>({...safeOrder(o),memberName:o.memberName,memberEmail:o.memberEmail})).reverse(),recentDownloads:s.recentDownloads};
+ return {purchaseEmailReady:Boolean(purchaseEmailConfig()),paymentsReady:paymentsReady(),environment:asaasConfig().environment,totalCents:s.orders.filter(paid).reduce((n,o)=>n+o.totalCents,0),paidOrders:s.orders.filter(paid).length,products:[...rows.values()],orders:s.orders.filter(o=>o.environment===asaasConfig().environment).map(o=>({...safeOrder(o),memberName:o.memberName,memberEmail:o.memberEmail,purchaseEmailStatus:o.purchaseEmail?.status||null,purchaseEmailSentAt:o.purchaseEmail?.sentAt||null})).reverse(),recentDownloads:s.recentDownloads};
 }
 
 export async function purchaseLicenses(member){

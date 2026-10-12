@@ -15,16 +15,17 @@ import seed from '../data/catalog.json' with {type:'json'};
 
 test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
  const dir=await mkdtemp(join(tmpdir(),'tiolira-sales-'));
- const keys=['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN','LOCAL_DATA_DIR','ASAAS_ENVIRONMENT','ASAAS_API_KEY','ASAAS_WEBHOOK_TOKEN','ADMIN_SESSION_SECRET'];
+ const keys=['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN','LOCAL_DATA_DIR','ASAAS_ENVIRONMENT','ASAAS_API_KEY','ASAAS_WEBHOOK_TOKEN','ADMIN_SESSION_SECRET','RESEND_API_KEY','EMAIL_FROM','SITE_URL'];
  const env=Object.fromEntries(keys.map(k=>[k,process.env[k]])),originalFetch=globalThis.fetch;
  for(const k of keys)delete process.env[k];
- Object.assign(process.env,{LOCAL_DATA_DIR:dir,ASAAS_ENVIRONMENT:'sandbox',ASAAS_API_KEY:'test-only',ASAAS_WEBHOOK_TOKEN:'test-webhook-secret-with-at-least-32-chars',ADMIN_SESSION_SECRET:'test-session-secret-at-least-32-characters'});
+ Object.assign(process.env,{RESEND_API_KEY:'test-resend',EMAIL_FROM:'Tio Lira <test@example.invalid>',SITE_URL:'https://www.tiolira.com.br',LOCAL_DATA_DIR:dir,ASAAS_ENVIRONMENT:'sandbox',ASAAS_API_KEY:'test-only',ASAAS_WEBHOOK_TOKEN:'test-webhook-secret-with-at-least-32-chars',ADMIN_SESSION_SECRET:'test-session-secret-at-least-32-characters'});
  const a={id:randomUUID(),version:randomUUID(),name:'A',email:'a@example.invalid',cpfCnpj:'12345678901'},b={id:randomUUID(),version:randomUUID(),name:'B',email:'b@example.invalid',cpfCnpj:'12345678000199'},c={id:randomUUID(),version:randomUUID(),name:'C',email:'c@example.invalid',cpfCnpj:'12345678901'};
  const data=structuredClone(seed);data.collections.push({id:'folclore-test',name:'Folclore Brasileiro Parte 1',published:true,free:false,comingSoon:false,priceCents:4990});
  const products=['saci','curupira','boitata','cuca','mula'].map(id=>({id,name:id,slug:id,collection:'folclore-test',published:true,access:'paid',priceCents:1490,filePath:`models/${id}.zip`}));data.products.push(...products);
  let posts=0,timeout=false;const remote=new Map(),customers=new Map();
  globalThis.fetch=async(url,options={})=>{
   const u=new URL(url),payload=options.body?JSON.parse(options.body):{};
+  if(u.origin==='https://api.resend.com')return {ok:true,json:async()=>({id:'email-demo'})};
   assert.equal(u.origin,'https://api-sandbox.asaas.com');assert.equal(options.headers.access_token,'test-only');
   let result;
   if(u.pathname==='/v3/customers'&&options.method==='GET')result={data:[...customers.values()].filter(c=>c.externalReference===u.searchParams.get('externalReference'))};

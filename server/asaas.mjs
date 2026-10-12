@@ -31,3 +31,15 @@ export async function checkAsaasConnection(webhookUrl){
   tokenMatches:webhook?.authToken?actual.length===expected.length&&timingSafeEqual(actual,expected):null,
   eventsReady:['PAYMENT_CONFIRMED','PAYMENT_RECEIVED','PAYMENT_REFUNDED','PAYMENT_PARTIALLY_REFUNDED','PAYMENT_CHARGEBACK_REQUESTED'].every(event=>webhook?.events?.includes(event))};
 }
+
+export async function configurePurchaseEmailWebhook(){
+ const u=new URL(process.env.SITE_URL);if(u.protocol!=='https:'||u.username||u.password)throw Object.assign(Error('Configure o endereço HTTPS oficial do site.'),{status:503});
+ if(!process.env.RESEND_API_KEY||!process.env.EMAIL_FROM)throw Object.assign(Error('Configure o Resend antes de ativar os avisos.'),{status:503});
+ const root=u.origin,url=`${root}/api/webhooks/purchase-email`,result=await asaas('/webhooks?limit=100');
+ const primary=result.data?.find(w=>w.url===`${root}/api/webhooks/asaas`),existing=result.data?.find(w=>w.url===url);
+ if(!primary?.email)throw Object.assign(Error('Configure primeiro o webhook principal de pagamentos.'),{status:409});
+ const body={name:'Tio Lira - avisos de compra por e-mail',url,email:primary.email,enabled:true,interrupted:false,apiVersion:3,authToken:process.env.ASAAS_WEBHOOK_TOKEN,sendType:'NON_SEQUENTIALLY',events:['PAYMENT_CONFIRMED','PAYMENT_RECEIVED']};
+ const webhook=await asaas(existing?`/webhooks/${encodeURIComponent(existing.id)}`:'/webhooks',{method:existing?'PUT':'POST',body});
+ if(webhook.url!==url||!webhook.enabled||webhook.interrupted!==false)throw Object.assign(Error('Não foi possível confirmar a ativação dos avisos.'),{status:502});
+ return {ready:true};
+}
