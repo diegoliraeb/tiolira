@@ -18,7 +18,7 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
  const env=Object.fromEntries(keys.map(k=>[k,process.env[k]])),originalFetch=globalThis.fetch;
  for(const k of keys)delete process.env[k];
  Object.assign(process.env,{LOCAL_DATA_DIR:dir,ASAAS_ENVIRONMENT:'sandbox',ASAAS_API_KEY:'test-only',ASAAS_WEBHOOK_TOKEN:'test-webhook-secret-with-at-least-32-chars',ADMIN_SESSION_SECRET:'test-session-secret-at-least-32-characters'});
- const a={id:randomUUID(),version:randomUUID(),name:'A',email:'a@example.invalid'},b={id:randomUUID(),version:randomUUID(),name:'B',email:'b@example.invalid'};
+ const a={id:randomUUID(),version:randomUUID(),name:'A',email:'a@example.invalid',cpfCnpj:'12345678901'},b={id:randomUUID(),version:randomUUID(),name:'B',email:'b@example.invalid',cpfCnpj:'12345678000199'},c={id:randomUUID(),version:randomUUID(),name:'C',email:'c@example.invalid',cpfCnpj:'12345678901'};
  const data=structuredClone(seed);data.collections.push({id:'folclore-test',name:'Folclore Brasileiro Parte 1',published:true,free:false,comingSoon:false,priceCents:4990});
  const products=['saci','curupira','boitata','cuca','mula'].map(id=>({id,name:id,slug:id,collection:'folclore-test',published:true,access:'paid',priceCents:1490,filePath:`models/${id}.zip`}));data.products.push(...products);
  let posts=0,timeout=false;const remote=new Map(),customers=new Map();
@@ -27,7 +27,7 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
   assert.equal(u.origin,'https://api-sandbox.asaas.com');assert.equal(options.headers.access_token,'test-only');
   let result;
   if(u.pathname==='/v3/customers'&&options.method==='GET')result={data:[...customers.values()].filter(c=>c.externalReference===u.searchParams.get('externalReference'))};
-  else if(u.pathname==='/v3/customers'){result={...payload,id:`cus_${customers.size+1}`};customers.set(result.id,result);assert.equal(payload.notificationDisabled,true);}
+  else if(u.pathname==='/v3/customers'){result={...payload,id:`cus_${customers.size+1}`};customers.set(result.id,result);assert.equal(payload.notificationDisabled,true);assert.equal(payload.cpfCnpj,[a,b,c].find(m=>payload.externalReference===`tiolira:${m.id}`).cpfCnpj);}
   else if(u.pathname==='/v3/payments'&&options.method==='POST'){posts++;result={...payload,id:`pay_${posts}`,invoiceUrl:`https://sandbox.asaas.com/i/${posts}`,status:'PENDING'};remote.set(result.id,result);if(timeout){timeout=false;throw Error('timeout after remote commit');}}
   else if(u.pathname==='/v3/payments')result={data:[...remote.values()].filter(p=>p.externalReference===u.searchParams.get('externalReference'))};
   else if(u.pathname.endsWith('/pixQrCode'))result={encodedImage:'aGVsbG8=',payload:'000201-test-pix',expirationDate:'2030-01-01 23:59:59'};
@@ -37,9 +37,10 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
  };
  const cookie=`tiolira_club=${await makeSession(a.version,{memberId:a.id})}`;
  const call=async(route,{method='GET',body={},headers={}}={})=>{let result;await handler({method,url:'/api/'+route,body,headers:{host:'localhost',origin:'http://localhost',cookie,...headers},socket:{remoteAddress:'test'}},{setHeader(){},set statusCode(s){this.status=s},end(v){result={status:this.status,body:JSON.parse(v)}}});return result;};
- const input=(items=[{kind:'product',id:'saci'}])=>({items,requestId:randomUUID(),billingType:'PIX',cpfCnpj:'12345678901',totalCents:1});
+ const input=(items=[{kind:'product',id:'saci'}])=>({items,requestId:randomUUID(),billingType:'PIX',cpfCnpj:'99999999999',totalCents:1});
  try{
   await writeRecord('catalog.json',data,null);await writeRecord('club-members.json',{members:[a,b]},null);
+  await t.test('checkout requires the private profile document before contacting Asaas',async()=>{await assert.rejects(()=>checkout({...a,cpfCnpj:''},input()),/Meus dados/);assert.equal(customers.size,0);assert.equal(posts,0);assert.equal(await readRecord('commerce.json'),null)});
   await t.test('published singles remain purchasable while their collection is in preparation',async()=>{
    const draft=structuredClone(data);draft.collections.find(c=>c.id==='folclore-test').comingSoon=true;
    draft.products.find(p=>p.id==='curupira').priceCents=1790;
@@ -99,7 +100,6 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
   await t.test('inline boleto and card processing keep sensitive details out of storage',async()=>{
    const boleto=await checkout(b,{...input([{kind:'product',id:'curupira'}]),billingType:'BOLETO'});
    assert.ok((await paymentDetails(b,boleto.id)).boleto.identificationField.startsWith('00190'));
-   const c={id:randomUUID(),version:randomUUID(),name:'C',email:'c@example.invalid'};
    const body={...input(),billingType:'CREDIT_CARD',creditCard:{holderName:'Test Holder',number:'4444444444444444',expiryMonth:'12',expiryYear:'2099',ccv:'123'},creditCardHolderInfo:{name:'Test Holder',email:'holder@example.invalid',cpfCnpj:'12345678901',postalCode:'57000000',addressNumber:'123',phone:'82999999999'}};
    await assert.rejects(()=>checkout(c,body),/conexão/);
    const order=await checkout(c,body,{remoteIp:'203.0.113.5',secure:true});

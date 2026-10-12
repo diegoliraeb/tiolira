@@ -58,7 +58,9 @@ export async function memberOwnedIds(member){return ownedIds(state((await readRe
 export async function purchaseAccess(member,productId){return (await memberOwnedIds(member)).has(productId);}
 export async function checkout(member,input,context={}){
  if(!paymentsReady())fail('Os pagamentos ainda não estão configurados.',503);
- const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),cpfCnpj:z.string().transform(s=>s.replace(/\D/g,'')).pipe(z.string().regex(/^(\d{11}|\d{14})$/,'Informe CPF ou CNPJ.')),acceptOverlap:z.boolean().default(false),creditCard:cardSchema.optional(),creditCardHolderInfo:holderSchema.optional()}).parse(input);
+ const cpfCnpj=String(member.cpfCnpj||'').replace(/\D/g,'');
+ if(!/^(\d{11}|\d{14})$/.test(cpfCnpj))fail('Preencha o CPF ou CNPJ em Meus dados antes de comprar.');
+ const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),acceptOverlap:z.boolean().default(false),creditCard:cardSchema.optional(),creditCardHolderInfo:holderSchema.optional()}).parse(input);
  if(parsed.billingType==='CREDIT_CARD'){
   if(!parsed.creditCard||!parsed.creditCardHolderInfo)fail('Preencha os dados do cartão e do titular.');
   if(!isIP(context.remoteIp||''))fail('Não foi possível identificar a conexão do comprador.');
@@ -80,8 +82,8 @@ export async function checkout(member,input,context={}){
  let paymentAttempted=false;
  try{
   const ref=`tiolira:${member.id}`,customers=await asaas(`/customers?externalReference=${encodeURIComponent(ref)}&limit=100`);
-  let customer=customers.data?.find(c=>c.externalReference===ref&&String(c.cpfCnpj).replace(/\D/g,'')===parsed.cpfCnpj);
-  if(!customer)customer=await asaas('/customers',{method:'POST',body:{name:member.name,email:member.email,cpfCnpj:parsed.cpfCnpj,externalReference:ref,notificationDisabled:true}});
+  let customer=customers.data?.find(c=>c.externalReference===ref&&String(c.cpfCnpj).replace(/\D/g,'')===cpfCnpj);
+  if(!customer)customer=await asaas('/customers',{method:'POST',body:{name:member.name,email:member.email,cpfCnpj,externalReference:ref,notificationDisabled:true}});
   if(!customer.id)fail('Cadastro de pagamento indisponível.',502);
   const s=await updateRecord(KEY,old=>{old.orders.find(o=>o.id===orderId).customerId=customer.id;return old;});
   const order=s.orders.find(o=>o.id===orderId),dueDate=new Date(Date.now()+3*86400000).toISOString().slice(0,10);
