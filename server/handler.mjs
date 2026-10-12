@@ -1,3 +1,4 @@
+import {shop,checkout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,salesReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
 import {clubDashboard,clubProducts,issueLicense,couponSchema,requestPasswordReset,resetPassword} from './club.mjs';
@@ -20,6 +21,9 @@ export default async function handler(req,res){
   const url=new URL(req.url,'https://'+(req.headers.host||'localhost'));
   const route=String((Array.isArray(req.query?.route)?req.query.route.join('/'):req.query?.route)||url.searchParams.get('route')||url.pathname.replace(/^\/api\/?/,'')).replace(/^\/+|\/+$/g,'');
   const method=req.method;
+  if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req));return json(res,200,{received:true});}
+  if(method==='GET'&&route==='club/shop'){return json(res,200,await shop(await requireClub(req)));}
+  if(method==='GET'&&route==='admin/sales'){await requireAdmin(req);return json(res,200,await salesReport());}
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
   if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
@@ -34,10 +38,13 @@ export default async function handler(req,res){
    res.setHeader('Content-Type','image/webp');res.setHeader('Cache-Control',approved?'public, max-age=60':'private, no-store');return res.end(Buffer.from(record.data.base64,'base64'));
   }
   if(method==='GET'&&route==='media'){const path=url.searchParams.get('path');if(!/^images\/[a-zA-Z0-9._-]+\.(png|jpg|jpeg|webp)$/.test(path||''))fail('Imagem não encontrada.',404);const blob=await get(path,{access:'private'});if(!blob)fail('Imagem não encontrada.',404);res.setHeader('Content-Type',blob.blob.contentType);res.setHeader('Cache-Control','public, max-age=86400');return Readable.fromWeb(blob.stream).pipe(res);}
-  if(method==='GET'&&route==='download'){await requireClub(req);const {data}=await getCatalog();const p=data.products.find(p=>p.id===url.searchParams.get('id')&&p.published);if(!p||p.access!=='site'||p.exclusive||!p.filePath)fail('Arquivo não disponível para download direto.',404);const blob=await get(p.filePath,{access:'private',useCache:false});if(!blob)fail('Arquivo ainda não enviado.',404);res.setHeader('Content-Type','application/octet-stream');res.setHeader('Content-Disposition',`attachment; filename="${p.slug}.${p.filePath.split('.').pop()}"`);return Readable.fromWeb(blob.stream).pipe(res);}
+  if(method==='GET'&&route==='download'){const member=await requireClub(req);const {data}=await getCatalog();const p=data.products.find(p=>p.id===url.searchParams.get('id')&&p.published);if(!p||!['site','paid'].includes(p.access)||p.exclusive||!p.filePath||!data.collections.some(c=>c.id===p.collection&&c.published))fail('Arquivo não disponível para download direto.',404);if(isPaidProduct(p)&&!await purchaseAccess(member,p.id))fail('Compre esta peça para liberar o download.',403);const blob=await get(p.filePath,{access:'private',useCache:false});if(!blob)fail('Arquivo ainda não enviado.',404);await recordDownload(member,p);res.setHeader('Content-Type','application/octet-stream');res.setHeader('Content-Disposition',`attachment; filename="${p.slug}.${p.filePath.split('.').pop()}"`);return Readable.fromWeb(blob.stream).pipe(res);}
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req);
+  if(method==='POST'&&route==='club/checkout'){const member=await requireClub(req);await rateLimit(req,'checkout',10,60_000);return json(res,201,{order:await checkout(member,input,paymentContext(req))});}
+  if(method==='POST'&&route==='club/orders/payment'){const member=await requireClub(req);await rateLimit(req,'payment-details',20,60_000);return json(res,200,await paymentDetails(member,input.id));}
+  if(method==='POST'&&route==='club/orders/refresh'){const member=await requireClub(req);await rateLimit(req,'payment-refresh',20,60_000);return json(res,200,{order:await refreshOrder(member,input.id)});}
   if(method==='POST'&&route==='products/click'){
    if(!configured())return json(res,200,{ok:true});
    if(typeof input.id!=='string'||!/^[a-z0-9][a-z0-9-]{0,99}$/.test(input.id))fail('Obra inválida.');
@@ -55,8 +62,10 @@ export default async function handler(req,res){
   }
   if(method==='POST'&&route==='club/licenses'){
    const member=await requireClub(req);
-   const product=clubProducts((await getCatalog()).data).find(p=>p.id===input.productId&&p.canLicense);
+   const owned=await purchaseAccess(member,input.productId)?new Set([input.productId]):new Set();
+   const product=clubProducts((await getCatalog()).data,owned).find(p=>p.id===input.productId&&p.canLicense);
    if(!product)fail('Licença de venda não disponível para esta peça.',403);
+   if(isPaidProduct(product)){const license=(await purchaseLicenses(member)).find(l=>l.productId===product.id&&l.status==='active');if(!license)fail('Licença aguardando confirmação do pagamento.',409);return json(res,200,{license});}
    return json(res,200,{license:await issueLicense(member,product)});
   }
   if(method==='PUT'&&route==='club/profile'){

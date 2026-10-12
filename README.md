@@ -124,6 +124,12 @@ A opção **Coleção gratuita — licença de venda automática para parceiros*
 
 Os e-mails de recuperação são enviados em HTML e texto, com logo PNG, cabeçalho e rodapé Tio Lira, botão e link alternativo. Os links continuam expirando após 30 minutos, com uso único.
 
+## Compras e integração Asaas
+
+A área do parceiro oferece **Loja e carrinho**, pedidos e arquivos comprados. Peças pagas usam arquivos privados, liberados após confirmação de pagamento; a licença para vender os impressos é emitida automaticamente por peça após a compra confirmada. O administrador acompanha vendas avulsas, peças incluídas em coleções e downloads iniciados. A integração usa cobranças Asaas com Pix, boleto ou cartão diretamente no site, com confirmação por webhook.
+
+Veja [configuração, cadastro da coleção e validação em sandbox](docs/asaas-compras.md). A integração só deve ser ativada após configurar as variáveis privadas e o webhook e concluir os testes reais de homologação.
+
 ## Mapa da Rede de Lojas
 
 No bloco `#lojas`, os filtros permanecem à esquerda e o mapa do Brasil à direita. As 27 UFs exibem contagens das lojas do catálogo público (aprovadas e com consentimento), agrupadas pelo endereço, em quatro faixas de cor. Ao abrir ou limpar filtros, nenhuma lista geral é exibida: é preciso escolher estado, região ou um país estrangeiro. Clicar no mapa sincroniza o estado e limpa região/cidade anteriores. Região, estado, cidade e peça/coleção se combinam; as contagens do mapa acompanham a peça/coleção. Estados sem lojas continuam selecionáveis e mostram o estado vazio. Ao clicar no estado ou aplicar filtros de localização, o mapa dá lugar a uma lista compacta. Cada parceiro pode ser expandido para ver descrição, entrega, orçamento e Instagram. O botão “Voltar para o mapa” preserva os filtros. A cada seleção ou busca, a ordem é sorteada com Fisher–Yates; abrir e fechar detalhes mantém essa ordem. Somente um parceiro fica expandido por vez.
