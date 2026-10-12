@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {PDFDocument} from 'pdf-lib';
 import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -36,7 +37,7 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
   assert.ok(result);return {ok:true,status:200,json:async()=>structuredClone(result)};
  };
  const cookie=`tiolira_club=${await makeSession(a.version,{memberId:a.id})}`;
- const call=async(route,{method='GET',body={},headers={}}={})=>{let result;await handler({method,url:'/api/'+route,body,headers:{host:'localhost',origin:'http://localhost',cookie,...headers},socket:{remoteAddress:'test'}},{setHeader(){},set statusCode(s){this.status=s},end(v){result={status:this.status,body:JSON.parse(v)}}});return result;};
+ const call=async(route,{method='GET',body={},headers={}}={})=>{let result;await handler({method,url:'/api/'+route,body,headers:{host:'localhost',origin:'http://localhost',cookie,...headers},socket:{remoteAddress:'test'}},{setHeader(){},set statusCode(s){this.status=s},end(v){result={status:this.status||200,body:Buffer.isBuffer(v)?v:JSON.parse(v)}}});return result;};
  const input=(items=[{kind:'product',id:'saci'}])=>({items,requestId:randomUUID(),billingType:'PIX',cpfCnpj:'99999999999',totalCents:1});
  try{
   await writeRecord('catalog.json',data,null);await writeRecord('club-members.json',{members:[a,b]},null);
@@ -78,6 +79,12 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
    await assert.rejects(()=>applyPayment(first.id,{...remotePayment,customer:'cus_other'}),/corresponde/);
    await assert.rejects(()=>refreshOrder(b,first.id),/não encontrado/);
    assert.ok(!(JSON.stringify(await shop(a)).includes('customerId')));
+   const paidOrder=(await shop(a)).orders.find(o=>o.id===first.id),download=paidOrder.licenses[0].downloadUrl.replace('/api/','');
+   const pdf=await call(download);assert.equal(pdf.status,200);assert.equal(pdf.body.subarray(0,5).toString(),'%PDF-');assert.equal((await PDFDocument.load(pdf.body)).getPageCount(),1);
+   assert.equal((await call(download,{headers:{cookie:''}})).status,401);
+   const otherCookie=`tiolira_club=${await makeSession(b.version,{memberId:b.id})}`;
+   assert.equal((await call(download,{headers:{cookie:otherCookie}})).status,404);
+   assert.equal((await call('club/licenses/download?code=unknown')).status,404);
   });
   await t.test('bundle overlap requires acknowledgement; bundle records all five pieces and integer revenue',async()=>{
    const body=input([{kind:'collection',id:'folclore-test'},{kind:'product',id:'saci'}]);await assert.rejects(()=>checkout(a,body),/sem abatimento/);
@@ -93,8 +100,11 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
   });
   await t.test('refund revokes bundle; delayed events cannot restore it; sandbox cannot unlock production',async()=>{
    const p=remote.get('pay_2');p.refunds=[{status:'DONE',value:10}];p.value=39.90;await receiveWebhook({id:'evt-refund',event:'PAYMENT_PARTIALLY_REFUNDED',payment:{id:p.id}});assert.equal(await purchaseAccess(a,'cuca'),false);assert.equal(await purchaseAccess(a,'saci'),true);assert.equal((await purchaseLicenses(a)).filter(l=>l.status==='suspended').length,5);
+   const suspended=(await purchaseLicenses(a)).find(l=>l.status==='suspended');
+   assert.equal((await call(`club/licenses/download?code=${suspended.code}`)).status,404);
+   assert.equal((await shop(a)).orders.find(o=>o.id===suspended.orderId).licenses.length,0);
    p.status='CONFIRMED';p.value=49.90;p.refunds=[];await receiveWebhook({id:'evt-delayed-paid',event:'PAYMENT_CONFIRMED',payment:{id:p.id}});assert.equal(await purchaseAccess(a,'cuca'),false);
-   process.env.ASAAS_ENVIRONMENT='production';assert.equal(await purchaseAccess(a,'saci'),false);process.env.ASAAS_ENVIRONMENT='sandbox';
+   process.env.ASAAS_ENVIRONMENT='production';assert.equal(await purchaseAccess(a,'saci'),false);assert.equal((await call(`club/licenses/download?code=${(await readRecord('commerce.json')).data.orders[0].licenses[0].code}`)).status,404);process.env.ASAAS_ENVIRONMENT='sandbox';
   });
 
   await t.test('inline boleto and card processing keep sensitive details out of storage',async()=>{

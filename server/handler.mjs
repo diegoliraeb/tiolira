@@ -1,5 +1,6 @@
+import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
-import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,salesReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
+import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,downloadablePurchaseLicense,salesReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
 import {checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
@@ -24,6 +25,13 @@ export default async function handler(req,res){
   const route=String((Array.isArray(req.query?.route)?req.query.route.join('/'):req.query?.route)||url.searchParams.get('route')||url.pathname.replace(/^\/api\/?/,'')).replace(/^\/+|\/+$/g,'');
   const method=req.method;
   if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req));return json(res,200,{received:true});}
+  if(method==='GET'&&route==='club/licenses/download'){
+   const member=await requireClub(req),license=await downloadablePurchaseLicense(member,url.searchParams.get('code'));
+   const pdf=await purchaseLicensePdf(license);
+   res.setHeader('Content-Type','application/pdf');
+   res.setHeader('Content-Disposition',`attachment; filename="licenca-${license.productId}.pdf"`);
+   return res.end(Buffer.from(pdf));
+  }
   if(method==='GET'&&route==='club/shop'){return json(res,200,await shop(await requireClub(req)));}
   if(method==='GET'&&route==='admin/sales'){await requireAdmin(req);return json(res,200,await salesReport());}
   if(method==='GET'&&route==='admin/asaas-status'){await requireAdmin(req);await rateLimit(req,'asaas-status',6,60_000);return json(res,200,await checkAsaasConnection(new URL('/api/webhooks/asaas',url.origin).href));}
