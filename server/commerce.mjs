@@ -48,7 +48,7 @@ export function quoteCart(data,input,owned=new Set()){
  if(!Number.isSafeInteger(totalCents)||totalCents<=0||totalCents>10_000_000)fail('Valor de compra inválido.');
  return {items,totalCents,productIds:[...included].sort(),overlap:[...included].filter(x=>owned.has(x))};
 }
-function safeOrder(o){return {id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null};}
+function safeOrder(o){return {id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null,licenses:paid(o)?(o.licenses||[]).map(l=>({code:l.code,productId:l.productId,downloadUrl:`/api/club/licenses/download?code=${encodeURIComponent(l.code)}`})):[]};}
 export async function shop(member){
  const [{data},record]=await Promise.all([getCatalog(),readRecord(KEY)]),orders=state(record?.data).orders,owned=ownedIds(orders,member.id);
  const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&p.filePath).map(p=>({id:p.id,name:p.name,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
@@ -174,4 +174,10 @@ export async function paymentDetails(member,orderId){
   return {order,boleto:{identificationField:String(boleto.identificationField||'').slice(0,200)}};
  }
  return {order};
+}
+
+export async function downloadablePurchaseLicense(member,code){
+ const license=(await purchaseLicenses(member)).find(l=>l.code===code&&l.status==='active');
+ if(!license)fail('Licença não disponível. Confira a confirmação do pagamento em Meus pedidos.',404);
+ return license;
 }
