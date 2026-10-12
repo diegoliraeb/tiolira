@@ -21,6 +21,7 @@ export default function PartnerProfile({lang,t,member,onSave}){
  <form className="form-grid partner-profile-form" onSubmit={save} aria-busy={saving}>
  <label>{t.name}<input required maxLength={200} value={profile.name||''} onChange={e=>change('name',e.target.value)}/></label>
  <label>{t.email}<input type="email" value={profile.email} readOnly/><small>{t.partnerEmailHelp}</small></label>
+ <label className="full partner-billing-field">CPF ou CNPJ para compras<input id="partner-billing-document" name="cpfCnpj" inputMode="numeric" autoComplete="off" maxLength={18} pattern="[0-9]{11}|[0-9]{14}" placeholder="CPF ou CNPJ do comprador" value={profile.cpfCnpj||''} onChange={e=>change('cpfCnpj',e.target.value.replace(/\D/g,''))}/><small>Dado privado, usado para processar seus pagamentos. Não aparece na rede de lojas. Necessário apenas para comprar.</small></label>
  <LogoUpload lang={lang} value={logo??profile.logo??''} onChange={setLogo} onBusyChange={setLogoBusy} disabled={saving}/>
  <LocationFields lang={lang} value={profile} required onChange={value=>setProfile(p=>({...p,...value,...(value.countryCode!==p.countryCode&&p.serviceArea?{serviceArea:{scope:'country',countryCode:value.countryCode,stateId:'',cities:[]}}:{})}))}/>
  <label>{t.whatsapp}<input required inputMode="tel" maxLength={15} pattern="[0-9]{10,15}" value={profile.whatsapp||''} onChange={e=>change('whatsapp',e.target.value.replace(/\D/g,''))}/></label>

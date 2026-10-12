@@ -13,9 +13,10 @@ const listing=(member,data)=>data.stores.find(s=>(member.storeId&&s.id===member.
 export function partnerProfile(member,data){
  const store=listing(member,data);
  const profile={...pick(member),...pick(store||{}),...(member.profilePending||{}),id:member.id,email:member.email,createdAt:member.createdAt,logo:member.profilePending?.logo??store?.logo??member.directoryProfile?.logo??''};
- return {...profile,instagram:partnerInstagram(profile)};
+ return {...profile,instagram:partnerInstagram(profile),cpfCnpj:member.cpfCnpj||''};
 }
 const profileSchema=applicationSchema.omit({email:true,consent:true,productIds:true,honeypot:true,password:true,directoryConsent:true}).extend({
+ cpfCnpj:z.string().max(18).transform(value=>value.replace(/[.\/\-\s]/g,'')).pipe(z.string().regex(/^(|\d{11}|\d{14})$/,'Informe um CPF com 11 dígitos ou CNPJ com 14 dígitos.')).optional(),
  removeLogo:z.boolean().default(false),
  countryCode:z.string().regex(/^[A-Z]{2}$/),stateId:z.string().min(1).max(30),cityId:z.string().min(1).max(30)
 });
@@ -44,6 +45,8 @@ export async function updatePartnerProfile(member,input){
   const current=old?.members.find(m=>m.id===member.id&&m.version===member.version);
   if(!current)throw Object.assign(new Error('Entre novamente na sua conta.'),{status:401});
   Object.assign(current,profile,{profilePending:profile});
+  // Billing identity belongs only to the private member record, never the public listing.
+  if(parsed.cpfCnpj!==undefined)current.cpfCnpj=parsed.cpfCnpj;
   if(Object.hasOwn(profile,'logo'))current.directoryProfile={...current.directoryProfile,logo:profile.logo};
   return old;
  });
