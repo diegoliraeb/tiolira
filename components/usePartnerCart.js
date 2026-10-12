@@ -18,7 +18,9 @@ export default function usePartnerCart(memberId){
  useEffect(()=>{
   setReady(false);setData(null);setError('');let saved;
   try{saved=JSON.parse(sessionStorage.getItem(key));}catch{}
-  setShopView(['catalog','cart','orders','files'].includes(saved?.shopView)?saved.shopView:'catalog');setActiveOrderId(typeof saved?.activeOrderId==='string'?saved.activeOrderId:null);
+  const requestedOrder=new URLSearchParams(window.location.search).get('pedido');
+  const orderFromEmail=/^[a-f0-9-]{36}$/.test(requestedOrder||'')?requestedOrder:null;
+  setShopView(orderFromEmail?'cart':['catalog','cart','orders','files'].includes(saved?.shopView)?saved.shopView:'catalog');setActiveOrderId(orderFromEmail||(typeof saved?.activeOrderId==='string'?saved.activeOrderId:null));
   setCart(Array.isArray(saved?.cart)?saved.cart:[]);setCouponCode(typeof saved?.couponCode==='string'?saved.couponCode:'');setCouponResult(null);setRequestId(saved?.requestId||crypto.randomUUID());setReady(true);
   load().catch(e=>setError(e.message));
  },[key,load]);
