@@ -1,3 +1,4 @@
+import {downloadPartners,addPartnerDownload} from './download-history.mjs';
 import {sendPurchaseEmail,purchaseEmailConfig} from './purchase-email.mjs';
 import {cartCoupons,couponCodeSchema,discountQuote} from './cart-coupons.mjs';
 import {createHash,randomUUID,timingSafeEqual} from 'node:crypto';
@@ -157,7 +158,26 @@ export async function receiveWebhook(input,{emailRequired=false}={}){
  await notify(o.id);
 }
 export async function recordDownload(member,product){
- await updateRecord(KEY,old=>{const s=state(old);s.downloads[product.id]=(s.downloads[product.id]||0)+1;s.recentDownloads=[{productId:product.id,productName:product.name,memberId:member.id,memberName:member.name,at:new Date().toISOString()},...s.recentDownloads].slice(0,500);return s;});
+ const event={productId:product.id,productName:product.name,memberId:member.id,memberName:member.name,at:new Date().toISOString()};
+ await updateRecord(KEY,old=>{
+  const s=state(old);s.downloadPartners=downloadPartners(s);
+  addPartnerDownload(s.downloadPartners,event);
+  s.downloads[product.id]=(s.downloads[product.id]||0)+1;
+  s.recentDownloads=[event,...s.recentDownloads].slice(0,500);return s;
+ });
+}
+export async function downloadPartnersReport(productId){
+ id.parse(productId);
+ const [record,catalog,membersRecord]=await Promise.all([readRecord(KEY),getCatalog(),readRecord('club-members.json')]);
+ const s=state(record?.data),product=catalog.data.products.find(p=>p.id===productId);
+ if(!product&&!Object.hasOwn(s.downloads,productId))fail('Obra não encontrada.',404);
+ const members=new Map((membersRecord?.data?.members||[]).map(member=>[member.id,member]));
+ const partners=downloadPartners(s).filter(p=>p.productId===productId).map(p=>{
+  const member=members.get(p.memberId);
+  return {memberId:p.memberId,memberName:member?.name||p.memberName||'Parceiro sem nome',memberEmail:member?.email||'',downloads:p.downloads,firstAt:p.firstAt,lastAt:p.lastAt};
+ }).sort((a,b)=>b.lastAt.localeCompare(a.lastAt)||a.memberName.localeCompare(b.memberName,'pt-BR'));
+ const totalDownloads=s.downloads[productId]||0,identifiedDownloads=partners.reduce((total,p)=>total+p.downloads,0);
+ return {productId,totalDownloads,identifiedDownloads,unattributedDownloads:Math.max(0,totalDownloads-identifiedDownloads),partners};
 }
 export async function salesReport(){
  const s=state((await readRecord(KEY))?.data),{data}=await getCatalog(),rows=new Map(data.products.map(p=>[p.id,{id:p.id,name:p.name,individualSales:0,collectionSales:0,revenueCents:0,downloads:s.downloads[p.id]||0}]));

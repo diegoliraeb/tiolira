@@ -147,3 +147,9 @@ A notificação é registrada junto com a aprovação e as licenças. O conteúd
 Em **Obras → Editar → Fotos da galeria**, a primeira imagem é a capa. **Usar como capa** move a foto escolhida para o início, preservando as demais. Remover a capa promove a próxima imagem; remover a última deixa a obra sem imagem. O envio da primeira foto define a capa automaticamente. São permitidas 21 fotos no total (a antiga capa mais as 20 fotos já aceitas), com até 10 MB por envio.
 
 Na primeira leitura do catálogo após a publicação, as capas antigas são incluídas no início das galerias, sem duplicação ou exclusão de fotos. A atualização é persistida com comparação de revisão e repetida em caso de edição concorrente; leituras seguintes não alteram a revisão. O catálogo inicial e rascunhos locais recebem a mesma normalização. As vitrines continuam usando `image`, sincronizado com `gallery[0]`.
+
+### Parceiros por download
+
+Em **Vendas e downloads → Por peça**, clique na quantidade de downloads para ver os parceiros, e-mail, número de downloads por parceiro e data do último download. Os dados são restritos à administração autenticada em `GET /api/admin/downloads?productId=…`. Contam entregas iniciadas de arquivos próprios, sem presumir conclusão nem incluir cliques externos do MakerWorld.
+
+`commerce.json` mantém os totais por obra e parceiro em `downloadPartners`, gravados atomicamente com o contador e a lista dos 500 eventos recentes. Registros antigos são agrupados a partir do histórico ainda disponível; no próximo download, essa base é persistida junto do novo evento. Downloads anteriores ao histórico preservado continuam no total e aparecem como sem identificação disponível. Não são atribuídos por inferência a compradores.

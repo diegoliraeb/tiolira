@@ -1,6 +1,6 @@
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
-import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,downloadablePurchaseLicense,salesReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
+import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,downloadablePurchaseLicense,salesReport,downloadPartnersReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
 import {configurePurchaseEmailWebhook,checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
@@ -34,6 +34,7 @@ export default async function handler(req,res){
    return res.end(Buffer.from(pdf));
   }
   if(method==='GET'&&route==='club/shop'){return json(res,200,await shop(await requireClub(req)));}
+  if(method==='GET'&&route==='admin/downloads'){await requireAdmin(req);return json(res,200,await downloadPartnersReport(url.searchParams.get('productId')));}
   if(method==='GET'&&route==='admin/sales'){await requireAdmin(req);return json(res,200,await salesReport());}
   if(method==='GET'&&route==='admin/asaas-status'){await requireAdmin(req);await rateLimit(req,'asaas-status',6,60_000);return json(res,200,await checkAsaasConnection(new URL('/api/webhooks/asaas',url.origin).href));}
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
