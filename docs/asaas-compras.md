@@ -1,6 +1,6 @@
 # Carrinho da área do parceiro
 
-O parceiro entra em `/pt/clube#compras`, adiciona peças ou a coleção e conclui o pagamento dentro do site pela API Asaas. O Pix exibe QR Code e Copia e Cola; o boleto exibe a linha digitável; o cartão é processado pelo formulário do próprio site. Pix, boleto e cartão usam cobranças avulsas; não existe recorrência nem armazenamento de números de cartão no site. Os preços são calculados pelo servidor, em centavos. Quando a coleção está no carrinho, suas peças avulsas são removidas do total. Os preços de cada peça e coleção podem ser alterados pelo administrador; pedidos já criados conservam seus valores.
+O parceiro entra em `/pt/clube#compras`, adiciona peças ou a coleção e conclui o pagamento dentro do site pela API Asaas. O Pix exibe QR Code e Copia e Cola; o boleto exibe a linha digitável; o cartão é preenchido no checkout hospedado do Asaas. Pix, boleto e cartão usam cobranças avulsas; não existe recorrência nem armazenamento de números de cartão no site. Os preços são calculados pelo servidor, em centavos. Quando a coleção está no carrinho, suas peças avulsas são removidas do total. Os preços de cada peça e coleção podem ser alterados pelo administrador; pedidos já criados conservam seus valores.
 
 ## Preparar o Folclore Brasileiro Parte 1
 
@@ -44,13 +44,17 @@ A conta Asaas também precisa estar habilitada para receber pelas três formas. 
 
 Sem chave e webhook, a loja informa que pagamentos estão em preparação e bloqueia a compra. A URL de retorno ou o clique em “Consultar pagamento” não são prova de pagamento: a aplicação consulta o Asaas e confere cliente, referência, ID e valor. Pedidos pagos no Sandbox não autorizam downloads em produção.
 
-## Checkout dentro do site e licença automática
+## Checkout hospedado e licença automática
 
-O cartão é encaminhado pelo servidor à API apenas em memória. Número, CVV, dados do titular e tokens devolvidos pelo Asaas não são gravados em banco, sessão, URLs ou logs da aplicação. Não habilite captura de corpos de requisição em ferramentas de logs ou gravação de sessão nesta página. A captura direta exige HTTPS em produção e cumprimento dos requisitos aplicáveis ao processamento de cartão; valide a habilitação da conta com o Asaas. O timeout da API de cartão é de 65 segundos e a função tem limite de 90 segundos. O IP vem da conexão/proxy confiável, nunca do corpo enviado pelo navegador. Esta versão processa crédito à vista, sem cartão salvo ou recorrência.
+Ao escolher cartão, a loja cria a cobrança sem dados do cartão e abre a `invoiceUrl` do Asaas. Número, CVV e dados do titular são preenchidos diretamente no provedor. Esta versão usa crédito à vista, sem cartão salvo ou recorrência.
+
+Com `SITE_URL` HTTPS configurada, novas cobranças de cartão incluem `callback.successUrl` e `autoRedirect: true`. O domínio precisa estar salvo em **Configurações da conta → Informações** no Asaas. `ASAAS_PAYMENT_REDIRECT_ENABLED=false` permite desligar esse recurso. O destino é `/{idioma}/clube?pedido={id}&retorno=asaas#compras`, preservado mesmo quando o cliente precisa entrar novamente na conta. A URL identifica o pedido, mas nunca comprova pagamento.
+
+Ao retornar, a interface consulta a cobrança e atualiza os arquivos disponíveis. Repete a consulta até seis vezes com intervalo de três segundos para acomodar a confirmação atrasada. Depois mantém o acompanhamento do webhook e oferece consulta manual. Se o pagamento ainda estiver em análise, orienta aguardar sem pagar novamente.
 
 A confirmação verificada (`CONFIRMED` ou `RECEIVED`) gera, na mesma transação do pedido, uma licença de venda de impressos por peça. A coleção de cinco gera cinco licenças. Elas aparecem em **Minhas licenças**, sem ação manual de emissão; os códigos permanecem estáveis nos reenvios de webhook. Estorno ou cancelamento suspendem as licenças do pedido. Licenças gratuitas existentes seguem seu fluxo original.
 
-A interface acompanha o webhook consultando o estado local do pedido a cada 12 segundos enquanto a aba está visível. **Atualizar pagamento** faz conciliação pela API. Nenhuma navegação para fora é necessária; o boleto é pago com a linha digitável no banco do comprador.
+A interface acompanha o webhook consultando o estado local do pedido a cada 12 segundos enquanto a aba está visível. **Atualizar pagamento** faz conciliação pela API. O cartão retorna do Asaas para a tela de downloads; o boleto é pago com a linha digitável no banco do comprador.
 
 ## Operação e relatório
 
@@ -68,7 +72,8 @@ O armazenamento único atende o volume inicial da loja. Para alto volume, migrar
 
 ## Referências verificadas
 
-- [Cartão direto pela API](https://docs.asaas.com/reference/criar-cobranca-com-cartao-de-credito)
+- [Retorno após pagamento](https://docs.asaas.com/docs/redirecionamento-apos-o-pagamento)
+- [Cartão pela API](https://docs.asaas.com/reference/criar-cobranca-com-cartao-de-credito)
 - [QR Code Pix](https://docs.asaas.com/reference/obter-qr-code-para-pagamentos-via-pix)
 - [Linha digitável do boleto](https://docs.asaas.com/reference/obter-linha-digitavel-do-boleto)
 - [Criar cobrança](https://docs.asaas.com/reference/criar-nova-cobranca)

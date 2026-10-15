@@ -69,9 +69,9 @@ export async function checkout(member,input){
   const fingerprint=createHash('sha256').update(JSON.stringify(quote.coupon?{items:quote.items,coupon:quote.coupon}:quote.items)).digest('hex');
   const pending=s.orders.find(o=>o.memberId===member.id&&o.environment===environment&&o.fingerprint===fingerprint&&['creating','pending','overdue','review'].includes(o.status));
   if(pending){chosenId=pending.id;return s;}
-  chosenId=orderId;s.orders.push({id:orderId,requestId:parsed.requestId,memberId:member.id,memberName:member.name,memberEmail:member.email,createdAt:new Date().toISOString(),status:'creating',environment,billingType:parsed.billingType,fingerprint,...quote});return s;
+  chosenId=orderId;s.orders.push({id:orderId,requestId:parsed.requestId,memberId:member.id,memberName:member.name,memberEmail:member.email,createdAt:new Date().toISOString(),status:'creating',environment,billingType:parsed.billingType,lang:parsed.lang,paymentReturnUrl:parsed.billingType==='CREDIT_CARD'?paymentReturnUrl(orderId,parsed.lang):'',fingerprint,...quote});return s;
  });
- if(chosenId!==orderId)return safeOrder(state((await readRecord(KEY))?.data).orders.find(o=>o.id===chosenId));
+ if(chosenId!==orderId){const existing=state((await readRecord(KEY))?.data).orders.find(o=>o.id===chosenId);return existing.billingType==='CREDIT_CARD'&&['pending','overdue'].includes(existing.status)?(await paymentDetails(member,chosenId)).order:safeOrder(existing);}
  let paymentAttempted=false;
  try{
   const ref=`tiolira:${member.id}`,customers=await asaas(`/customers?externalReference=${encodeURIComponent(ref)}&limit=100`);
@@ -82,7 +82,7 @@ export async function checkout(member,input){
   const order=s.orders.find(o=>o.id===orderId),dueDate=new Date(Date.now()+3*86400000).toISOString().slice(0,10);
   // Persist the intent before the single POST. Ambiguous results are reconciled by reference, never blindly retried.
   paymentAttempted=true;
-  const returnUrl=parsed.billingType==='CREDIT_CARD'?paymentReturnUrl(orderId,parsed.lang):'';
+  const returnUrl=order.paymentReturnUrl;
   const payment=await asaas('/payments',{method:'POST',body:{customer:customer.id,billingType:parsed.billingType,value:order.totalCents/100,dueDate,externalReference:orderId,description:`Tio Lira — ${order.items.map(i=>i.name).join(', ')}`.slice(0,500),...(returnUrl?{callback:{successUrl:returnUrl,autoRedirect:true}}:{})}});
   await applyPayment(orderId,payment);
  }catch(e){
@@ -180,6 +180,16 @@ export async function paymentDetails(member,orderId){
  if(!['pending','overdue'].includes(order.status))return {order};
  const o=state((await readRecord(KEY))?.data).orders.find(o=>o.id===order.id);
  if(!o.paymentId)return {order};
+ if(o.billingType==='CREDIT_CARD'){
+  const returnUrl=paymentReturnUrl(o.id,o.lang||'pt');
+  if(returnUrl&&o.paymentReturnUrl!==returnUrl){
+   // Upgrade only this existing invoice's navigation; never create or re-charge it.
+   const payment=await asaas(`/payments/${encodeURIComponent(o.paymentId)}`,{method:'PUT',body:{callback:{successUrl:returnUrl,autoRedirect:true}}});
+   await applyPayment(o.id,payment);
+   const updated=await updateRecord(KEY,old=>{old.orders.find(item=>item.id===o.id).paymentReturnUrl=returnUrl;return old;});
+   return {order:safeOrder(updated.orders.find(item=>item.id===o.id))};
+  }
+ }
  if(o.billingType==='PIX'){
   const pix=await asaas(`/payments/${encodeURIComponent(o.paymentId)}/pixQrCode`);
   return {order,pix:{encodedImage:typeof pix.encodedImage==='string'&&/^[A-Za-z0-9+/=]+$/.test(pix.encodedImage)&&pix.encodedImage.length<1000000?pix.encodedImage:'',payload:String(pix.payload||'').slice(0,10000),expirationDate:pix.expirationDate}};

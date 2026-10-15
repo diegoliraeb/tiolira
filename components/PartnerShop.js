@@ -4,13 +4,14 @@ import PurchaseDownloads from './PurchaseDownloads';
 import ShopPayment from './ShopPayment';
 import AsaasPaymentNotice,{PaymentLock} from './AsaasPaymentNotice';
 import {cartSelection} from '../lib/cart-lines.mjs';
+import {awaitsPayment,reconcilePayment} from '../lib/payment-return.mjs';
 import {cardPaymentUrl} from '../lib/asaas-payment.mjs';
 
 export const money=cents=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((cents||0)/100);
 export const statuses={creating:'Conferindo cobrança',pending:'Aguardando pagamento',overdue:'Vencido',paid:'Pagamento confirmado',revoked:'Acesso suspenso por estorno',cancelled:'Cancelado',failed:'Não concluído',review:'Em análise'};
 async function api(path,body){const r=await fetch('/api/'+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'}),data=await r.json();if(!r.ok)throw Error(data.error||'Não foi possível concluir.');return data;}
 export default function PartnerShop({lang='pt',cartState,member,onEditProfile,onRefresh,requestedProductId,onProductConsumed}){
- const {shopView,setShopView,activeOrderId,setActiveOrderId,couponCode,setCouponCode,couponQuote,couponError,couponBusy,data,setData,cart,setCart,requestId,setRequestId,load,error}=cartState;
+ const {returnedOrderId,shopView,setShopView,activeOrderId,setActiveOrderId,couponCode,setCouponCode,couponQuote,couponError,couponBusy,data,setData,cart,setCart,requestId,setRequestId,load,error}=cartState;
  const viewHeading=useRef(null);
  const [paymentLoading,setPaymentLoading]=useState(false),[paymentError,setPaymentError]=useState(''),[orderFilter,setOrderFilter]=useState('all');
  const [couponDraft,setCouponDraft]=useState(couponCode);
@@ -29,12 +30,23 @@ export default function PartnerShop({lang='pt',cartState,member,onEditProfile,on
  function switchView(view){setShopView(view);setMessage('');requestAnimationFrame(()=>{viewHeading.current?.focus({preventScroll:true});viewHeading.current?.scrollIntoView({block:'start',behavior:'smooth'});});}
  function browse(){setActiveOrderId(null);setPayment(null);switchView('catalog');}
  function openOrder(order){setActiveOrderId(order.id);setPayment({order});setPaymentError('');switchView('cart');}
+ const pendingOrder=awaitsPayment(activeOrder?.status),returningFromAsaas=Boolean(activeOrder&&returnedOrderId===activeOrder.id);
  useEffect(()=>{
-  if(shopView!=='cart'||!activeOrder||!['pending','overdue'].includes(activeOrder.status)){setPaymentLoading(false);return;}
-  let stale=false;setPaymentLoading(true);setPaymentError('');
-  api('club/orders/payment',{id:activeOrder.id}).then(result=>{if(!stale){setPayment(result);setData(old=>({...old,orders:old.orders.map(o=>o.id===result.order.id?result.order:o)}));}}).catch(e=>{if(!stale)setPaymentError(e.message)}).finally(()=>{if(!stale)setPaymentLoading(false)});
-  return()=>{stale=true};
- },[activeOrder?.id,activeOrder?.status,shopView]);
+  if(shopView!=='cart'||!activeOrder||!pendingOrder){setPaymentLoading(false);return;}
+  setPaymentLoading(true);setPaymentError('');
+  return reconcilePayment({
+   read:async()=>{const result=await api('club/orders/payment',{id:activeOrder.id});if(result.order.status==='paid')result.shop=await api('club/shop');return result;},
+   onPayment:async result=>{
+    setPaymentError('');setPayment(result);setData(old=>result.shop||({...old,orders:old.orders.map(o=>o.id===result.order.id?result.order:o)}));
+    if(result.order.status==='paid'){
+     setMessage('Pagamento confirmado! Seus arquivos e licenças estão liberados abaixo.');
+     await Promise.allSettled([onRefresh?.()]);
+    }
+   },
+   onError:e=>setPaymentError(e.message),onDone:()=>setPaymentLoading(false),
+   maxAttempts:returningFromAsaas?6:1
+  });
+ },[activeOrder?.id,pendingOrder,shopView,returningFromAsaas]);
  // Poll our own order state while the webhook confirms payment, without repeated Asaas calls.
  useEffect(()=>{
   if(!activeOrder||!['creating','pending','review','overdue'].includes(activeOrder.status))return;
@@ -70,7 +82,7 @@ export default function PartnerShop({lang='pt',cartState,member,onEditProfile,on
    <div className="shop-view-content">
    {shopView==='cart'&&<ol className="shop-steps" aria-label="Etapas da compra">{['Carrinho','Pagamento','Concluído'].map((label,index)=>{const step=activeOrder?(activeOrder.status==='paid'?2:1):0;return <li key={label} aria-current={index===step?'step':undefined} className={index<step?'complete':''}><span>{index<step?'✓':index+1}</span>{label}</li>})}</ol>}
    {message&&<p className="notice" role="status">{message}</p>}
-   {shopView==='cart'&&activeOrder&&<ShopPayment order={activeOrder} payment={payment} products={data.products} collections={data.collections} money={money} statuses={statuses} busy={busy} loading={paymentLoading} error={paymentError} onRefresh={()=>refresh(activeOrder.id,true)} onCopy={copy} onBrowse={browse} onFiles={()=>switchView('files')} onOrders={()=>switchView('orders')}/>}
+   {shopView==='cart'&&activeOrder&&<ShopPayment returning={returningFromAsaas} order={activeOrder} payment={payment} products={data.products} collections={data.collections} money={money} statuses={statuses} busy={busy} loading={paymentLoading} error={paymentError} onRefresh={()=>refresh(activeOrder.id,true)} onCopy={copy} onBrowse={browse} onFiles={()=>switchView('files')} onOrders={()=>switchView('orders')}/>}
    {shopView==='catalog'&&<><header className="shop-view-heading"><div><p className="eyebrow">CRIAÇÕES PARA IMPRIMIR</p><h3>Escolha sua próxima peça</h3><p>Arquivos digitais com licença para vender suas impressões.</p></div>{lines.length>0&&<button className="button primary" onClick={()=>switchView('cart')}>Revisar carrinho · {money(total)} →</button>}</header>
    <div className="shop-offers">{offers.filter(x=>!x.owned).map(item=><article className="shop-offer" key={item.kind+item.id}><img src={item.image} alt="" loading="lazy"/><div><span className="eyebrow">{item.kind==='collection'?`COLEÇÃO · ${item.productIds.length} PEÇAS`:'PEÇA AVULSA'}</span><h3>{item.name}</h3><strong className="shop-price">{money(item.priceCents)}</strong><button className="button outline" disabled={busy||cart.some(x=>x.id===item.id&&x.kind===item.kind)||item.kind==='product'&&selectedCollections.some(c=>c.productIds.includes(item.id))} onClick={()=>add(item)}>{cart.some(x=>x.id===item.id&&x.kind===item.kind)?'No carrinho':'Adicionar ao carrinho'}</button></div></article>)}</div>
    {!offers.filter(x=>!x.owned).length&&<div className="shop-empty-state"><h4>Nenhuma nova peça disponível</h4><p>Veja os arquivos que você já adquiriu ou volte para conhecer as próximas criações.</p><button className="button outline" onClick={()=>switchView('files')}>Acessar meus arquivos</button></div>}</>}

@@ -20,10 +20,12 @@ test('payment return uses the configured HTTPS origin and a supported language',
  try{
   process.env.SITE_URL='https://www.tiolira.com.br/some-path?old=1';
   delete process.env.ASAAS_PAYMENT_REDIRECT_ENABLED;
+  assert.equal(paymentReturnUrl('order-123','en'),'https://www.tiolira.com.br/en/clube?pedido=order-123&retorno=asaas#compras');
+  process.env.ASAAS_PAYMENT_REDIRECT_ENABLED='false';
   assert.equal(paymentReturnUrl('order-123','en'),'');
   process.env.ASAAS_PAYMENT_REDIRECT_ENABLED='true';
-  assert.equal(paymentReturnUrl('order-123','en'),'https://www.tiolira.com.br/en/clube?pedido=order-123#compras');
-  assert.equal(paymentReturnUrl('order-123','../../evil'),'https://www.tiolira.com.br/pt/clube?pedido=order-123#compras');
+  assert.equal(paymentReturnUrl('order-123','en'),'https://www.tiolira.com.br/en/clube?pedido=order-123&retorno=asaas#compras');
+  assert.equal(paymentReturnUrl('order-123','../../evil'),'https://www.tiolira.com.br/pt/clube?pedido=order-123&retorno=asaas#compras');
   for(const invalid of ['http://www.tiolira.com.br','https://user:secret@www.tiolira.com.br','invalid']){process.env.SITE_URL=invalid;assert.equal(paymentReturnUrl('order-123'),'');}
   delete process.env.SITE_URL;assert.equal(paymentReturnUrl('order-123'),'');
  }finally{if(previousEnabled===undefined)delete process.env.ASAAS_PAYMENT_REDIRECT_ENABLED;else process.env.ASAAS_PAYMENT_REDIRECT_ENABLED=previousEnabled;if(previous===undefined)delete process.env.SITE_URL;else process.env.SITE_URL=previous;}

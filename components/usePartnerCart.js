@@ -1,5 +1,6 @@
 'use client';
 import {useCallback,useEffect,useState} from 'react';
+import {returnedPaymentId} from '../lib/payment-return.mjs';
 
 export default function usePartnerCart(memberId){
  const [data,setData]=useState(null),[cart,setCart]=useState([]),[requestId,setRequestId]=useState(''),[error,setError]=useState(''),[ready,setReady]=useState(false);
@@ -8,6 +9,7 @@ export default function usePartnerCart(memberId){
  const couponQuote=couponResult?.key===quoteKey?couponResult.quote:null;
  const couponError=couponResult?.key===quoteKey?couponResult.error:'';
  const couponBusy=Boolean(couponCode&&cart.length&&couponResult?.key!==quoteKey);
+ const [returnedOrderId,setReturnedOrderId]=useState(null);
  const [shopView,setShopView]=useState('catalog'),[activeOrderId,setActiveOrderId]=useState(null);
  const key=`tiolira-cart:${memberId}`;
  const load=useCallback(async()=>{
@@ -18,6 +20,7 @@ export default function usePartnerCart(memberId){
  useEffect(()=>{
   setReady(false);setData(null);setError('');let saved;
   try{saved=JSON.parse(sessionStorage.getItem(key));}catch{}
+  setReturnedOrderId(returnedPaymentId(window.location.search));
   const requestedOrder=new URLSearchParams(window.location.search).get('pedido');
   const orderFromEmail=/^[a-f0-9-]{36}$/.test(requestedOrder||'')?requestedOrder:null;
   setShopView(orderFromEmail?'cart':['catalog','cart','orders','files'].includes(saved?.shopView)?saved.shopView:'catalog');setActiveOrderId(orderFromEmail||(typeof saved?.activeOrderId==='string'?saved.activeOrderId:null));
@@ -31,5 +34,5 @@ export default function usePartnerCart(memberId){
   fetch('/api/club/cart-quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart,couponCode})}).then(async r=>{const quote=await r.json();if(!r.ok)throw Error(quote.error||'Não foi possível validar o cupom.');if(!stale)setCouponResult({key:quoteKey,quote});}).catch(e=>{if(!stale)setCouponResult({key:quoteKey,error:e.message});});
   return ()=>{stale=true};
  },[quoteKey,data]);
- return {shopView,setShopView,activeOrderId,setActiveOrderId,couponCode,setCouponCode,couponQuote,couponError,couponBusy,data,setData,cart,setCart,requestId,setRequestId,load,error,ready};
+ return {returnedOrderId,shopView,setShopView,activeOrderId,setActiveOrderId,couponCode,setCouponCode,couponQuote,couponError,couponBusy,data,setData,cart,setCart,requestId,setRequestId,load,error,ready};
 }
