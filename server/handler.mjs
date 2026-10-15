@@ -1,4 +1,5 @@
 import {serveCatalogImage} from './media.mjs';
+import {auditProductFile} from './file-audit.mjs';
 import {checkPaypalConnection} from './paypal.mjs';
 import {receivePaypalWebhook} from './paypal-commerce.mjs';
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
@@ -39,6 +40,12 @@ export default async function handler(req,res){
   }
   if(method==='GET'&&route==='club/shop'){return json(res,200,await shop(await requireClub(req)));}
   if(method==='GET'&&route==='admin/downloads'){await requireAdmin(req);return json(res,200,await downloadPartnersReport(url.searchParams.get('productId')));}
+  if(method==='GET'&&route==='admin/files/verify'){
+   await requireAdmin(req);
+   const {data}=await getCatalog(),product=data.products.find(p=>p.id===url.searchParams.get('id')&&p.published&&p.filePath);
+   if(!product)fail('Arquivo não encontrado.',404);
+   return json(res,200,await auditProductFile(product));
+  }
   if(method==='GET'&&route==='admin/sales'){await requireAdmin(req);return json(res,200,await salesReport());}
   if(method==='GET'&&route==='admin/paypal-status'){await requireAdmin(req);await rateLimit(req,'paypal-status',6,60_000);return json(res,200,await checkPaypalConnection());}
   if(method==='GET'&&route==='admin/asaas-status'){await requireAdmin(req);await rateLimit(req,'asaas-status',6,60_000);return json(res,200,await checkAsaasConnection(new URL('/api/webhooks/asaas',url.origin).href));}
