@@ -1,3 +1,4 @@
+import {collectionCover} from '../lib/collection-covers.mjs';
 import {internationalBuyer,marketCatalog,paypalApprovalUrl} from '../lib/international-pricing.mjs';
 import {currentOrderEnvironment} from './payment-environment.mjs';
 import {paypalReady} from './paypal.mjs';
@@ -48,7 +49,7 @@ export function safeOrder(o){return {provider:o.provider||'asaas',currency:o.cur
 export async function shop(member){
  const [{data:baseData},record]=await Promise.all([getCatalog(),readRecord(KEY)]),currency=internationalBuyer(member)?'USD':'BRL',data=marketCatalog(baseData,currency),orders=state(record?.data).orders,owned=ownedIds(orders,member.id);
  const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&p.filePath).map(p=>({id:p.id,name:p.name,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
- const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>canPurchaseProduct(p,data))?[{id:c.id,name:c.name,image:c.image,priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
+ const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>canPurchaseProduct(p,data))?[{id:c.id,name:c.name,image:collectionCover(c),priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
  return {products,collections,orders:orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).map(safeOrder).reverse(),currency,paymentProvider:currency==='USD'?'paypal':'asaas',paymentsReady:currency==='USD'?paypalReady():paymentsReady()};
 }
 export async function memberOwnedIds(member){return ownedIds(state((await readRecord(KEY))?.data).orders,member.id);}
