@@ -19,7 +19,7 @@ export function discountQuote(quote,code,coupons,now=Date.now()){
  const fail=message=>{throw Object.assign(new Error(message),{status:400});};
  if(!coupon||!coupon.active)fail('Cupom inválido ou inativo.');
  if(coupon.expiresAt&&Date.parse(coupon.expiresAt)<=now)fail('Este cupom expirou.');
- if(subtotalCents<coupon.minimumCents)fail(`Este cupom exige uma compra mínima de ${(coupon.minimumCents/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}.`);
+ if(subtotalCents<coupon.minimumCents)fail(`Este cupom exige uma compra mínima de ${(coupon.minimumCents/100).toLocaleString('pt-BR',{style:'currency',currency:quote.currency||'BRL'})}.`);
  const discountCents=coupon.type==='percent'?Math.round(subtotalCents*coupon.value/100):coupon.value;
  if(discountCents<=0||discountCents>=subtotalCents)fail('Este cupom não se aplica ao valor do carrinho. O total deve ser maior que zero.');
  // Allocate cents deterministically so product revenue sums to the amount actually charged.

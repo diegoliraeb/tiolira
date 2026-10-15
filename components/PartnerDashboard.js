@@ -1,7 +1,8 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import PartnerProfile from './PartnerProfile';
-import PartnerShop,{money} from './PartnerShop';
+import {formatMoney,internationalBuyer} from '../lib/international-pricing.mjs';
+import PartnerShop from './PartnerShop';
 import usePartnerCart from './usePartnerCart';
 import {cartSelection} from '../lib/cart-lines.mjs';
 import PartnerWelcome,{PartnerCollections} from './PartnerWelcome';
@@ -13,7 +14,7 @@ function MenuIcon({kind}){
  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={paths[kind]}/></svg>;
 }
 export default function PartnerDashboard({lang,t,member,collections,applyDashboard,downloads,coupons,licenses,collectionLicenses,setLicenses,logout,busy}){
- const copy=partnerCopy(lang);
+ const copy=partnerCopy(lang),money=(cents,currency=internationalBuyer(member)?'USD':'BRL')=>formatMoney(cents,currency);
  const [motion,setMotion]=useState(false),[query,setQuery]=useState('');
  useEffect(()=>{const media=window.matchMedia('(prefers-reduced-motion: reduce)'),change=()=>setMotion(!media.matches);change();media.addEventListener('change',change);return()=>media.removeEventListener('change',change);},[]);
  const cartState=usePartnerCart(member.id);
@@ -73,7 +74,7 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
  </aside>
  <div className="partner-content" ref={content}>
  <div className="partner-breadcrumb"><span>CLUBE TIO LIRA <b>/</b> {({inicio:copy.home,colecoes:t.collections,compras:cartState.shopView==='orders'?copy.orders:cartState.shopView==='files'?copy.files:copy.shop,cadastro:t.partnerProfile,cupons:t.clubCoupons,licencas:t.partnerMyLicenses})[section]}</span><button className="partner-motion-toggle" aria-pressed={!motion} onClick={()=>setMotion(!motion)}>{motion?'Ⅱ':'▷'} {motion?copy.pause:copy.play}</button></div>
- <div className="partner-cart-topbar"><button type="button" className="partner-cart-shortcut" onClick={openCart} aria-label={showingPurchase?`Acompanhar compra: ${money(shortcutTotal)}`:`Abrir carrinho: ${cartCount} ${cartCount===1?'item':'itens'}, ${money(shortcutTotal)}`}><span className="partner-cart-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h2l3 12h11l3-9H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span className="partner-cart-count">{cartCount}</span></span><span className="partner-cart-copy"><strong>{showingPurchase?copy.purchase:copy.cart}</strong><small>{showingPurchase?copy.orders:cartCount?`${cartCount} ${cartCount===1?copy.item:copy.items}`:copy.emptyCart}</small></span><span className="partner-cart-summary" role="status" aria-live="polite" aria-atomic="true"><span className="sr-only">{cartCount} {cartCount===1?copy.item:copy.items}: </span><strong>{cartState.data?money(shortcutTotal):'—'}</strong></span><span className="partner-cart-arrow" aria-hidden="true">↗</span></button></div>
+ <div className="partner-cart-topbar"><button type="button" className="partner-cart-shortcut" onClick={openCart} aria-label={showingPurchase?`Acompanhar compra: ${money(shortcutTotal,showingPurchase?(currentPurchase.currency||'BRL'):(cartState.data?.currency||'BRL'))}`:`Abrir carrinho: ${cartCount} ${cartCount===1?'item':'itens'}, ${money(shortcutTotal,showingPurchase?(currentPurchase.currency||'BRL'):(cartState.data?.currency||'BRL'))}`}><span className="partner-cart-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h2l3 12h11l3-9H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span className="partner-cart-count">{cartCount}</span></span><span className="partner-cart-copy"><strong>{showingPurchase?copy.purchase:copy.cart}</strong><small>{showingPurchase?copy.orders:cartCount?`${cartCount} ${cartCount===1?copy.item:copy.items}`:copy.emptyCart}</small></span><span className="partner-cart-summary" role="status" aria-live="polite" aria-atomic="true"><span className="sr-only">{cartCount} {cartCount===1?copy.item:copy.items}: </span><strong>{cartState.data?money(shortcutTotal,showingPurchase?(currentPurchase.currency||'BRL'):(cartState.data?.currency||'BRL')):'—'}</strong></span><span className="partner-cart-arrow" aria-hidden="true">↗</span></button></div>
  {section==='inicio'&&<PartnerWelcome member={member} groups={groups} items={items} t={t} copy={copy} motion={motion} cartState={cartState} onCollections={id=>navigate('colecoes',id)} onFiles={()=>openShop('files')} onOrders={()=>openShop('orders')}/>}
  {section==='compras'&&<PartnerShop lang={lang} cartState={cartState} member={member} onEditProfile={editBilling} requestedProductId={requestedProductId} onProductConsumed={()=>setRequestedProductId(null)} onRefresh={async()=>{const r=await fetch('/api/club/me');if(r.ok)applyDashboard(await r.json());}}/>}
  {section==='cadastro'&&<PartnerProfile lang={lang} t={t} member={member} onSave={saveProfile}/>}

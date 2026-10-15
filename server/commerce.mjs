@@ -1,3 +1,7 @@
+import {internationalBuyer,marketCatalog,paypalApprovalUrl} from '../lib/international-pricing.mjs';
+import {currentOrderEnvironment} from './payment-environment.mjs';
+import {paypalReady} from './paypal.mjs';
+import {checkoutPaypal,refreshPaypal,marketCoupons} from './paypal-commerce.mjs';
 import {downloadPartners,addPartnerDownload} from './download-history.mjs';
 import {sendPurchaseEmail,purchaseEmailConfig} from './purchase-email.mjs';
 import {cartCoupons,couponCodeSchema,discountQuote} from './cart-coupons.mjs';
@@ -12,7 +16,7 @@ const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status
 const id=z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
 const cartSchema=z.array(z.object({kind:z.enum(['product','collection']),id})).min(1).max(40);
 const state=old=>old||{orders:[],downloads:{},recentDownloads:[]};
-const paid=o=>o.status==='paid'&&o.environment===asaasConfig().environment;
+const paid=o=>o.status==='paid'&&currentOrderEnvironment(o);
 export const isPaidProduct=p=>p.access==='paid'||Number(p.priceCents)>0;
 export const canPurchaseProduct=(p,data)=>Boolean(p.published&&!p.exclusive&&p.access==='paid'&&p.filePath&&p.priceCents>0&&data.collections.some(c=>c.id===p.collection&&c.published&&!c.free));
 export function ownedIds(orders,memberId){return new Set(orders.filter(o=>o.memberId===memberId&&paid(o)).flatMap(o=>o.productIds));}
@@ -40,20 +44,21 @@ export function quoteCart(data,input,owned=new Set()){
  if(!Number.isSafeInteger(totalCents)||totalCents<=0||totalCents>10_000_000)fail('Valor de compra inválido.');
  return {items,totalCents,productIds:[...included].sort(),overlap:[...included].filter(x=>owned.has(x))};
 }
-function safeOrder(o){return {id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null,licenses:paid(o)?(o.licenses||[]).map(l=>({code:l.code,productId:l.productId,downloadUrl:`/api/club/licenses/download?code=${encodeURIComponent(l.code)}`})):[]};}
+export function safeOrder(o){return {provider:o.provider||'asaas',currency:o.currency||'BRL',id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:o.provider==='paypal'?paypalApprovalUrl(o.paymentUrl,o.environment):invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null,licenses:paid(o)?(o.licenses||[]).map(l=>({code:l.code,productId:l.productId,downloadUrl:`/api/club/licenses/download?code=${encodeURIComponent(l.code)}`})):[]};}
 export async function shop(member){
- const [{data},record]=await Promise.all([getCatalog(),readRecord(KEY)]),orders=state(record?.data).orders,owned=ownedIds(orders,member.id);
+ const [{data:baseData},record]=await Promise.all([getCatalog(),readRecord(KEY)]),currency=internationalBuyer(member)?'USD':'BRL',data=marketCatalog(baseData,currency),orders=state(record?.data).orders,owned=ownedIds(orders,member.id);
  const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&p.filePath).map(p=>({id:p.id,name:p.name,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
  const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>canPurchaseProduct(p,data))?[{id:c.id,name:c.name,image:c.image,priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
- return {products,collections,orders:orders.filter(o=>o.memberId===member.id&&o.environment===asaasConfig().environment).map(safeOrder).reverse(),paymentsReady:paymentsReady()};
+ return {products,collections,orders:orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).map(safeOrder).reverse(),currency,paymentProvider:currency==='USD'?'paypal':'asaas',paymentsReady:currency==='USD'?paypalReady():paymentsReady()};
 }
 export async function memberOwnedIds(member){return ownedIds(state((await readRecord(KEY))?.data).orders,member.id);}
 export async function purchaseAccess(member,productId){return (await memberOwnedIds(member)).has(productId);}
 export async function quoteCheckout(member,input){
  const [{data},coupons,owned]=await Promise.all([getCatalog(),cartCoupons(),memberOwnedIds(member)]);
- return discountQuote(quoteCart(data,input.items,owned),input.couponCode,coupons.coupons);
+ const currency=internationalBuyer(member)?'USD':'BRL';return {...discountQuote({...quoteCart(marketCatalog(data,currency),input.items,owned),currency},input.couponCode,marketCoupons(coupons.coupons,currency)),currency};
 }
 export async function checkout(member,input){
+ if(internationalBuyer(member))return checkoutPaypal(member,input);
  if(!paymentsReady())fail('Os pagamentos ainda não estão configurados.',503);
  const cpfCnpj=String(member.cpfCnpj||'').replace(/\D/g,'');
  if(!/^(\d{11}|\d{14})$/.test(cpfCnpj))fail('Preencha o CPF ou CNPJ em Meus dados antes de comprar.');
@@ -61,15 +66,15 @@ export async function checkout(member,input){
  const {data}=await getCatalog(),environment=asaasConfig().environment,coupons=await cartCoupons();
  const orderId=randomUUID();let chosenId;
  await updateRecord(KEY,old=>{
-  const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.environment===environment&&o.requestId===parsed.requestId);
+  const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.provider!=='paypal'&&o.environment===environment&&o.requestId===parsed.requestId);
   if(existing){chosenId=existing.id;return s;}
   const quote=discountQuote(quoteCart(data,parsed.items,ownedIds(s.orders,member.id)),parsed.couponCode,coupons.coupons);
   if(parsed.couponCode&&parsed.expectedTotalCents!==quote.totalCents)fail('O desconto mudou. Confira o total atualizado antes de pagar.',409);
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme a compra pelo valor integral, sem abatimento.',409);
   const fingerprint=createHash('sha256').update(JSON.stringify(quote.coupon?{items:quote.items,coupon:quote.coupon}:quote.items)).digest('hex');
-  const pending=s.orders.find(o=>o.memberId===member.id&&o.environment===environment&&o.fingerprint===fingerprint&&['creating','pending','overdue','review'].includes(o.status));
+  const pending=s.orders.find(o=>o.memberId===member.id&&o.provider!=='paypal'&&o.environment===environment&&o.fingerprint===fingerprint&&['creating','pending','overdue','review'].includes(o.status));
   if(pending){chosenId=pending.id;return s;}
-  chosenId=orderId;s.orders.push({id:orderId,requestId:parsed.requestId,memberId:member.id,memberName:member.name,memberEmail:member.email,createdAt:new Date().toISOString(),status:'creating',environment,billingType:parsed.billingType,lang:parsed.lang,paymentReturnUrl:parsed.billingType==='CREDIT_CARD'?paymentReturnUrl(orderId,parsed.lang):'',fingerprint,...quote});return s;
+  chosenId=orderId;s.orders.push({id:orderId,requestId:parsed.requestId,memberId:member.id,memberName:member.name,memberEmail:member.email,createdAt:new Date().toISOString(),status:'creating',provider:'asaas',currency:'BRL',environment,billingType:parsed.billingType,lang:parsed.lang,paymentReturnUrl:parsed.billingType==='CREDIT_CARD'?paymentReturnUrl(orderId,parsed.lang):'',fingerprint,...quote});return s;
  });
  if(chosenId!==orderId){const existing=state((await readRecord(KEY))?.data).orders.find(o=>o.id===chosenId);return existing.billingType==='CREDIT_CARD'&&['pending','overdue'].includes(existing.status)?(await paymentDetails(member,chosenId)).order:safeOrder(existing);}
  let paymentAttempted=false;
@@ -97,7 +102,7 @@ export async function applyPayment(orderId,payment,eventId){
  if(typeof payment?.id!=='string'||!/^pay_[\w-]+$/.test(payment.id))fail('Cobrança inválida.',502);
  return updateRecord(KEY,old=>{
   const s=state(old),o=s.orders.find(o=>o.id===orderId);if(!o)fail('Pedido não encontrado.',404);
-  if(o.environment!==asaasConfig().environment||payment.externalReference!==o.id||payment.customer!==o.customerId||(o.paymentId&&payment.id!==o.paymentId))fail('Cobrança não corresponde ao pedido.',409);
+  if(o.provider==='paypal'||o.environment!==asaasConfig().environment||payment.externalReference!==o.id||payment.customer!==o.customerId||(o.paymentId&&payment.id!==o.paymentId))fail('Cobrança não corresponde ao pedido.',409);
   const revoked=['REFUNDED','REFUND_REQUESTED','REFUND_IN_PROGRESS','CHARGEBACK_REQUESTED','CHARGEBACK_DISPUTE','AWAITING_CHARGEBACK_REVERSAL'].includes(payment.status)||(payment.refunds||[]).some(r=>r.status!=='CANCELLED');
   // A refund may change the remaining value. Revoke an already bound payment even then;
   // every new payment or grant still requires the original full amount.
@@ -119,6 +124,7 @@ export async function applyPayment(orderId,payment,eventId){
 }
 export async function refreshOrder(member,orderId){
  const o=state((await readRecord(KEY))?.data).orders.find(o=>o.id===orderId&&o.memberId===member.id);if(!o)fail('Pedido não encontrado.',404);
+ if(o.provider==='paypal')return refreshPaypal(member,orderId);
  if(o.environment!==asaasConfig().environment)fail('Pedido de outro ambiente.',409);
  let payment;
  if(o.paymentId)payment=await asaas(`/payments/${encodeURIComponent(o.paymentId)}`);
@@ -136,7 +142,7 @@ export async function receiveWebhook(input,{emailRequired=false}={}){
  const notify=id=>sendPurchaseEmail(id).catch(e=>{if(emailRequired)throw e;});
  const event=z.object({id:z.string().min(1).max(300),event:z.string().max(100),payment:z.object({id:z.string().regex(/^pay_[\w-]+$/),externalReference:z.string().optional()}).passthrough()}).parse(input);
  const orders=state((await readRecord(KEY))?.data).orders,o=orders.find(o=>o.paymentId===event.payment.id||o.id===event.payment.externalReference);
- if(!o||o.environment!==asaasConfig().environment)return;
+ if(!o||o.provider==='paypal'||o.environment!==asaasConfig().environment)return;
  if(o.events?.includes(event.id)){await notify(o.id);return;}
  const payment=await asaas(`/payments/${encodeURIComponent(event.payment.id)}`);
  await applyPayment(o.id,payment,event.id);
@@ -166,18 +172,18 @@ export async function downloadPartnersReport(productId){
  return {productId,totalDownloads,identifiedDownloads,unattributedDownloads:Math.max(0,totalDownloads-identifiedDownloads),partners};
 }
 export async function salesReport(){
- const s=state((await readRecord(KEY))?.data),{data}=await getCatalog(),rows=new Map(data.products.map(p=>[p.id,{id:p.id,name:p.name,individualSales:0,collectionSales:0,revenueCents:0,downloads:s.downloads[p.id]||0}]));
- for(const o of s.orders.filter(paid))for(const item of o.items)item.products.forEach((p,i)=>{if(!rows.has(p.id))rows.set(p.id,{...p,individualSales:0,collectionSales:0,revenueCents:0,downloads:s.downloads[p.id]||0});const row=rows.get(p.id);row[item.kind==='collection'?'collectionSales':'individualSales']++;row.revenueCents+=Math.floor((item.totalCents??item.priceCents)/item.products.length)+(i<(item.totalCents??item.priceCents)%item.products.length?1:0);});
- return {purchaseEmailReady:Boolean(purchaseEmailConfig()),paymentsReady:paymentsReady(),environment:asaasConfig().environment,totalCents:s.orders.filter(paid).reduce((n,o)=>n+o.totalCents,0),paidOrders:s.orders.filter(paid).length,products:[...rows.values()],orders:s.orders.filter(o=>o.environment===asaasConfig().environment).map(o=>({...safeOrder(o),memberName:o.memberName,memberEmail:o.memberEmail,purchaseEmailStatus:o.purchaseEmail?.status||null,purchaseEmailSentAt:o.purchaseEmail?.sentAt||null})).reverse(),recentDownloads:s.recentDownloads};
+ const s=state((await readRecord(KEY))?.data),{data}=await getCatalog(),rows=new Map(data.products.map(p=>[p.id,{id:p.id,name:p.name,individualSales:0,collectionSales:0,revenueCents:0,revenueUsdCents:0,downloads:s.downloads[p.id]||0}]));
+ for(const o of s.orders.filter(paid))for(const item of o.items)item.products.forEach((p,i)=>{if(!rows.has(p.id))rows.set(p.id,{...p,individualSales:0,collectionSales:0,revenueCents:0,revenueUsdCents:0,downloads:s.downloads[p.id]||0});const row=rows.get(p.id);row[item.kind==='collection'?'collectionSales':'individualSales']++;row[o.currency==='USD'?'revenueUsdCents':'revenueCents']+=Math.floor((item.totalCents??item.priceCents)/item.products.length)+(i<(item.totalCents??item.priceCents)%item.products.length?1:0);});
+ return {purchaseEmailReady:Boolean(purchaseEmailConfig()),paymentsReady:paymentsReady(),environment:asaasConfig().environment,paypalReady:paypalReady(),totalUsdCents:s.orders.filter(o=>paid(o)&&o.currency==='USD').reduce((n,o)=>n+o.totalCents,0),totalCents:s.orders.filter(o=>paid(o)&&o.currency!=='USD').reduce((n,o)=>n+o.totalCents,0),paidOrders:s.orders.filter(paid).length,products:[...rows.values()],orders:s.orders.filter(currentOrderEnvironment).map(o=>({...safeOrder(o),memberName:o.memberName,memberEmail:o.memberEmail,purchaseEmailStatus:o.purchaseEmail?.status||null,purchaseEmailSentAt:o.purchaseEmail?.sentAt||null})).reverse(),recentDownloads:s.recentDownloads};
 }
 
 export async function purchaseLicenses(member){
  const orders=state((await readRecord(KEY))?.data).orders;
- return orders.filter(o=>o.memberId===member.id&&o.environment===asaasConfig().environment).flatMap(o=>(o.licenses||[]).map(l=>({...l,status:paid(o)?'active':'suspended'})));
+ return orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).flatMap(o=>(o.licenses||[]).map(l=>({...l,status:paid(o)?'active':'suspended'})));
 }
 export async function paymentDetails(member,orderId){
  const order=await refreshOrder(member,orderId);
- if(!['pending','overdue'].includes(order.status))return {order};
+ if(order.provider==='paypal'||!['pending','overdue'].includes(order.status))return {order};
  const o=state((await readRecord(KEY))?.data).orders.find(o=>o.id===order.id);
  if(!o.paymentId)return {order};
  if(o.billingType==='CREDIT_CARD'){

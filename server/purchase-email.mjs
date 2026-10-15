@@ -1,5 +1,5 @@
 import {readRecord,updateRecord} from './store.mjs';
-import {asaasConfig} from './asaas.mjs';
+import {currentOrderEnvironment} from './payment-environment.mjs';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function purchaseEmailConfig(){
  const {RESEND_API_KEY,EMAIL_FROM,SITE_URL}=process.env;
@@ -14,7 +14,7 @@ export function purchaseApprovedEmail(order,origin){
  return {subject,html,text:`Olá, ${order.memberName}!\n\nPagamento aprovado! Os arquivos para impressão 3D e as licenças para vender as peças impressas estão liberados.\n\nSua compra: ${names.join(', ')}.\n\n1. Baixe os arquivos para imprimir.\n2. Baixe a licença de venda em PDF.\n\nAcessar meus arquivos e licença:\n${link}\n\nEntre com o mesmo e-mail usado na compra. Os downloads ficam em Meus arquivos e Meus pedidos.\n\nA licença permite vender as peças físicas impressas. Os arquivos digitais não podem ser revendidos ou compartilhados.\n\nTio Lira — tiolira.com.br`};
 }
 const fail=()=>{throw Object.assign(Error('Aviso de compra aguardando envio por e-mail.'),{status:503});};
-const active=o=>o?.status==='paid'&&o.environment===asaasConfig().environment;
+const active=o=>o?.status==='paid'&&currentOrderEnvironment(o);
 export async function sendPurchaseEmail(orderId){
  let order=(await readRecord('commerce.json'))?.data?.orders.find(o=>o.id===orderId);
  if(!active(order)||!order.purchaseEmail||order.purchaseEmail.status==='sent')return;

@@ -1,3 +1,4 @@
+import {receivePaypalWebhook} from './paypal-commerce.mjs';
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
 import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,purchaseLicenses,downloadablePurchaseLicense,salesReport,downloadPartnersReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
@@ -24,6 +25,7 @@ export default async function handler(req,res){
   const url=new URL(req.url,'https://'+(req.headers.host||'localhost'));
   const route=String((Array.isArray(req.query?.route)?req.query.route.join('/'):req.query?.route)||url.searchParams.get('route')||url.pathname.replace(/^\/api\/?/,'')).replace(/^\/+|\/+$/g,'');
   const method=req.method;
+  if(method==='POST'&&route==='webhooks/paypal'){let raw=typeof req.body==='string'?req.body:null;if(raw===null&&req.body!==undefined)fail('Webhook exige corpo original.',400);if(raw===null){const chunks=[];let size=0;for await(const part of req){size+=Buffer.byteLength(part);if(size>1_000_000)fail('Evento muito grande.',413);chunks.push(Buffer.from(part));}raw=Buffer.concat(chunks).toString('utf8');}await receivePaypalWebhook(req.headers,raw);return json(res,200,{received:true});}
   if(method==='POST'&&route==='webhooks/purchase-email'){assertWebhook(req);await receiveWebhook(await body(req),{emailRequired:true});return json(res,200,{received:true});}
   if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req));return json(res,200,{received:true});}
   if(method==='GET'&&route==='club/licenses/download'){

@@ -1,3 +1,4 @@
+import {internationalBuyer,marketCatalog} from '../lib/international-pricing.mjs';
 import {memberOwnedIds,isPaidProduct,purchaseLicenses,canPurchaseProduct} from './commerce.mjs';
 import {passwordResetEmail} from './club-email.mjs';
 import {partnerProfile,syncPartnerProfile} from './partner-profile.mjs';
@@ -45,7 +46,7 @@ export async function clubDashboard(member,data){
  if(member.profilePending){member=await syncPartnerProfile(member);data=(await getCatalog()).data;}
  const owned=await memberOwnedIds(member);
  const [licenses,coupons,purchases]=await Promise.all([ensureCollectionLicenses(member,data),readRecord('partner-coupons.json'),purchaseLicenses(member)]);
- return {member:partnerProfile(member,data),collections:data.collections.filter(c=>c.published),network:await ensurePartnerListing(member),downloads:clubProducts(data,owned),licenses:[...(licenses.licenses||[]).filter(l=>!data.products.some(p=>p.id===l.productId&&isPaidProduct(p))),...purchases],collectionLicenses:licenses.collectionLicenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
+ return {member:partnerProfile(member,data),collections:data.collections.filter(c=>c.published),network:await ensurePartnerListing(member),downloads:clubProducts(marketCatalog(data,internationalBuyer(member)?'USD':'BRL'),owned),licenses:[...(licenses.licenses||[]).filter(l=>!data.products.some(p=>p.id===l.productId&&isPaidProduct(p))),...purchases],collectionLicenses:licenses.collectionLicenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
 }
 export const couponSchema=z.object({
  id:z.string().uuid(),supplier:z.string().trim().min(1).max(150),code:z.string().trim().min(1).max(100),
