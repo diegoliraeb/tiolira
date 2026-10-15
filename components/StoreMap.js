@@ -8,10 +8,10 @@ export default function StoreMap({counts,stateId,region,onSelect,t}){
  return <div className="store-map-block">
   <div className="store-map-heading"><div><h3>{t.mapTitle}</h3><p>{t.mapHelp}</p></div><span>{total} {t.mapTotal}</span></div>
   <svg className="store-map" viewBox="0 0 590 530" role="group" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`}>
-   <title id={`${id}-title`}>{t.mapTitle}</title><desc id={`${id}-description`}>{t.mapHelp} {t.mapAddressNote}</desc>
+   <title id={`${id}-title`}>{t.mapTitle}</title><desc id={`${id}-description`}>{`${t.mapHelp} ${t.mapAddressNote}`}</desc>
    {geometry.map(shape=>{const state=brStates.find(s=>s.code===shape.code),count=counts[state.id]||0,selected=stateId?stateId===state.id:Boolean(region&&state.region===region),[x,y]=shape.center,[lx,ly]=shape.label;
     return <g key={state.id} className={`store-map-state level-${count===0?'zero':count<=2?'low':count<=5?'mid':'high'}${selected?' selected':''}`} role="button" tabIndex={0} aria-label={`${state.name}: ${count} ${count===1?t.mapShop:t.mapShops}`} aria-pressed={selected} onClick={()=>onSelect(state)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onSelect(state)}}}>
-     <title>{state.name}: {count} {count===1?t.mapShop:t.mapShops}</title>
+     <title>{`${state.name}: ${count} ${count===1?t.mapShop:t.mapShops}`}</title>
      <path d={shape.path} transform="matrix(.0013 0 0 -.0013 962 71.5)" vectorEffect="non-scaling-stroke"/>
      {(x!==lx||y!==ly)&&<line x1={x} y1={y} x2={lx} y2={ly-4}/>}
      <text x={lx} y={ly} textAnchor="middle">{state.code} {count}</text>

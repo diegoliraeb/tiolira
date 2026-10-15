@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {geography,normalizeStoreLocation,geographyOptions} from '../server/geography.mjs';
+import countries from '../data/geography/countries.json' with {type:'json'};
+import countryOptions from '../data/geography/country-options.json' with {type:'json'};
 import {storeCountry,brazilState,matchesAdminStore} from '../lib/geography.mjs';
 import {servesLocation} from '../lib/store-search.mjs';
 import {applicationSchema} from '../server/schema.mjs';
@@ -36,4 +38,13 @@ test('service area requires cities and validates empty scopes',()=>{
  const input={name:'Loja',...maceio,country:'Brasil',whatsapp:'5582000000000',email:'test@example.invalid',description:'Teste',delivery:'',consent:true,directoryConsent:false,serviceArea:{scope:'cities',countryCode:'BR',cities:[]}};
  assert.equal(applicationSchema.safeParse(input).success,false);
  input.serviceArea.cities=[areaCity(maceio),areaCity(recife)];assert.equal(applicationSchema.safeParse(input).success,true);
+});
+
+
+test('localized country selectors preserve every country with stable labels for server and browser',()=>{
+ const codes=countries.map(c=>c.code).sort();
+ for(const lang of ['pt','en','es']){
+  assert.deepEqual(countryOptions[lang].map(c=>c.code).sort(),codes);
+  assert.ok(countryOptions[lang].every(c=>typeof c.label==='string'&&c.label.trim()));
+ }
 });

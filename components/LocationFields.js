@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useId,useState} from 'react';
-import {countries,countryName,normalize} from '../lib/geography.mjs';
+import {normalize} from '../lib/geography.mjs';
+import countryOptions from '../data/geography/country-options.json';
 import {dictionaries} from '../lib/i18n';
 const cache=new Map();
 function useOptions(countryCode,stateId,kind){
@@ -21,7 +22,8 @@ export default function LocationFields({lang='pt',value,onChange,required=false,
  const states=useOptions(value.countryCode,'','states'),cities=useOptions(value.countryCode,value.stateId,'cities');
  const cityId=value.cityId||cities.items.find(c=>normalize(c.name)===normalize(value.city))?.id||'';
  const visibleStates=stateFilter?states.items.filter(stateFilter):states.items;
- const ordered=countries.map(c=>({...c,label:countryName(c.code,lang)})).sort((a,b)=>a.label.localeCompare(b.label,lang));
+ // Keep labels and ordering identical across Node and browsers with different ICU versions.
+ const ordered=countryOptions[lang]||countryOptions.pt;
  return <>
   {showCountry&&<label htmlFor={`${id}-country`}>{prefix}{t.country}<select id={`${id}-country`} required={required} value={value.countryCode||''} onChange={e=>onChange({countryCode:e.target.value,stateId:'',state:'',stateCode:'',cityId:'',city:''})}><option value="">{t.selectCountry}</option>{ordered.map(c=><option key={c.code} value={c.code}>{c.label}</option>)}</select></label>}
   {children}
