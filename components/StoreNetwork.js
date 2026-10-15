@@ -53,7 +53,7 @@ export default function StoreNetwork({lang,catalog}){
  function quoteUrl(store){
   const selected=piece.startsWith('collection:')?catalog.collections.find(c=>`collection:${c.id}`===piece):catalog.products.find(p=>p.id===piece);
   const request=selected?`${localized(selected,lang).name}${piece.startsWith('collection:')?` — ${t.completeCollection}`:''}`:'';
-  const greeting={pt:'Olá! Encontrei seu contato na rede do Tio Lira. Gostaria de um orçamento',en:'Hello! I found you on the Tio Lira network. I would like a quote',es:'¡Hola! Te encontré en la red de Tio Lira. Quisiera un presupuesto'}[lang];
+  const greeting={pt:'Olá! Encontrei seu contato na rede do Tio Lira. Gostaria de um orçamento',en:'Hello! I found you on the Tio Lira network. I would like a quote',es:'¡Hola! Te encontré en la red de Tio Lira. Quisiera un presupuesto',fr:'Bonjour ! J’ai trouvé vos coordonnées dans le réseau Tio Lira. Je souhaiterais un devis'}[lang];
   return `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`${greeting}${request?`: ${request}`:'.'}`)}`;
  }
  async function submit(e){

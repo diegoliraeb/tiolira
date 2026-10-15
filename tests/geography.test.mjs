@@ -43,7 +43,7 @@ test('service area requires cities and validates empty scopes',()=>{
 
 test('localized country selectors preserve every country with stable labels for server and browser',()=>{
  const codes=countries.map(c=>c.code).sort();
- for(const lang of ['pt','en','es']){
+ for(const lang of ['pt','en','es','fr']){
   assert.deepEqual(countryOptions[lang].map(c=>c.code).sort(),codes);
   assert.ok(countryOptions[lang].every(c=>typeof c.label==='string'&&c.label.trim()));
  }

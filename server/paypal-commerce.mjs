@@ -7,7 +7,7 @@ import {paypal,paypalConfig,paypalReady,paypalReturnUrl,verifyPaypalWebhook} fro
 import {marketCatalog,paypalApprovalUrl} from '../lib/international-pricing.mjs';
 import {sendPurchaseEmail} from './purchase-email.mjs';
 const KEY='commerce.json',fail=(m,s=409)=>{throw Object.assign(Error(m),{status:s});};
-const inputSchema=z.object({items:z.array(z.object({kind:z.enum(['product','collection']),id:z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/)})).min(1).max(40),requestId:z.string().uuid(),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es']).default('pt')});
+const inputSchema=z.object({items:z.array(z.object({kind:z.enum(['product','collection']),id:z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/)})).min(1).max(40),requestId:z.string().uuid(),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es','fr']).default('pt')});
 export function marketCoupons(coupons,currency){return currency==='USD'?coupons.map(c=>({...c,minimumCents:Math.round(c.minimumCents/6),...(c.type==='fixed'?{value:Math.max(1,Math.round(c.value/6))}:{})})):coupons;}
 export async function checkoutPaypal(member,input){
  if(!paypalReady())fail('Pagamentos internacionais estarão disponíveis em breve.',503);

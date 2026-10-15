@@ -74,7 +74,7 @@ export async function requestPasswordReset(input){
   return old;
  });
  if(updated.members.find(m=>m.id===member.id)?.passwordReset?.hash!==tokenHash)return;
- const lang=['pt','en','es'].includes(input.lang)?input.lang:'pt';
+ const lang=['pt','en','es','fr'].includes(input.lang)?input.lang:'pt';
  // A fragment keeps the token out of request logs and Referer headers.
  const link=`${config.origin}/${lang}/clube#reset=${token}`;
  try{

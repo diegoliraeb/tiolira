@@ -19,7 +19,7 @@ export async function asaas(path,{method='GET',body,timeoutMs=15000}={}){
 }
 export function paymentReturnUrl(orderId,lang='pt'){
  if(process.env.ASAAS_PAYMENT_REDIRECT_ENABLED==='false')return '';
- try{const u=new URL(process.env.SITE_URL);if(u.protocol==='https:'&&!u.username&&!u.password)return `${u.origin}/${['pt','en','es'].includes(lang)?lang:'pt'}/clube?pedido=${encodeURIComponent(orderId)}&retorno=asaas#compras`;}catch{}
+ try{const u=new URL(process.env.SITE_URL);if(u.protocol==='https:'&&!u.username&&!u.password)return `${u.origin}/${['pt','en','es','fr'].includes(lang)?lang:'pt'}/clube?pedido=${encodeURIComponent(orderId)}&retorno=asaas#compras`;}catch{}
  return '';
 }
 export async function checkAsaasConnection(webhookUrl){

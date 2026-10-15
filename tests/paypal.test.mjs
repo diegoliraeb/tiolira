@@ -26,7 +26,7 @@ test('PayPal verified capture, idempotency, environment isolation and revocation
  const env=Object.fromEntries(keys.map(k=>[k,process.env[k]])),originalFetch=globalThis.fetch;
  for(const k of keys)delete process.env[k];
  Object.assign(process.env,{LOCAL_DATA_DIR:dir,ASAAS_ENVIRONMENT:'sandbox',PAYPAL_ENVIRONMENT:'sandbox',PAYPAL_CLIENT_ID:'test-id',PAYPAL_CLIENT_SECRET:'test-secret',PAYPAL_MERCHANT_ID:'TESTMERCHANT',PAYPAL_WEBHOOK_ID:'test-webhook',SITE_URL:'https://www.tiolira.com.br'});
- const a={id:randomUUID(),name:'International',email:'test@example.invalid',countryCode:'US'},b={...a,id:randomUUID()};
+ const a={id:randomUUID(),name:'International',email:'test@example.invalid',countryCode:'FR'},b={...a,id:randomUUID()};
  const data=structuredClone(seed);data.collections.push({id:'international-test',name:'Collection',published:true,free:false,priceCents:6990});data.products.push(...['saci-test','cuca-test','boitata-test'].map(id=>({id,name:id,slug:id,collection:'international-test',access:'paid',priceCents:1690,published:true,filePath:'models/'+id+'.zip'})));
  const remote=new Map(),ids=new Map();let createCalls=0,captureCalls=0,timeout=false,signature='SUCCESS',lastVerify;
  globalThis.fetch=async(url,options={})=>{
@@ -44,7 +44,7 @@ test('PayPal verified capture, idempotency, environment isolation and revocation
   else value=remote.get(u.pathname.split('/').pop());
   assert.ok(value);return {ok:true,json:async()=>structuredClone(value)};
  };
- const input=(id='saci-test')=>({items:[{kind:'product',id}],requestId:randomUUID(),billingType:'PAYPAL',expectedTotalCents:282});
+ const input=(id='saci-test')=>({items:[{kind:'product',id}],requestId:randomUUID(),billingType:'PAYPAL',lang:'fr',expectedTotalCents:282});
  const headers={'paypal-auth-algo':'SHA256withRSA','paypal-cert-url':'https://api-m.sandbox.paypal.com/cert','paypal-transmission-id':'tx','paypal-transmission-sig':'sig','paypal-transmission-time':'2026-10-15T00:00:00Z'};
  try{
   await writeRecord('catalog.json',data,null);
@@ -57,7 +57,7 @@ test('PayPal verified capture, idempotency, environment isolation and revocation
   await t.test('repeated create recovers one remote order and grants no files before capture',async()=>{
    timeout=true;const i=input();await assert.rejects(()=>checkout(a,i),/Resposta/);order=await checkout(a,i);assert.equal(createCalls,1);assert.equal(order.currency,'USD');assert.equal(order.status,'pending');assert.equal(order.provider,'paypal');assert.equal(await purchaseAccess(a,'saci-test'),false);assert.equal((await purchaseLicenses(a)).length,0);assert.equal(captureCalls,0);
    assert.equal((await checkout(a,input())).id,order.id);assert.equal(createCalls,1);
-   const r=remote.values().next().value;assert.equal(r.payment_source.paypal.experience_context.shipping_preference,'NO_SHIPPING');assert.match(r.payment_source.paypal.experience_context.return_url,/retorno=paypal/);
+   const r=remote.values().next().value;assert.equal(r.payment_source.paypal.experience_context.shipping_preference,'NO_SHIPPING');assert.match(r.payment_source.paypal.experience_context.return_url,/\/fr\/clube\?pedido=.*retorno=paypal/);assert.match(r.payment_source.paypal.experience_context.cancel_url,/\/fr\/clube/);
    assert.equal(JSON.stringify(await shop(a)).includes('test-secret'),false);
   });
   await t.test('wrong member, reference, currency, amount and payee cannot grant access',async()=>{

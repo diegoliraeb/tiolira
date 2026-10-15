@@ -1,3 +1,4 @@
+import {headers} from 'next/headers';
 import Script from 'next/script';
 import '../public/styles.css';
 import './site.css';
@@ -5,10 +6,10 @@ import './movement.css';
 import './partner-movement.css';
 import './admin-movement.css';
 export const metadata={title:{default:'Tio Lira — Ideias que ganham forma',template:'%s · Tio Lira'},description:'Presépio gratuito, coleções autorais para impressão 3D e uma rede de quem imprime. Free nativity and original 3D models.',icons:{icon:'/assets/tl-monogram-3d-icon.png'}};
-export default async function Layout({children,params}){
-  const {lang}=await params;
+export default async function Layout({children}){
+  const lang=(await headers()).get('x-tiolira-language')||'pt';
   return (
-    <html lang={lang==='en'?'en':lang==='es'?'es':'pt-BR'}>
+    <html lang={lang==='en'?'en':lang==='es'?'es':lang==='fr'?'fr':'pt-BR'}>
       <body>
         {children}
         <Script

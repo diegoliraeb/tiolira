@@ -6,7 +6,7 @@ export function paypalConfig(){
 }
 export function paypalReady(){const c=paypalConfig();return Boolean(c.clientId&&c.secret&&c.merchantId&&c.webhookId&&siteOrigin());}
 function siteOrigin(){try{const u=new URL(process.env.SITE_URL);if(u.protocol==='https:'&&!u.username&&!u.password)return u.origin;}catch{}return '';}
-export function paypalReturnUrl(order,cancel=false){const origin=siteOrigin();if(!origin)fail('Configure o endereço HTTPS oficial do site.');return `${origin}/${['pt','en','es'].includes(order.lang)?order.lang:'pt'}/clube?pedido=${encodeURIComponent(order.id)}&retorno=paypal${cancel?'&cancelado=1':''}#compras`;}
+export function paypalReturnUrl(order,cancel=false){const origin=siteOrigin();if(!origin)fail('Configure o endereço HTTPS oficial do site.');return `${origin}/${['pt','en','es','fr'].includes(order.lang)?order.lang:'pt'}/clube?pedido=${encodeURIComponent(order.id)}&retorno=paypal${cancel?'&cancelado=1':''}#compras`;}
 export async function paypal(path,{method='GET',body,requestId,rawBody}={}){
  const c=paypalConfig();if(!c.clientId||!c.secret)fail('PayPal ainda não configurado.');
  let tokenResponse;

@@ -48,8 +48,8 @@ export function quoteCart(data,input,owned=new Set()){
 export function safeOrder(o){return {provider:o.provider||'asaas',currency:o.currency||'BRL',id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:o.provider==='paypal'?paypalApprovalUrl(o.paymentUrl,o.environment):invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null,licenses:paid(o)?(o.licenses||[]).map(l=>({code:l.code,productId:l.productId,downloadUrl:`/api/club/licenses/download?code=${encodeURIComponent(l.code)}`})):[]};}
 export async function shop(member){
  const [{data:baseData},record]=await Promise.all([getCatalog(),readRecord(KEY)]),currency=internationalBuyer(member)?'USD':'BRL',data=marketCatalog(baseData,currency),orders=state(record?.data).orders,owned=ownedIds(orders,member.id);
- const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&p.filePath).map(p=>({id:p.id,name:p.name,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
- const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>canPurchaseProduct(p,data))?[{id:c.id,name:c.name,image:collectionCover(c),priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
+ const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&p.filePath).map(p=>({id:p.id,name:p.name,translations:p.translations,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
+ const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>canPurchaseProduct(p,data))?[{id:c.id,name:c.name,translations:c.translations,image:collectionCover(c),priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
  return {products,collections,orders:orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).map(safeOrder).reverse(),currency,paymentProvider:currency==='USD'?'paypal':'asaas',paymentsReady:currency==='USD'?paypalReady():paymentsReady()};
 }
 export async function memberOwnedIds(member){return ownedIds(state((await readRecord(KEY))?.data).orders,member.id);}
@@ -63,7 +63,7 @@ export async function checkout(member,input){
  if(!paymentsReady())fail('Os pagamentos ainda não estão configurados.',503);
  const cpfCnpj=String(member.cpfCnpj||'').replace(/\D/g,'');
  if(!/^(\d{11}|\d{14})$/.test(cpfCnpj))fail('Preencha o CPF ou CNPJ em Meus dados antes de comprar.');
- const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive().optional(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es']).default('pt')}).parse(input);
+ const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive().optional(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es','fr']).default('pt')}).parse(input);
  const {data}=await getCatalog(),environment=asaasConfig().environment,coupons=await cartCoupons();
  const orderId=randomUUID();let chosenId;
  await updateRecord(KEY,old=>{

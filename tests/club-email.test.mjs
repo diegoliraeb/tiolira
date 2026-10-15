@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {passwordResetEmail} from '../server/club-email.mjs';
 
 test('branded recovery email escapes profile data and keeps the same single-use link in both formats',()=>{
- for(const lang of ['pt','en','es']){
+ for(const lang of ['pt','en','es','fr']){
   const origin='https://www.tiolira.com.br',link=`${origin}/${lang}/clube#reset=${'a'.repeat(64)}`;
   const email=passwordResetEmail({name:'<img src=x onerror=alert(1)> & "Parceiro"',lang,origin,link});
   assert.ok(email.html.includes('&lt;img src=x onerror=alert(1)&gt; &amp; &quot;Parceiro&quot;'));
