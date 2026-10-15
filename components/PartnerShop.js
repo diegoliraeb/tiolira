@@ -4,12 +4,12 @@ import PurchaseDownloads from './PurchaseDownloads';
 import ShopPayment from './ShopPayment';
 import AsaasPaymentNotice,{PaymentLock} from './AsaasPaymentNotice';
 import {cartSelection} from '../lib/cart-lines.mjs';
+import {cardPaymentUrl} from '../lib/asaas-payment.mjs';
 
 export const money=cents=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((cents||0)/100);
 export const statuses={creating:'Conferindo cobrança',pending:'Aguardando pagamento',overdue:'Vencido',paid:'Pagamento confirmado',revoked:'Acesso suspenso por estorno',cancelled:'Cancelado',failed:'Não concluído',review:'Em análise'};
-const blankCard=(member={})=>({holderName:'',number:'',expiryMonth:'',expiryYear:'',ccv:'',name:member.name||'',email:member.email||'',cpfCnpj:'',postalCode:'',addressNumber:'',phone:member.whatsapp||''});
 async function api(path,body){const r=await fetch('/api/'+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'}),data=await r.json();if(!r.ok)throw Error(data.error||'Não foi possível concluir.');return data;}
-export default function PartnerShop({cartState,member,onEditProfile,onRefresh,requestedProductId,onProductConsumed}){
+export default function PartnerShop({lang='pt',cartState,member,onEditProfile,onRefresh,requestedProductId,onProductConsumed}){
  const {shopView,setShopView,activeOrderId,setActiveOrderId,couponCode,setCouponCode,couponQuote,couponError,couponBusy,data,setData,cart,setCart,requestId,setRequestId,load,error}=cartState;
  const viewHeading=useRef(null);
  const [paymentLoading,setPaymentLoading]=useState(false),[paymentError,setPaymentError]=useState(''),[orderFilter,setOrderFilter]=useState('all');
@@ -17,7 +17,7 @@ export default function PartnerShop({cartState,member,onEditProfile,onRefresh,re
  useEffect(()=>setCouponDraft(couponCode),[couponCode]);
  const hasBillingDocument=/^(\d{11}|\d{14})$/.test(member.cpfCnpj||'');
  const maskedDocument=hasBillingDocument?`${member.cpfCnpj.length===11?'CPF •••.•••.•••-':'CNPJ ••.•••.•••/••••-'}${member.cpfCnpj.slice(-2)}`:'';
- const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[otherHolder,setOtherHolder]=useState(false),[billingType,setBillingType]=useState('PIX'),[overlap,setOverlap]=useState(false),[card,setCard]=useState(()=>blankCard(member)),[payment,setPayment]=useState(null);
+ const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[billingType,setBillingType]=useState('PIX'),[overlap,setOverlap]=useState(false),[payment,setPayment]=useState(null);
  useEffect(()=>{
   if(!data||!requestedProductId)return;
   const item=data.products.find(p=>p.id===requestedProductId&&!p.owned);
@@ -30,7 +30,7 @@ export default function PartnerShop({cartState,member,onEditProfile,onRefresh,re
  function browse(){setActiveOrderId(null);setPayment(null);switchView('catalog');}
  function openOrder(order){setActiveOrderId(order.id);setPayment({order});setPaymentError('');switchView('cart');}
  useEffect(()=>{
-  if(shopView!=='cart'||!activeOrder||!['pending','overdue'].includes(activeOrder.status)||activeOrder.billingType==='CREDIT_CARD'){setPaymentLoading(false);return;}
+  if(shopView!=='cart'||!activeOrder||!['pending','overdue'].includes(activeOrder.status)){setPaymentLoading(false);return;}
   let stale=false;setPaymentLoading(true);setPaymentError('');
   api('club/orders/payment',{id:activeOrder.id}).then(result=>{if(!stale){setPayment(result);setData(old=>({...old,orders:old.orders.map(o=>o.id===result.order.id?result.order:o)}));}}).catch(e=>{if(!stale)setPaymentError(e.message)}).finally(()=>{if(!stale)setPaymentLoading(false)});
   return()=>{stale=true};
@@ -50,16 +50,17 @@ export default function PartnerShop({cartState,member,onEditProfile,onRefresh,re
  async function purchase(e){
   e.preventDefault();setBusy(true);setMessage('');
   try{
-   const cardData=billingType==='CREDIT_CARD'?{creditCard:{holderName:card.holderName,number:card.number,expiryMonth:card.expiryMonth,expiryYear:card.expiryYear,ccv:card.ccv},creditCardHolderInfo:{name:card.name,email:card.email,cpfCnpj:otherHolder?card.cpfCnpj:member.cpfCnpj,postalCode:card.postalCode,addressNumber:card.addressNumber,phone:card.phone}}:{};
-   const result=await api('club/checkout',{items:cart,requestId,billingType,couponCode,expectedTotalCents:total,acceptOverlap:overlap,...cardData});
-   change([]);setCouponCode('');setCouponDraft('');setOtherHolder(false);setCard(blankCard(member));setPayment({order:result.order});setActiveOrderId(result.order.id);switchView('cart');await load();await onRefresh?.();
+   const result=await api('club/checkout',{items:cart,requestId,billingType,couponCode,expectedTotalCents:total,acceptOverlap:overlap,lang});
+   change([]);setCouponCode('');setCouponDraft('');setPayment({order:result.order});setActiveOrderId(result.order.id);switchView('cart');
+   const paymentUrl=cardPaymentUrl(result.order);
+   if(paymentUrl){setMessage('Abrindo o Asaas para preencher os dados do cartão…');window.location.assign(paymentUrl);return;}
+   await load().catch(()=>{});await onRefresh?.();
    if(result.order.status==='paid')setMessage('Pagamento confirmado! Seus arquivos e licenças de venda já estão disponíveis.');
-   else setMessage('Pedido registrado. Conclua o pagamento abaixo.');
-  }catch(e){setMessage(e.message);setRequestId(crypto.randomUUID());await load().catch(()=>{});}finally{setCard(blankCard(member));setBusy(false)}
+   else setMessage(result.order.billingType!==billingType?'Já existe um pedido pendente para este carrinho. Continue o pagamento salvo abaixo ou consulte Meus pedidos.':'Pedido registrado. Conclua o pagamento abaixo.');
+  }catch(e){setMessage(e.message);setRequestId(crypto.randomUUID());await load().catch(()=>{});}finally{setBusy(false)}
  }
  async function refresh(id,details=false){setBusy(true);setMessage('');setPaymentError('');try{const result=await api(details?'club/orders/payment':'club/orders/refresh',{id});setPayment(result);setActiveOrderId(result.order.id);await load();await onRefresh?.();setMessage(result.order.status==='paid'?'Pagamento confirmado! Arquivos e licenças de venda liberados.':'Situação do pagamento atualizada.');}catch(e){setMessage(e.message)}finally{setBusy(false)}}
  async function copy(value){try{await navigator.clipboard.writeText(value);setMessage('Código copiado.');}catch{setMessage('Selecione e copie o código exibido abaixo.');}}
- function cardField(key,label,props={}){return <label>{label}<input value={card[key]} onChange={e=>setCard(c=>({...c,[key]:e.target.value}))} required {...props}/></label>}
  return <section className="partner-shop">
   <header className="partner-panel-heading"><p className="eyebrow">ÁREA DO PARCEIRO</p><h2>Loja e carrinho</h2><p>Escolha uma peça ou leve a coleção completa. Após o pagamento, seus arquivos e a licença para vender as peças impressas são liberados automaticamente.</p></header>
   {!data?(error?<p className="notice" role="alert">{error} <button type="button" onClick={()=>load().catch(e=>setMessage(e.message))}>Tentar novamente</button></p>:<p>Carregando loja…</p>):<>
@@ -81,18 +82,12 @@ export default function PartnerShop({cartState,member,onEditProfile,onRefresh,re
      <div className="shop-coupon"><label htmlFor="cart-coupon-code">Tem um cupom de desconto?</label><div className="shop-coupon-entry"><input id="cart-coupon-code" placeholder="Digite o código" autoCapitalize="characters" autoComplete="off" maxLength={40} value={couponDraft} disabled={busy||couponBusy} onChange={e=>setCouponDraft(e.target.value.toUpperCase())} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();if(couponDraft.trim()){setCouponCode(couponDraft.trim().toUpperCase());setRequestId(crypto.randomUUID());}}}}/><button type="button" className="button outline" disabled={busy||couponBusy||!couponDraft.trim()} onClick={()=>{setCouponCode(couponDraft.trim().toUpperCase());setRequestId(crypto.randomUUID());}}>{couponBusy?'Validando…':'Aplicar cupom'}</button></div>{couponCode&&<div className="shop-coupon-status"><span role="status">{couponError|| (couponQuote?`Cupom ${couponQuote.coupon.code} aplicado`:'Validando cupom…')}</span><button type="button" disabled={busy} onClick={()=>{setCouponCode('');setCouponDraft('');setRequestId(crypto.randomUUID());}}>Remover cupom</button></div>}</div>
      {couponQuote&&<div className="shop-discount-summary"><p><span>Subtotal</span><strong>{money(couponQuote.subtotalCents)}</strong></p><p><span>Desconto · {couponQuote.coupon.code}</span><strong>− {money(couponQuote.discountCents)}</strong></p></div>}
      <div className="shop-total"><div><span>Total da compra</span><small>Pagamento único · arquivos digitais</small></div><strong>{money(total)}</strong></div><div className="shop-billing-summary"><div><strong>{hasBillingDocument?member.name:'Complete seus dados para comprar'}</strong><small>{hasBillingDocument?`${maskedDocument} · salvo em Meus dados`:'Informe seu CPF ou CNPJ uma única vez em Meus dados.'}</small></div><button type="button" disabled={busy} onClick={onEditProfile}>{hasBillingDocument?'Editar meus dados':'Preencher meus dados'}</button></div>
-     <fieldset disabled={busy} className="shop-checkout-fields"><div className="shop-payment-method"><label>Forma de pagamento<select value={billingType} onChange={e=>{setBillingType(e.target.value);setCard(blankCard(member));setRequestId(crypto.randomUUID());}}><option value="PIX">Pix</option><option value="BOLETO">Boleto</option><option value="CREDIT_CARD">Cartão de crédito</option></select></label></div>
-     {billingType==='CREDIT_CARD'&&<div className="shop-card-fields"><AsaasPaymentNotice/><div className="shop-card-form-heading"><div><span className="eyebrow">PAGAMENTO À VISTA</span><h4>Dados do cartão</h4></div><div className="shop-card-amount"><span>Total no cartão</span><strong>{money(total)}</strong></div></div><div className="form-grid">
-      {cardField('holderName','Nome impresso no cartão',{autoComplete:'cc-name',maxLength:100})}{cardField('number','Número do cartão',{autoComplete:'cc-number',inputMode:'numeric',maxLength:23})}
-      {cardField('expiryMonth','Mês de validade (MM)',{autoComplete:'cc-exp-month',inputMode:'numeric',pattern:'0[1-9]|1[0-2]',maxLength:2,placeholder:'MM'})}{cardField('expiryYear','Ano de validade (AAAA)',{autoComplete:'cc-exp-year',inputMode:'numeric',pattern:'20[0-9]{2}',maxLength:4,placeholder:'AAAA'})}
-      {cardField('ccv','Código de segurança',{type:'password',autoComplete:'off',inputMode:'numeric',pattern:'[0-9]{3,4}',maxLength:4})}
-     </div><h4 className="shop-card-holder-title">Titular e endereço de cobrança</h4><p className="field-help">Preencha os dados do titular do cartão para validar o pagamento.</p><label className="check"><input type="checkbox" checked={otherHolder} onChange={e=>{setOtherHolder(e.target.checked);setCard(c=>({...c,cpfCnpj:''}));}}/>O cartão pertence a outra pessoa</label>{!otherHolder&&<p className="field-help">Usaremos o CPF/CNPJ salvo em Meus dados.</p>}<div className="form-grid">
-      {cardField('name','Nome completo do titular',{autoComplete:'name',maxLength:100})}{cardField('email','E-mail do titular',{type:'email',autoComplete:'email',maxLength:254})}{otherHolder&&cardField('cpfCnpj','CPF ou CNPJ do outro titular',{inputMode:'numeric',autoComplete:'off',maxLength:18})}{cardField('phone','Telefone com DDD',{inputMode:'tel',autoComplete:'tel-national',maxLength:16})}{cardField('postalCode','CEP da fatura',{inputMode:'numeric',autoComplete:'postal-code',maxLength:9})}{cardField('addressNumber','Número do endereço da fatura',{autoComplete:'off',maxLength:20})}
-     </div></div>}
+     <fieldset disabled={busy} className="shop-checkout-fields"><div className="shop-payment-method"><label>Forma de pagamento<select value={billingType} onChange={e=>{setBillingType(e.target.value);setRequestId(crypto.randomUUID());}}><option value="PIX">Pix</option><option value="BOLETO">Boleto</option><option value="CREDIT_CARD">Cartão de crédito</option></select></label></div>
+     {billingType==='CREDIT_CARD'&&<div className="shop-card-fields"><AsaasPaymentNotice/><div className="shop-card-form-heading"><div><span className="eyebrow">PAGAMENTO NO ASAAS</span><h4>Preencha seu cartão na próxima etapa</h4></div><div className="shop-card-amount"><span>Total no cartão</span><strong>{money(total)}</strong></div></div><p>Ao continuar, você será direcionado à página do Asaas para informar os dados do cartão e concluir o pagamento. Depois, volte à loja para acessar sua compra.</p></div>}
      {partlyOwned&&<label className="check"><input type="checkbox" checked={overlap} onChange={e=>setOverlap(e.target.checked)} required/>Já possuo peças desta coleção e aceito pagar o preço integral do pacote, sem abatimento.</label>}
      </fieldset>
-     <p className="field-help">{billingType==='CREDIT_CARD'?'Confira os dados e o total antes de confirmar.':'Pagamento processado pelo Asaas aqui no site.'} A compra inclui licença para vender as peças impressas; os arquivos digitais não podem ser revendidos ou compartilhados.</p>
-     <button className={`button primary ${billingType==='CREDIT_CARD'?'shop-card-pay-button':''}`} disabled={busy||Boolean(couponCode&&!couponQuote)||!hasBillingDocument||!data.paymentsReady||cart.length!==selected.length}>{billingType==='CREDIT_CARD'&&<PaymentLock/>}{busy?(billingType==='CREDIT_CARD'?'Processando pelo Asaas…':'Processando…'):billingType==='PIX'?`Gerar Pix de ${money(total)}`:billingType==='BOLETO'?`Gerar boleto de ${money(total)}`:`Pagar ${money(total)} pelo Asaas`}</button>
+     <p className="field-help">{billingType==='CREDIT_CARD'?'Confira o total antes de continuar para o Asaas.':'Pagamento processado pelo Asaas aqui no site.'} A compra inclui licença para vender as peças impressas; os arquivos digitais não podem ser revendidos ou compartilhados.</p>
+     <button className={`button primary ${billingType==='CREDIT_CARD'?'shop-card-pay-button':''}`} disabled={busy||Boolean(couponCode&&!couponQuote)||!hasBillingDocument||!data.paymentsReady||cart.length!==selected.length}>{billingType==='CREDIT_CARD'&&<PaymentLock/>}{busy?(billingType==='CREDIT_CARD'?'Preparando pagamento…':'Processando…'):billingType==='PIX'?`Gerar Pix de ${money(total)}`:billingType==='BOLETO'?`Gerar boleto de ${money(total)}`:`Continuar no Asaas · ${money(total)}`}</button>
     </>}
    </form>}
    {shopView==='files'&&<section className="shop-files"><header className="shop-view-heading"><div><p className="eyebrow">SUA BIBLIOTECA</p><h3>Meus arquivos</h3><p>Baixe os arquivos das suas compras e guarde suas licenças de venda em PDF.</p></div></header>{data.orders.some(o=>o.status==='paid')?<div className="shop-library-purchases">{data.orders.filter(o=>o.status==='paid').map(o=><section key={o.id}><h4>Compra de {new Date(o.createdAt).toLocaleDateString('pt-BR')}</h4><PurchaseDownloads order={o} products={data.products} compact/></section>)}</div>:<div className="shop-empty-state"><h4>Sua biblioteca começa com a primeira peça</h4><p>Após a confirmação do pagamento, os arquivos aparecerão aqui.</p><button className="button primary" onClick={browse}>Explorar a loja</button></div>}</section>}

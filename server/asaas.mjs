@@ -1,5 +1,6 @@
 import {timingSafeEqual} from 'node:crypto';
-// Private API key stays on the server. Card data is forwarded only in memory, never stored or logged.
+export {invoiceUrl} from '../lib/asaas-payment.mjs';
+// Private API key stays on the server. Card details are entered only on Asaas.
 export function asaasConfig(){
  const environment=process.env.ASAAS_ENVIRONMENT||'sandbox';
  if(!['sandbox','production'].includes(environment))throw Object.assign(new Error('Ambiente Asaas inválido.'),{status:503});
@@ -16,8 +17,9 @@ export async function asaas(path,{method='GET',body,timeoutMs=15000}={}){
  if(!response.ok||!data)throw Object.assign(new Error('O Asaas não concluiu a operação. Confira os dados ou consulte o pedido.'),{status:502,uncertain:response.status>=500||!data});
  return data;
 }
-export function invoiceUrl(value){
- try{const u=new URL(value);if(u.protocol==='https:'&&!u.username&&!u.password&&['www.asaas.com','asaas.com','sandbox.asaas.com','www.sandbox.asaas.com'].includes(u.hostname))return u.href;}catch{}
+export function paymentReturnUrl(orderId,lang='pt'){
+ if(process.env.ASAAS_PAYMENT_REDIRECT_ENABLED!=='true')return '';
+ try{const u=new URL(process.env.SITE_URL);if(u.protocol==='https:'&&!u.username&&!u.password)return `${u.origin}/${['pt','en','es'].includes(lang)?lang:'pt'}/clube?pedido=${encodeURIComponent(orderId)}#compras`;}catch{}
  return '';
 }
 export async function checkAsaasConnection(webhookUrl){

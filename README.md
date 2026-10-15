@@ -126,7 +126,7 @@ Os e-mails de recuperação são enviados em HTML e texto, com logo PNG, cabeça
 
 ## Compras e integração Asaas
 
-A área do parceiro oferece **Loja e carrinho**, pedidos e arquivos comprados. Peças pagas usam arquivos privados, liberados após confirmação de pagamento; a licença para vender os impressos é emitida automaticamente por peça após a compra confirmada. O administrador acompanha vendas avulsas, peças incluídas em coleções e downloads iniciados. A integração usa cobranças Asaas com Pix, boleto ou cartão diretamente no site, com confirmação por webhook.
+A área do parceiro oferece **Loja e carrinho**, pedidos e arquivos comprados. Peças pagas usam arquivos privados, liberados após confirmação de pagamento; a licença para vender os impressos é emitida automaticamente por peça após a compra confirmada. O administrador acompanha vendas avulsas, peças incluídas em coleções e downloads iniciados. A integração usa cobranças Asaas com Pix e boleto no site, e cartão preenchido diretamente na página hospedada pelo Asaas, com confirmação por webhook.
 
 Veja [configuração, cadastro da coleção e validação em sandbox](docs/asaas-compras.md). A integração só deve ser ativada após configurar as variáveis privadas e o webhook e concluir os testes reais de homologação.
 
@@ -153,3 +153,9 @@ Na primeira leitura do catálogo após a publicação, as capas antigas são inc
 Em **Vendas e downloads → Por peça**, clique na quantidade de downloads para ver os parceiros, e-mail, número de downloads por parceiro e data do último download. Os dados são restritos à administração autenticada em `GET /api/admin/downloads?productId=…`. Contam entregas iniciadas de arquivos próprios, sem presumir conclusão nem incluir cliques externos do MakerWorld.
 
 `commerce.json` mantém os totais por obra e parceiro em `downloadPartners`, gravados atomicamente com o contador e a lista dos 500 eventos recentes. Registros antigos são agrupados a partir do histórico ainda disponível; no próximo download, essa base é persistida junto do novo evento. Downloads anteriores ao histórico preservado continuam no total e aparecem como sem identificação disponível. Não são atribuídos por inferência a compradores.
+
+## Cartão no checkout hospedado do Asaas
+
+Ao escolher cartão, a loja cria a cobrança sem enviar dados do cartão, valida o `invoiceUrl` retornado pelo Asaas e redireciona o comprador. O formulário local de cartão foi removido. Pedidos pendentes oferecem **Preencher cartão e pagar no Asaas**, sempre retomando a mesma cobrança; pedidos em análise ou pagos não oferecem um novo pagamento.
+
+Com `ASAAS_PAYMENT_REDIRECT_ENABLED=true` e `SITE_URL` configurada para a origem HTTPS oficial, a cobrança inclui `callback.successUrl` para `/{idioma}/clube?pedido={id}#compras` e retorno automático. Habilite esse retorno somente após cadastrar o domínio na conta Asaas. Por padrão, ou sem uma origem válida, o checkout permanece disponível, mas o retorno é manual por Meus pedidos. O retorno ao site não aprova pedidos: a confirmação continua pela API/webhook, validando comprador, referência e valor antes de liberar os arquivos e licenças. Pix, boleto, descontos e recuperação de respostas incertas mantêm o fluxo existente.

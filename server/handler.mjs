@@ -1,6 +1,6 @@
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
-import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,paymentContext,purchaseLicenses,downloadablePurchaseLicense,salesReport,downloadPartnersReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
+import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,purchaseLicenses,downloadablePurchaseLicense,salesReport,downloadPartnersReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
 import {configurePurchaseEmailWebhook,checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
@@ -58,7 +58,7 @@ export default async function handler(req,res){
   const input=await body(req);
   if(method==='POST'&&route==='admin/purchase-email-webhook'){await requireAdmin(req);await rateLimit(req,'configure-email-webhook',5,60_000);return json(res,200,await configurePurchaseEmailWebhook());}
   if(method==='POST'&&route==='club/cart-quote'){const member=await requireClub(req);await rateLimit(req,'cart-quote',40,60_000);return json(res,200,await quoteCheckout(member,input));}
-  if(method==='POST'&&route==='club/checkout'){const member=await requireClub(req);await rateLimit(req,'checkout',10,60_000);return json(res,201,{order:await checkout(member,input,paymentContext(req))});}
+  if(method==='POST'&&route==='club/checkout'){const member=await requireClub(req);await rateLimit(req,'checkout',10,60_000);return json(res,201,{order:await checkout(member,input)});}
   if(method==='POST'&&route==='club/orders/payment'){const member=await requireClub(req);await rateLimit(req,'payment-details',20,60_000);return json(res,200,await paymentDetails(member,input.id));}
   if(method==='POST'&&route==='club/orders/refresh'){const member=await requireClub(req);await rateLimit(req,'payment-refresh',20,60_000);return json(res,200,{order:await refreshOrder(member,input.id)});}
   if(method==='POST'&&route==='products/click'){

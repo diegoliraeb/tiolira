@@ -3,21 +3,11 @@ import {sendPurchaseEmail,purchaseEmailConfig} from './purchase-email.mjs';
 import {cartCoupons,couponCodeSchema,discountQuote} from './cart-coupons.mjs';
 import {createHash,randomUUID,timingSafeEqual} from 'node:crypto';
 import {z} from 'zod';
-import {isIP} from 'node:net';
 import {getCatalog,readRecord,updateRecord} from './store.mjs';
-import {asaas,asaasConfig,invoiceUrl,paymentsReady} from './asaas.mjs';
+import {asaas,asaasConfig,invoiceUrl,paymentReturnUrl,paymentsReady} from './asaas.mjs';
 
 const KEY='commerce.json';
 export const purchaseLicenseTerms='Autorizada a impressão e venda das peças físicas desta obra pelo parceiro identificado, enquanto esta compra estiver válida. Licença pessoal e intransferível. Não autoriza revender, compartilhar ou redistribuir os arquivos digitais.';
-const digits=z.string().max(30).transform(s=>s.replace(/\D/g,''));
-const cardSchema=z.object({holderName:z.string().trim().min(3).max(100),number:digits.pipe(z.string().regex(/^\d{13,19}$/)),expiryMonth:z.string().regex(/^(0[1-9]|1[0-2])$/),expiryYear:z.string().regex(/^20\d{2}$/),ccv:z.string().regex(/^\d{3,4}$/)}).refine(c=>{const now=new Date();return Number(c.expiryYear)>now.getUTCFullYear()||Number(c.expiryYear)===now.getUTCFullYear()&&Number(c.expiryMonth)>=now.getUTCMonth()+1},'Cartão vencido.');
-const holderSchema=z.object({name:z.string().trim().min(3).max(100),email:z.email().max(254),cpfCnpj:digits.pipe(z.string().regex(/^(\d{11}|\d{14})$/)),postalCode:digits.pipe(z.string().regex(/^\d{8}$/)),addressNumber:z.string().trim().min(1).max(20),phone:digits.pipe(z.string().regex(/^\d{10,11}$/))});
-export function paymentContext(req){
- const remoteIp=process.env.VERCEL?String(req.headers['x-forwarded-for']||'').split(',')[0].trim():req.socket?.remoteAddress;
- const secure=process.env.VERCEL?req.headers['x-forwarded-proto']==='https':Boolean(req.socket?.encrypted);
- return {remoteIp,secure};
-}
-
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status});};
 const id=z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
 const cartSchema=z.array(z.object({kind:z.enum(['product','collection']),id})).min(1).max(40);
@@ -63,16 +53,11 @@ export async function quoteCheckout(member,input){
  const [{data},coupons,owned]=await Promise.all([getCatalog(),cartCoupons(),memberOwnedIds(member)]);
  return discountQuote(quoteCart(data,input.items,owned),input.couponCode,coupons.coupons);
 }
-export async function checkout(member,input,context={}){
+export async function checkout(member,input){
  if(!paymentsReady())fail('Os pagamentos ainda não estão configurados.',503);
  const cpfCnpj=String(member.cpfCnpj||'').replace(/\D/g,'');
  if(!/^(\d{11}|\d{14})$/.test(cpfCnpj))fail('Preencha o CPF ou CNPJ em Meus dados antes de comprar.');
- const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive().optional(),acceptOverlap:z.boolean().default(false),creditCard:cardSchema.optional(),creditCardHolderInfo:holderSchema.optional()}).parse(input);
- if(parsed.billingType==='CREDIT_CARD'){
-  if(!parsed.creditCard||!parsed.creditCardHolderInfo)fail('Preencha os dados do cartão e do titular.');
-  if(!isIP(context.remoteIp||''))fail('Não foi possível identificar a conexão do comprador.');
-  if(asaasConfig().environment==='production'&&!context.secure)fail('O pagamento com cartão exige uma conexão HTTPS.',400);
- }
+ const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive().optional(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es']).default('pt')}).parse(input);
  const {data}=await getCatalog(),environment=asaasConfig().environment,coupons=await cartCoupons();
  const orderId=randomUUID();let chosenId;
  await updateRecord(KEY,old=>{
@@ -97,7 +82,8 @@ export async function checkout(member,input,context={}){
   const order=s.orders.find(o=>o.id===orderId),dueDate=new Date(Date.now()+3*86400000).toISOString().slice(0,10);
   // Persist the intent before the single POST. Ambiguous results are reconciled by reference, never blindly retried.
   paymentAttempted=true;
-  const payment=await asaas('/payments',{method:'POST',timeoutMs:parsed.billingType==='CREDIT_CARD'?65000:15000,body:{...(parsed.billingType==='CREDIT_CARD'?{creditCard:parsed.creditCard,creditCardHolderInfo:parsed.creditCardHolderInfo,remoteIp:context.remoteIp}:{}),customer:customer.id,billingType:parsed.billingType,value:order.totalCents/100,dueDate,externalReference:orderId,description:`Tio Lira — ${order.items.map(i=>i.name).join(', ')}`.slice(0,500)}});
+  const returnUrl=parsed.billingType==='CREDIT_CARD'?paymentReturnUrl(orderId,parsed.lang):'';
+  const payment=await asaas('/payments',{method:'POST',body:{customer:customer.id,billingType:parsed.billingType,value:order.totalCents/100,dueDate,externalReference:orderId,description:`Tio Lira — ${order.items.map(i=>i.name).join(', ')}`.slice(0,500),...(returnUrl?{callback:{successUrl:returnUrl,autoRedirect:true}}:{})}});
   await applyPayment(orderId,payment);
  }catch(e){
   if(!paymentAttempted||e.uncertain===false)await updateRecord(KEY,old=>{const o=old.orders.find(o=>o.id===orderId);if(o.status==='creating')o.status='failed';return old;});

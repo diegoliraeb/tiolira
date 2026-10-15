@@ -5,7 +5,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {checkout,quoteCheckout,quoteCart,shop,paymentDetails,paymentContext,purchaseLicenses,purchaseAccess,receiveWebhook,applyPayment,refreshOrder,recordDownload,salesReport} from '../server/commerce.mjs';
+import {checkout,quoteCheckout,quoteCart,shop,paymentDetails,purchaseLicenses,purchaseAccess,receiveWebhook,applyPayment,refreshOrder,recordDownload,salesReport} from '../server/commerce.mjs';
 import {readRecord,writeRecord} from '../server/store.mjs';
 import {invoiceUrl} from '../server/asaas.mjs';
 import {clubProducts} from '../server/club.mjs';
@@ -15,10 +15,10 @@ import seed from '../data/catalog.json' with {type:'json'};
 
 test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
  const dir=await mkdtemp(join(tmpdir(),'tiolira-sales-'));
- const keys=['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN','LOCAL_DATA_DIR','ASAAS_ENVIRONMENT','ASAAS_API_KEY','ASAAS_WEBHOOK_TOKEN','ADMIN_SESSION_SECRET','RESEND_API_KEY','EMAIL_FROM','SITE_URL'];
+ const keys=['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN','LOCAL_DATA_DIR','ASAAS_ENVIRONMENT','ASAAS_API_KEY','ASAAS_WEBHOOK_TOKEN','ADMIN_SESSION_SECRET','RESEND_API_KEY','EMAIL_FROM','SITE_URL','ASAAS_PAYMENT_REDIRECT_ENABLED'];
  const env=Object.fromEntries(keys.map(k=>[k,process.env[k]])),originalFetch=globalThis.fetch;
  for(const k of keys)delete process.env[k];
- Object.assign(process.env,{RESEND_API_KEY:'test-resend',EMAIL_FROM:'Tio Lira <test@example.invalid>',SITE_URL:'https://www.tiolira.com.br',LOCAL_DATA_DIR:dir,ASAAS_ENVIRONMENT:'sandbox',ASAAS_API_KEY:'test-only',ASAAS_WEBHOOK_TOKEN:'test-webhook-secret-with-at-least-32-chars',ADMIN_SESSION_SECRET:'test-session-secret-at-least-32-characters'});
+ Object.assign(process.env,{ASAAS_PAYMENT_REDIRECT_ENABLED:'true',RESEND_API_KEY:'test-resend',EMAIL_FROM:'Tio Lira <test@example.invalid>',SITE_URL:'https://www.tiolira.com.br',LOCAL_DATA_DIR:dir,ASAAS_ENVIRONMENT:'sandbox',ASAAS_API_KEY:'test-only',ASAAS_WEBHOOK_TOKEN:'test-webhook-secret-with-at-least-32-chars',ADMIN_SESSION_SECRET:'test-session-secret-at-least-32-characters'});
  const a={id:randomUUID(),version:randomUUID(),name:'A',email:'a@example.invalid',cpfCnpj:'12345678901'},b={id:randomUUID(),version:randomUUID(),name:'B',email:'b@example.invalid',cpfCnpj:'12345678000199'},c={id:randomUUID(),version:randomUUID(),name:'C',email:'c@example.invalid',cpfCnpj:'12345678901'};
  const data=structuredClone(seed);data.collections.push({id:'folclore-test',name:'Folclore Brasileiro Parte 1',published:true,free:false,comingSoon:false,priceCents:4990});
  const products=['saci','curupira','boitata','cuca','mula'].map(id=>({id,name:id,slug:id,collection:'folclore-test',published:true,access:'paid',priceCents:1490,filePath:`models/${id}.zip`}));data.products.push(...products);
@@ -108,17 +108,33 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
    process.env.ASAAS_ENVIRONMENT='production';assert.equal(await purchaseAccess(a,'saci'),false);assert.equal((await call(`club/licenses/download?code=${(await readRecord('commerce.json')).data.orders[0].licenses[0].code}`)).status,404);process.env.ASAAS_ENVIRONMENT='sandbox';
   });
 
-  await t.test('inline boleto and card processing keep sensitive details out of storage',async()=>{
+  await t.test('hosted card checkout accepts no card data, reuses the invoice and verifies payment before access',async()=>{
    const boleto=await checkout(b,{...input([{kind:'product',id:'curupira'}]),billingType:'BOLETO'});
    assert.ok((await paymentDetails(b,boleto.id)).boleto.identificationField.startsWith('00190'));
-   const body={...input(),billingType:'CREDIT_CARD',creditCard:{holderName:'Test Holder',number:'4444444444444444',expiryMonth:'12',expiryYear:'2099',ccv:'123'},creditCardHolderInfo:{name:'Test Holder',email:'holder@example.invalid',cpfCnpj:'12345678901',postalCode:'57000000',addressNumber:'123',phone:'82999999999'}};
-   await assert.rejects(()=>checkout(c,body),/conexão/);
-   const order=await checkout(c,body,{remoteIp:'203.0.113.5',secure:true});
-   const p=[...remote.values()].find(p=>p.externalReference===order.id);assert.equal(p.creditCard.number,body.creditCard.number);assert.equal(p.remoteIp,'203.0.113.5');
-   const saved=JSON.stringify((await readRecord('commerce.json')).data);for(const secret of ['4444444444444444','creditCard','holder@example.invalid','82999999999'])assert.equal(saved.includes(secret),false);
-   assert.equal((await purchaseLicenses(c)).length,0);p.status='CONFIRMED';await refreshOrder(c,order.id);assert.equal((await purchaseLicenses(c)).length,1);
-   assert.equal(paymentContext({headers:{'x-forwarded-for':'1.2.3.4'},socket:{remoteAddress:'127.0.0.1'}}).remoteIp,'127.0.0.1');
-   process.env.ASAAS_ENVIRONMENT='production';await assert.rejects(()=>checkout(c,body,{remoteIp:'203.0.113.5',secure:false}),/HTTPS/);process.env.ASAAS_ENVIRONMENT='sandbox';
+   const body={...input(),billingType:'CREDIT_CARD',lang:'es'};
+   const before=posts;
+   const [order,duplicate]=await Promise.all([checkout(c,body),checkout(c,body)]);
+   assert.equal(order.id,duplicate.id);assert.equal(posts,before+1);
+   assert.equal(order.status,'pending');assert.equal(order.billingType,'CREDIT_CARD');
+   assert.match(order.paymentUrl,/^https:\/\/sandbox\.asaas\.com\/i\//);
+   const p=[...remote.values()].find(p=>p.externalReference===order.id);
+   assert.equal(p.value,14.90);
+   assert.deepEqual(p.callback,{successUrl:`https://www.tiolira.com.br/es/clube?pedido=${order.id}#compras`,autoRedirect:true});
+   for(const field of ['creditCard','creditCardHolderInfo','creditCardToken','remoteIp'])assert.equal(field in p,false);
+   const legacy={...body,requestId:randomUUID(),creditCard:{number:'4444444444444444',ccv:'123'},creditCardHolderInfo:{email:'holder@example.invalid'}};
+   assert.equal((await checkout(c,legacy)).id,order.id);assert.equal(posts,before+1);
+   const saved=JSON.stringify((await readRecord('commerce.json')).data);for(const secret of ['4444444444444444','creditCard','holder@example.invalid'])assert.equal(saved.includes(secret),false);
+   assert.equal((await paymentDetails(c,order.id)).order.paymentUrl,order.paymentUrl);
+   assert.equal(await purchaseAccess(c,'saci'),false);assert.equal((await purchaseLicenses(c)).length,0);
+   p.status='CONFIRMED';await receiveWebhook({id:'evt-hosted-card-paid',event:'PAYMENT_CONFIRMED',payment:{id:p.id}});
+   assert.equal(await purchaseAccess(c,'saci'),true);assert.equal((await purchaseLicenses(c)).length,1);
+  });
+  await t.test('a card creation timeout recovers the same hosted invoice without another charge',async()=>{
+   const body={...input([{kind:'product',id:'boitata'}]),billingType:'CREDIT_CARD'};
+   const before=posts;timeout=true;await assert.rejects(()=>checkout(c,body));
+   const pending=await checkout(c,body);assert.equal(pending.status,'creating');assert.equal(posts,before+1);
+   const recovered=await paymentDetails(c,pending.id);assert.equal(recovered.order.status,'pending');assert.ok(recovered.order.paymentUrl);assert.equal(posts,before+1);
+   assert.equal(await purchaseAccess(c,'boitata'),false);
   });
   await t.test('edited catalog prices apply to new purchases, preserving existing orders',async()=>{
    data.products.find(p=>p.id==='saci').priceCents=1990;data.collections.find(c=>c.id==='folclore-test').priceCents=5990;
