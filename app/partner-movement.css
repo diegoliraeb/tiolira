@@ -71,3 +71,19 @@
 @media(max-width:900px){.partner-movement .club-download-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
 @media(max-width:600px){.partner-movement .club-download-card>div{padding:11px}.partner-movement .club-download-card h3{font-size:16px}.partner-movement .club-download-card .shop-price{font-size:22px}}
 @media(max-width:359px){.partner-movement .club-download-grid{grid-template-columns:1fr}}
+
+/* Complete collections share the same cart and server-priced checkout as singles. */
+.partner-movement .partner-bundle-card{border:2px solid #a94d2f;background:#f5efdf}
+.partner-movement .partner-bundle-image{width:100%;aspect-ratio:1;object-fit:contain;background:#eeeee5}
+.partner-movement .bundle-saving{color:#9a422a;font-size:14px;line-height:1.4}
+.partner-movement .bundle-includes{font-size:13px;line-height:1.5;margin:0}
+.partner-movement .shop-bundle-suggestions{padding:20px;border:1px solid #cbbd9d;border-radius:18px;background:#f5efdf;margin:24px 0}
+.partner-movement .shop-bundle-suggestions>h4{font-size:22px;margin:0 0 16px}
+.partner-movement .shop-bundle-suggestion{display:flex;gap:18px;align-items:center;padding:16px 0;border-top:1px solid #d8cfbc}
+.partner-movement .shop-bundle-suggestion>img{width:110px;aspect-ratio:1;object-fit:contain;border-radius:12px}
+.partner-movement .shop-bundle-suggestion>div{flex:1;min-width:0}
+.partner-movement .shop-bundle-suggestion h4{font-size:18px;margin:0 0 6px}
+.partner-movement .shop-bundle-suggestion p{font-size:14px;line-height:1.5;margin:4px 0}
+.partner-movement .shop-bundle-suggestion small{display:block;font-size:12px;line-height:1.5;margin-top:6px}
+.partner-movement .shop-bundle-suggestion>.button{font-size:12px;padding:12px 16px}
+@media(max-width:700px){.partner-movement .shop-bundle-suggestion{flex-wrap:wrap}.partner-movement .shop-bundle-suggestion>img{width:72px}.partner-movement .shop-bundle-suggestion>.button{width:100%}.partner-movement .shop-bundle-suggestions{padding:14px}}

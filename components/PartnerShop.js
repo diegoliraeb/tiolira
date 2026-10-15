@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import PurchaseDownloads from './PurchaseDownloads';
 import ShopPayment from './ShopPayment';
 import AsaasPaymentNotice,{PaymentLock} from './AsaasPaymentNotice';
-import {cartSelection} from '../lib/cart-lines.mjs';
+import {cartSelection,collectionUpsells,addCartOffer} from '../lib/cart-lines.mjs';
 import {awaitsPayment,reconcilePayment} from '../lib/payment-return.mjs';
 import {formatMoney,paypalPaymentUrl} from '../lib/international-pricing.mjs';
 import {cardPaymentUrl} from '../lib/asaas-payment.mjs';
@@ -57,9 +57,10 @@ export default function PartnerShop({lang='pt',cartState,member,onEditProfile,on
   return()=>{stopped=true;clearInterval(timer)};
  },[activeOrder?.id,activeOrder?.status]);
  const {offers,selected,selectedCollections,lines,total:subtotal}=cartSelection(data,cart);
+ const bundleSuggestions=collectionUpsells(data,cart);
  const partlyOwned=selectedCollections.some(c=>c.productIds.some(id=>data.products.some(p=>p.id===id&&p.owned))&&!c.owned);
  function change(next){setCart(next);setRequestId(crypto.randomUUID());setOverlap(false);setMessage('');}
- function add(item){setActiveOrderId(null);setPayment(null);if(cart.some(x=>x.id===item.id&&x.kind===item.kind))return;change([...cart.filter(x=>item.kind!=='collection'||x.kind!=='product'||!item.productIds.includes(x.id)),{id:item.id,kind:item.kind}]);}
+ function add(item){setActiveOrderId(null);setPayment(null);if(cart.some(x=>x.id===item.id&&x.kind===item.kind))return;change(addCartOffer(cart,item));}
 
  const total=couponQuote?.totalCents??subtotal;
  async function purchase(e){
@@ -92,6 +93,7 @@ export default function PartnerShop({lang='pt',cartState,member,onEditProfile,on
    {shopView==='cart'&&!activeOrder&&<form className="shop-cart admin-panel" onSubmit={purchase}>
     <header className="shop-cart-heading"><div><p className="eyebrow">SUAS ESCOLHAS</p><h3>Seu carrinho</h3></div><span>{lines.length} {lines.length===1?'item':'itens'}</span></header>
     {lines.length?<div className="shop-cart-items">{lines.map(item=><div className="shop-cart-row" key={item.kind+item.id}>{item.image?<img className="shop-cart-thumbnail" src={item.image} alt=""/>:<span className="shop-cart-thumbnail shop-cart-placeholder" aria-hidden="true">3D</span>}<div className="shop-cart-product"><span className="eyebrow">{item.kind==='collection'?'COLEÇÃO':'PEÇA AVULSA'}</span><strong>{item.name}</strong><small>{item.kind==='collection'?`${item.productIds.length} peças incluídas`:'Arquivo digital'} · licença de venda física</small></div><div className="shop-cart-item-actions"><strong>{money(item.priceCents)}</strong><button type="button" disabled={busy} onClick={()=>change(cart.filter(x=>x.id!==item.id||x.kind!==item.kind))} aria-label={`Remover ${item.name}`}>Remover</button></div></div>)}</div>:<div className="shop-cart-empty"><p>Seu carrinho está vazio.</p><small>Escolha uma peça ou coleção para começar.</small><button type="button" className="button primary" onClick={browse}>Explorar a loja</button></div>}
+    {bundleSuggestions.length>0&&<section className="shop-bundle-suggestions" aria-label="Coleções com desconto"><h4>Leve a coleção inteira com desconto</h4>{bundleSuggestions.map(bundle=><article className="shop-bundle-suggestion" key={bundle.id}><img src={bundle.image} alt=""/><div><h4>{bundle.name}</h4><p>{bundle.productIds.length} peças + licenças de venda em PDF.</p><p>Avulsas: <s>{money(bundle.individualTotalCents)}</s> · Coleção: <strong>{money(bundle.priceCents)}</strong></p><strong className="bundle-saving">Economize {money(bundle.savingsCents)} ao levar todas as peças.</strong><small>Substitui as peças desta coleção no carrinho pelo pacote completo.</small></div><button type="button" className="button primary" disabled={busy} onClick={()=>add(bundle)}>Levar coleção completa</button></article>)}</section>}
     {cart.length!==selected.length&&<p className="notice">Um item deixou de estar disponível. <button type="button" onClick={()=>change(selected.map(({kind,id})=>({kind,id})))}>Atualizar carrinho</button></p>}
     {lines.length>0&&<>
      <div className="shop-coupon"><label htmlFor="cart-coupon-code">Tem um cupom de desconto?</label><div className="shop-coupon-entry"><input id="cart-coupon-code" placeholder="Digite o código" autoCapitalize="characters" autoComplete="off" maxLength={40} value={couponDraft} disabled={busy||couponBusy} onChange={e=>setCouponDraft(e.target.value.toUpperCase())} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();if(couponDraft.trim()){setCouponCode(couponDraft.trim().toUpperCase());setRequestId(crypto.randomUUID());}}}}/><button type="button" className="button outline" disabled={busy||couponBusy||!couponDraft.trim()} onClick={()=>{setCouponCode(couponDraft.trim().toUpperCase());setRequestId(crypto.randomUUID());}}>{couponBusy?'Validando…':'Aplicar cupom'}</button></div>{couponCode&&<div className="shop-coupon-status"><span role="status">{couponError|| (couponQuote?`Cupom ${couponQuote.coupon.code} aplicado`:'Validando cupom…')}</span><button type="button" disabled={busy} onClick={()=>{setCouponCode('');setCouponDraft('');setRequestId(crypto.randomUUID());}}>Remover cupom</button></div>}</div>

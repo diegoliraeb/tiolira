@@ -90,9 +90,23 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
   });
   await t.test('bundle overlap requires acknowledgement; bundle records all five pieces and integer revenue',async()=>{
    const body=input([{kind:'collection',id:'folclore-test'},{kind:'product',id:'saci'}]);await assert.rejects(()=>checkout(a,body),/sem abatimento/);
-   const order=await checkout(a,{...body,acceptOverlap:true});assert.equal(order.totalCents,4990);remote.get('pay_2').status='RECEIVED';await refreshOrder(a,order.id);
+   const listed=(await shop(a)).collections.find(c=>c.id==='folclore-test');assert.equal(listed.priceCents,4990);assert.deepEqual(new Set(listed.productIds),new Set(products.map(p=>p.id)));
+   const order=await checkout(a,{...body,acceptOverlap:true});assert.equal(order.totalCents,4990);assert.equal(order.items.length,1);assert.equal(order.productIds.length,5);
+   for(const p of products.filter(p=>p.id!=='saci')){assert.equal(await purchaseAccess(a,p.id),false);assert.equal((await call(`download?id=${p.id}`)).status,403);}
+   assert.equal((await shop(a)).orders.find(o=>o.id===order.id).licenses.length,0);
+   remote.get('pay_2').status='RECEIVED';await refreshOrder(a,order.id);
    for(const p of products)assert.equal(await purchaseAccess(a,p.id),true);
    assert.equal((await purchaseLicenses(a)).filter(l=>l.orderId===order.id&&l.status==='active').length,5);
+   const paidShop=await shop(a),paidBundle=paidShop.orders.find(o=>o.id===order.id);
+   assert.equal(paidBundle.licenses.length,5);
+   for(const p of products){
+    assert.equal(paidShop.products.find(x=>x.id===p.id).downloadUrl,`/api/download?id=${p.id}`);
+    const license=paidBundle.licenses.find(l=>l.productId===p.id);assert.ok(license);
+    const pdf=await call(license.downloadUrl.replace('/api/',''));assert.equal(pdf.status,200);assert.equal((await PDFDocument.load(pdf.body)).getPageCount(),1);
+    const otherCookie=`tiolira_club=${await makeSession(b.version,{memberId:b.id})}`;
+    assert.equal((await call(license.downloadUrl.replace('/api/',''),{headers:{cookie:otherCookie}})).status,404);
+   }
+   await refreshOrder(a,order.id);assert.deepEqual((await shop(a)).orders.find(o=>o.id===order.id).licenses,paidBundle.licenses);
    const generated=await call('club/licenses',{method:'POST',body:{productId:'cuca'}});assert.equal(generated.status,200);assert.equal(generated.body.license.source,'purchase');
    await recordDownload(a,products[0]);const report=await salesReport();assert.equal(report.totalCents,6480);assert.equal(report.products.reduce((n,p)=>n+p.revenueCents,0),6480);const saci=report.products.find(p=>p.id==='saci');assert.equal(saci.individualSales,1);assert.equal(saci.collectionSales,1);assert.equal(saci.downloads,1);
   });
