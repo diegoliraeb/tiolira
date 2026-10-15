@@ -41,7 +41,7 @@
 #tl-vivo .v-gallery-word{position:absolute;top:-70px;left:5%;font:italic 125px Georgia;color:#5e67451a;pointer-events:none;letter-spacing:-10px}
 #tl-vivo .v-orbit{position:absolute;inset:-30px 20px 45px;border:1px solid #99896966;border-radius:50%;transform:rotate(-18deg);animation:v-orbit 14s ease-in-out infinite}
 #tl-vivo .v-orbit:after{content:'';width:12px;height:12px;border-radius:50%;background:var(--v-rust);position:absolute;top:27%;left:0;box-shadow:0 0 0 8px #a94e3010}
-#tl-vivo .v-main-photo{position:absolute;inset:0 0 35px 9%;border-radius:46% 46% 8px 8px;padding:0;overflow:hidden;background:#dfd0b8;box-shadow:0 22px 45px #40301525;transform:perspective(900px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg));transition:transform .35s ease,border-radius .8s;isolation:isolate}
+#tl-vivo .v-main-photo{position:absolute;inset:0 0 35px 9%;border-radius:46% 46% 8px 8px;padding:0;overflow:hidden;background:#dfd0b8;box-shadow:0 22px 45px #40301525;transform:perspective(900px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg));transition:transform .35s ease;isolation:isolate;clip-path:inset(0 round 46% 46% 8px 8px)}
 #tl-vivo .v-main-photo img{width:100%;height:100%;object-fit:cover;object-position:center 65%;transition:transform .8s cubic-bezier(.2,.8,.2,1);transform:scale(1.08) translate(var(--ix,0px),var(--iy,0px))}
 #tl-vivo .v-main-photo:hover img{transform:scale(1.17) translate(var(--ix,0px),var(--iy,0px))}
 #tl-vivo .v-photo-glint{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;background:linear-gradient(120deg,transparent 20%,#fff9 45%,transparent 70%);transform:translateX(-130%);transition:transform 1s}
@@ -87,7 +87,7 @@
 #tl-vivo .v-gift p{font-size:12px;line-height:1.6;margin-bottom:20px;max-width:300px}
 #tl-vivo .v-gift-mark{position:absolute;right:-30px;top:-35px;font-size:170px;color:#aa54351a;pointer-events:none}
 #tl-vivo .v-work-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:8%;align-items:center}
-#tl-vivo .v-work-image{position:relative;overflow:hidden;padding:0;border-radius:44% 44% 5px 5px;background:#dfd3c1;transform:perspective(900px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg));transition:transform .4s}
+#tl-vivo .v-work-image{position:relative;overflow:hidden;padding:0;border-radius:44% 44% 5px 5px;background:#dfd3c1;transform:perspective(900px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg));transition:transform .4s;isolation:isolate;clip-path:inset(0 round 44% 44% 5px 5px)}
 #tl-vivo .v-work-image img{width:100%;aspect-ratio:1.08;object-fit:cover;transition:transform 1s}
 #tl-vivo .v-work-image:hover img{transform:scale(1.12)}
 #tl-vivo .v-work-label{position:absolute;bottom:18px;left:24px;right:24px;font-size:10px;letter-spacing:2px;display:flex;align-items:center;justify-content:space-between}
@@ -307,7 +307,8 @@ to{clip-path:inset(0);filter:blur(0);transform:scale(1.08)}
 #tl-vivo .v-hero-bottom>span,#tl-vivo .v-hero-bottom>a{color:#faf4e7}
 #tl-vivo[data-motion=off] .v-tilt,#tl-vivo[data-motion=off] .v-tilt img{transform:none!important}
 #tl-vivo[data-motion=off] .v-hero-img{animation:none}
-@keyframes movement-photo-enter{from{filter:blur(5px);opacity:.5;transform:scale(1.04)}to{filter:blur(0);opacity:1;transform:scale(1)}}
+/* Keep the arch clipped during 3D tilt; the entrance animation must not own the hover transform. */
+@keyframes movement-photo-enter{from{filter:blur(5px);opacity:.5}to{filter:blur(0);opacity:1}}
 @media(min-width:1400px){#tl-vivo .v-hero,#tl-vivo .v-collections,#tl-vivo .v-works,#tl-vivo .v-club{padding-left:max(5%,calc((100% - 1320px)/2));padding-right:max(5%,calc((100% - 1320px)/2))}}
 @media(max-width:850px){#tl-vivo .v-header nav{order:3;width:100%;justify-content:space-between;gap:10px;border-top:1px solid var(--v-line);padding-top:8px}#tl-vivo .v-gallery-caption{left:6%;padding:9px;gap:8px}#tl-vivo .v-gallery-caption h2{font-size:19px}#tl-vivo .v-gallery-caption .v-counter{display:none}}
 @media(max-width:560px){#tl-vivo .v-header{gap:14px}#tl-vivo .v-header .v-brand img{width:33px;height:33px}#tl-vivo .v-header nav a{font-size:11px;min-height:44px;display:flex;align-items:center}#tl-vivo .v-languages{gap:1px}#tl-vivo .v-languages a{font-size:10px;padding:6px 4px}#tl-vivo .v-header-right{gap:7px}#tl-vivo .v-header-right>.v-pill{display:none}#tl-vivo .v-hero-grid{padding-top:25px}#tl-vivo .v-gallery-caption h2{font-size:19px}#tl-vivo .v-hero-copy h1{font-size:59px!important}#tl-vivo .v-hero-copy h1 em{font-size:inherit}#tl-vivo .v-hero-top .v-overline{font-size:9px}#tl-vivo .v-tiny{font-size:10px}#tl-vivo .v-motion{font-size:10px!important}#tl-vivo .v-gallery{height:350px}#tl-vivo .v-collection-detail h3{margin:10px 0 15px}#tl-vivo .v-collection-card{height:190px}#tl-vivo .v-collection-deck{grid-template-columns:repeat(2,minmax(0,1fr))}#tl-vivo .v-arrows button{min-width:44px;min-height:44px}#tl-vivo .v-club .v-club-links a{font-size:17px}#tl-vivo .store-section{padding:44px 5%}#tl-vivo .v-hero-bottom{font-size:9px}#tl-vivo .v-gift{margin:24px 5%}#tl-vivo .v-gallery-caption{left:6%;right:-3%;bottom:-75px}#tl-vivo .catalog-toolbar{align-items:stretch}#tl-vivo .catalog-toolbar .availability{white-space:normal}}
