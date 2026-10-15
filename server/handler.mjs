@@ -1,3 +1,4 @@
+import {publicReviews,memberFeedback,submitReview,sendMemberMessage,readThread,adminFeedback,moderateReview,creatorReply,feedbackPhoto} from './feedback.mjs';
 import {serveCatalogImage} from './media.mjs';
 import {auditProductFile} from './file-audit.mjs';
 import {checkPaypalConnection} from './paypal.mjs';
@@ -38,6 +39,13 @@ export default async function handler(req,res){
    res.setHeader('Content-Disposition',`attachment; filename="licenca-${license.productId}.pdf"`);
    return res.end(Buffer.from(pdf));
   }
+  if(method==='GET'&&route==='reviews')return json(res,200,await publicReviews(url.searchParams.get('productId')));
+  if(method==='GET'&&route==='club/feedback')return json(res,200,await memberFeedback(await requireClub(req)));
+  if(method==='GET'&&route==='admin/feedback'){await requireAdmin(req);return json(res,200,await adminFeedback());}
+  if(method==='GET'&&route==='feedback/photo'){
+   let memberId,admin=false;try{memberId=(await requireClub(req)).id;}catch{}try{await requireAdmin(req);admin=true;}catch{}
+   const bytes=await feedbackPhoto(url.searchParams.get('id'),{memberId,admin});res.setHeader('Content-Type','image/webp');return res.end(bytes);
+  }
   if(method==='GET'&&route==='club/shop'){return json(res,200,await shop(await requireClub(req)));}
   if(method==='GET'&&route==='admin/downloads'){await requireAdmin(req);return json(res,200,await downloadPartnersReport(url.searchParams.get('productId')));}
   if(method==='GET'&&route==='admin/files/verify'){
@@ -68,6 +76,13 @@ export default async function handler(req,res){
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req);
+  if(method==='POST'&&['club/reviews','club/messages','club/messages/read'].includes(route)){
+   const member=await requireClub(req);await rateLimit(req,`feedback:${member.id}`,30,60_000);
+   return json(res,200,await ({'club/reviews':submitReview,'club/messages':sendMemberMessage,'club/messages/read':readThread}[route])(member,input));
+  }
+  if(method==='POST'&&['admin/reviews','admin/messages'].includes(route)){
+   await requireAdmin(req);return json(res,200,await (route==='admin/reviews'?moderateReview:creatorReply)(input));
+  }
   if(method==='POST'&&route==='admin/purchase-email-webhook'){await requireAdmin(req);await rateLimit(req,'configure-email-webhook',5,60_000);return json(res,200,await configurePurchaseEmailWebhook());}
   if(method==='POST'&&route==='club/cart-quote'){const member=await requireClub(req);await rateLimit(req,'cart-quote',40,60_000);return json(res,200,await quoteCheckout(member,input));}
   if(method==='POST'&&route==='club/checkout'){const member=await requireClub(req);await rateLimit(req,'checkout',10,60_000);return json(res,201,{order:await checkout(member,input)});}

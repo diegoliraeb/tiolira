@@ -10,4 +10,5 @@ test('partner navigation preserves Asaas and collection deep links',()=>{
  assert.equal(partnerRoute('#colecoes').section,'colecoes');
  assert.equal(partnerRoute('#colecao=%broken').section,'inicio');
  assert.equal(partnerRoute().section,'inicio');
+ assert.equal(partnerRoute('#contato','?feedbackProduct=saci&feedbackMode=review').section,'contato');
 });

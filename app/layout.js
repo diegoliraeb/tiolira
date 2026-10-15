@@ -2,6 +2,7 @@ import {headers} from 'next/headers';
 import Script from 'next/script';
 import '../public/styles.css';
 import './site.css';
+import './feedback.css';
 import './movement.css';
 import './partner-movement.css';
 import './admin-movement.css';
