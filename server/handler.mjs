@@ -1,3 +1,4 @@
+import {serveCatalogImage} from './media.mjs';
 import {checkPaypalConnection} from './paypal.mjs';
 import {receivePaypalWebhook} from './paypal-commerce.mjs';
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
@@ -55,7 +56,7 @@ export default async function handler(req,res){
    const record=await readRecord(`logos/${id}.json`);if(!record)fail('Logo não encontrada.',404);
    res.setHeader('Content-Type','image/webp');res.setHeader('Cache-Control',approved?'public, max-age=60':'private, no-store');return res.end(Buffer.from(record.data.base64,'base64'));
   }
-  if(method==='GET'&&route==='media'){const path=url.searchParams.get('path');if(!/^images\/[a-zA-Z0-9._-]+\.(png|jpg|jpeg|webp)$/.test(path||''))fail('Imagem não encontrada.',404);const blob=await get(path,{access:'private'});if(!blob)fail('Imagem não encontrada.',404);res.setHeader('Content-Type',blob.blob.contentType);res.setHeader('Cache-Control','public, max-age=86400');return Readable.fromWeb(blob.stream).pipe(res);}
+  if(method==='GET'&&route==='media')return await serveCatalogImage(url.searchParams.get('path'),res);
   if(method==='GET'&&route==='download'){const member=await requireClub(req);const {data}=await getCatalog();const p=data.products.find(p=>p.id===url.searchParams.get('id')&&p.published);if(!p||!['site','paid'].includes(p.access)||p.exclusive||!p.filePath||!data.collections.some(c=>c.id===p.collection&&c.published))fail('Arquivo não disponível para download direto.',404);if(isPaidProduct(p)&&!await purchaseAccess(member,p.id))fail('Compre esta peça para liberar o download.',403);const blob=await get(p.filePath,{access:'private',useCache:false});if(!blob)fail('Arquivo ainda não enviado.',404);await recordDownload(member,p);res.setHeader('Content-Type','application/octet-stream');res.setHeader('Content-Disposition',`attachment; filename="${p.slug}.${p.filePath.split('.').pop()}"`);return Readable.fromWeb(blob.stream).pipe(res);}
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
