@@ -27,3 +27,11 @@ export async function verifyPaypalWebhook(headers,raw){
  if(result.verification_status!=='SUCCESS')fail('Webhook não autorizado.',401);
  return JSON.parse(raw);
 }
+
+export async function checkPaypalConnection(){
+ if(!paypalReady())return {configured:false};
+ const c=paypalConfig(),hook=await paypal(`/v1/notifications/webhooks/${encodeURIComponent(c.webhookId)}`);
+ const required=['CHECKOUT.ORDER.APPROVED','PAYMENT.CAPTURE.COMPLETED','PAYMENT.CAPTURE.PENDING','PAYMENT.CAPTURE.DENIED','PAYMENT.CAPTURE.REFUNDED','PAYMENT.CAPTURE.REVERSED','CUSTOMER.DISPUTE.CREATED'];
+ const events=new Set((hook.event_types||[]).map(e=>e.name));
+ return {configured:true,connected:true,environment:c.environment,webhookMatches:hook.id===c.webhookId&&hook.url===siteOrigin()+'/api/webhooks/paypal',eventsReady:events.has('*')||required.every(e=>events.has(e))};
+}

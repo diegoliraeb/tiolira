@@ -1,3 +1,4 @@
+import {checkPaypalConnection} from './paypal.mjs';
 import {receivePaypalWebhook} from './paypal-commerce.mjs';
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
@@ -38,6 +39,7 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='club/shop'){return json(res,200,await shop(await requireClub(req)));}
   if(method==='GET'&&route==='admin/downloads'){await requireAdmin(req);return json(res,200,await downloadPartnersReport(url.searchParams.get('productId')));}
   if(method==='GET'&&route==='admin/sales'){await requireAdmin(req);return json(res,200,await salesReport());}
+  if(method==='GET'&&route==='admin/paypal-status'){await requireAdmin(req);await rateLimit(req,'paypal-status',6,60_000);return json(res,200,await checkPaypalConnection());}
   if(method==='GET'&&route==='admin/asaas-status'){await requireAdmin(req);await rateLimit(req,'asaas-status',6,60_000);return json(res,200,await checkAsaasConnection(new URL('/api/webhooks/asaas',url.origin).href));}
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
