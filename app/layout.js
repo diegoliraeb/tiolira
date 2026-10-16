@@ -25,7 +25,7 @@ export default async function Layout({children}){
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-QYWJ8F1HT9');
+            gtag('config', 'G-QYWJ8F1HT9', {page_location: window.location.origin + window.location.pathname});
           `}
         </Script>
       </body>

@@ -1,9 +1,11 @@
 'use client';
 import {useCallback,useEffect,useState} from 'react';
+import {recoveryToken,reminderCopy} from '../lib/cart-reminder-copy.mjs';
 import useCartActivity from './useCartActivity';
 import {returnedPaymentId} from '../lib/payment-return.mjs';
 
-export default function usePartnerCart(memberId){
+export default function usePartnerCart(memberId,lang='pt'){
+ const [recoveryMessage,setRecoveryMessage]=useState('');
  const [data,setData]=useState(null),[cart,setCart]=useState([]),[requestId,setRequestId]=useState(''),[error,setError]=useState(''),[ready,setReady]=useState(false);
  const [couponCode,setCouponCode]=useState(''),[couponResult,setCouponResult]=useState(null);
  const quoteKey=JSON.stringify({cart,couponCode,requestId});
@@ -13,7 +15,7 @@ export default function usePartnerCart(memberId){
  const [returnedOrderId,setReturnedOrderId]=useState(null);
  const [shopView,setShopView]=useState('catalog'),[activeOrderId,setActiveOrderId]=useState(null);
  const key=`tiolira-cart:${memberId}`;
- useCartActivity(memberId,ready,data,cart,couponCode);
+ useCartActivity(memberId,ready,data,cart,couponCode,lang);
  const load=useCallback(async()=>{
   const response=await fetch('/api/club/shop',{cache:'no-store'}),next=await response.json();
   if(!response.ok)throw Error(next.error||'Não foi possível carregar o carrinho.');
@@ -26,8 +28,24 @@ export default function usePartnerCart(memberId){
   const requestedOrder=new URLSearchParams(window.location.search).get('pedido');
   const orderFromEmail=/^[a-f0-9-]{36}$/.test(requestedOrder||'')?requestedOrder:null;
   setShopView(orderFromEmail?'cart':['catalog','cart','orders','files'].includes(saved?.shopView)?saved.shopView:'catalog');setActiveOrderId(orderFromEmail||(typeof saved?.activeOrderId==='string'?saved.activeOrderId:null));
-  setCart(Array.isArray(saved?.cart)?saved.cart:[]);setCouponCode(typeof saved?.couponCode==='string'?saved.couponCode:'');setCouponResult(null);setRequestId(saved?.requestId||crypto.randomUUID());setReady(true);
-  load().catch(e=>setError(e.message));
+  let cancelled=false;
+  const token=recoveryToken(window.location.hash),copy=reminderCopy(lang);
+  if(token){
+   setRecoveryMessage(copy.loading);setShopView('cart');setActiveOrderId(null);
+   (async()=>{
+    try{
+     const response=await fetch('/api/club/cart-recover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+     const recovered=await response.json();if(!response.ok){const e=Error(copy[response.status===403?'wrong':response.status===410?'invalid':'retry']);throw e;}
+     const next=await load();if(cancelled)return;
+     setCart(recovered.items);setCouponCode(recovered.couponCode||'');setCouponResult(null);setRequestId(crypto.randomUUID());setActiveOrderId(recovered.orderId||null);setShopView(recovered.status==='empty'?'orders':'cart');
+     if(recovered.cartId)try{sessionStorage.setItem(`tiolira-cart-activity:${memberId}`,JSON.stringify({cartId:recovered.cartId,sequence:recovered.sequence,hadItems:true,ackSignature:JSON.stringify({items:recovered.items,couponCode:recovered.couponCode||'',currency:next.currency})}));}catch{}
+     setRecoveryMessage(copy[recovered.status]||copy.restored);setReady(true);window.history.replaceState(null,'',window.location.pathname+window.location.search+'#compras');
+    }catch(e){if(!cancelled){setRecoveryMessage(e.message);setCart(Array.isArray(saved?.cart)?saved.cart:[]);setCouponCode(saved?.couponCode||'');setRequestId(saved?.requestId||crypto.randomUUID());await load().catch(err=>setError(err.message));setReady(true);}}
+   })();
+  }else{
+   setRecoveryMessage('');setCart(Array.isArray(saved?.cart)?saved.cart:[]);setCouponCode(typeof saved?.couponCode==='string'?saved.couponCode:'');setCouponResult(null);setRequestId(saved?.requestId||crypto.randomUUID());setReady(true);load().catch(e=>setError(e.message));
+  }
+  return ()=>{cancelled=true};
  },[key,load]);
  useEffect(()=>{if(ready&&requestId)try{sessionStorage.setItem(key,JSON.stringify({cart,requestId,couponCode,shopView,activeOrderId}));}catch{}},[key,ready,cart,requestId,couponCode,shopView,activeOrderId]);
  useEffect(()=>{
@@ -36,5 +54,5 @@ export default function usePartnerCart(memberId){
   fetch('/api/club/cart-quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart,couponCode})}).then(async r=>{const quote=await r.json();if(!r.ok)throw Error(quote.error||'Não foi possível validar o cupom.');if(!stale)setCouponResult({key:quoteKey,quote});}).catch(e=>{if(!stale)setCouponResult({key:quoteKey,error:e.message});});
   return ()=>{stale=true};
  },[quoteKey,data]);
- return {returnedOrderId,shopView,setShopView,activeOrderId,setActiveOrderId,couponCode,setCouponCode,couponQuote,couponError,couponBusy,data,setData,cart,setCart,requestId,setRequestId,load,error,ready};
+ return {recoveryMessage,returnedOrderId,shopView,setShopView,activeOrderId,setActiveOrderId,couponCode,setCouponCode,couponQuote,couponError,couponBusy,data,setData,cart,setCart,requestId,setRequestId,load,error,ready};
 }

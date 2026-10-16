@@ -1,3 +1,6 @@
+import {cartState} from './cart-state.mjs';
+export {cartState} from './cart-state.mjs';
+import {reminderReport} from './cart-reminders.mjs';
 import {createHmac} from 'node:crypto';
 import {z} from 'zod';
 import {getCatalog,readRecord,writeRecord,updateRecord,Conflict} from './store.mjs';
@@ -37,7 +40,7 @@ export async function recordActivity(req,input,now=Date.now()){
   return d;
  });return {ok:true};
 }
-const cartSchema=z.object({cartId:z.string().uuid(),sequence:z.number().int().positive().max(1_000_000),items:z.array(z.object({kind:z.enum(['product','collection']),id:z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/)})).max(40),couponCode:z.string().max(40).optional()});
+const cartSchema=z.object({cartId:z.string().uuid(),sequence:z.number().int().positive().max(1_000_000),lang:z.enum(['pt','en','es','fr']).optional(),items:z.array(z.object({kind:z.enum(['product','collection']),id:z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/)})).max(40),couponCode:z.string().max(40).optional()});
 export async function recordCart(member,input,now=Date.now()){
  const parsed=cartSchema.parse(input),key=member.id+':'+parsed.cartId;
  const previous=(await readRecord(CARTS))?.data?.carts?.[key];if(previous?.sequence>=parsed.sequence)return {ok:true};
@@ -48,17 +51,10 @@ export async function recordCart(member,input,now=Date.now()){
   const carts=Object.fromEntries(Object.entries(old?.carts||{}).filter(([,c])=>now-Date.parse(c.updatedAt)<90*DAY));
   const current=carts[key];if(current?.sequence>=parsed.sequence)return {...old,carts};
   if(!quote&&!current)return {...old,carts};
-  carts[key]={cartId:parsed.cartId,memberId:member.id,memberName:member.name,memberEmail:member.email,currency:quote?.currency||current.currency,provider:(quote?.currency||current?.currency)==='USD'?'paypal':'asaas',environment:quote?(quote.currency==='USD'?paypalConfig():asaasConfig()).environment:current.environment,sequence:parsed.sequence,createdAt:current?.createdAt||new Date(now).toISOString(),updatedAt:new Date(now).toISOString(),items:quote?.items||[],productIds:quote?.productIds||[],totalCents:quote?.totalCents||0,coupon:quote?.coupon?.code||null};
+  carts[key]={lang:parsed.lang||current?.lang||'pt',cartId:parsed.cartId,memberId:member.id,memberName:member.name,memberEmail:member.email,currency:quote?.currency||current.currency,provider:(quote?.currency||current?.currency)==='USD'?'paypal':'asaas',environment:quote?(quote.currency==='USD'?paypalConfig():asaasConfig()).environment:current.environment,sequence:parsed.sequence,createdAt:current?.createdAt||new Date(now).toISOString(),updatedAt:new Date(now).toISOString(),items:quote?.items||[],productIds:quote?.productIds||[],totalCents:quote?.totalCents||0,coupon:quote?.coupon?.code||null};
   const trimmed=Object.fromEntries(Object.entries(carts).sort(([,a],[,b])=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,5000));
   return {carts:trimmed};
  });return {ok:true};
-}
-export function cartState(cart,orders,now=Date.now()){
- if(!cart.items?.length)return 'cleared';
- const relevant=orders.filter(o=>o.memberId===cart.memberId&&currentOrderEnvironment(o)&&Date.parse(o.createdAt)>=Date.parse(cart.createdAt)-5000&&cart.productIds.every(id=>o.productIds?.includes(id)));
- if(relevant.some(o=>o.status==='paid'))return 'paid';
- if(relevant.some(o=>['pending','creating','overdue','review'].includes(o.status)))return 'checkout';
- return now-Date.parse(cart.updatedAt)>=3600000?'abandoned':'active';
 }
 function addCounts(target,source){for(const [key,count] of Object.entries(source||{}))target[key]=(target[key]||0)+count;}
 export async function analyticsReport(daysInput=30,now=Date.now()){
@@ -73,8 +69,9 @@ export async function analyticsReport(daysInput=30,now=Date.now()){
  const sales={};for(const o of paid)for(const productId of new Set(o.productIds||[]))sales[productId]=(sales[productId]||0)+1;
  const ranking=catalog.products.map(p=>({id:p.id,name:p.name,slug:p.slug,image:p.image,views:products[p.id]||0,clicks:clicks[p.id]||0,sales:sales[p.id]||0,downloads:commerce?.data?.downloads?.[p.id]||0}));
  const members=membersRecord?.data?.members||[],feedback=feedbackRecord?.data;
- return {days,start,end,startedAt:meta?.data?.startedAt||null,generatedAt:new Date(now).toISOString(),limited:records.some(r=>r?.data?.limited),series,sources,devices,languages,pages,ranking,
+ const reminders=await reminderReport(Object.values(cartRecord?.data?.carts||{}),allOrders,now);
+ return {reminders,days,start,end,startedAt:meta?.data?.startedAt||null,generatedAt:new Date(now).toISOString(),limited:records.some(r=>r?.data?.limited),series,sources,devices,languages,pages,ranking,
  summary:{views:series.reduce((s,d)=>s+d.views,0),sessions:series.reduce((s,d)=>s+d.sessions,0),orders:orders.length,paid:paid.length,pending:pending.length,conversion:orders.length?paid.length/orders.length*100:0,revenueBRL:paid.filter(o=>o.currency!=='USD').reduce((s,o)=>s+o.totalCents,0),revenueUSD:paid.filter(o=>o.currency==='USD').reduce((s,o)=>s+o.totalCents,0),abandoned:abandoned.length,activeCarts:carts.filter(c=>c.status==='active').length,abandonedBRL:abandoned.filter(c=>c.currency!=='USD').reduce((s,c)=>s+c.totalCents,0),abandonedUSD:abandoned.filter(c=>c.currency==='USD').reduce((s,c)=>s+c.totalCents,0),members:members.length,newMembers:members.filter(m=>inRange(m.createdAt)).length,downloadsTotal:Object.values(commerce?.data?.downloads||{}).reduce((s,v)=>s+v,0),reviewsPending:feedback?.reviews.filter(r=>r.status==='pending').length||0,requestsPending:feedback?.threads.filter(t=>t.status==='received').length||0},
- abandoned:abandoned.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(({sequence,memberId,...c})=>c),
+ abandoned:abandoned.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(({sequence,memberId,...c})=>({...c,reminder:reminders.carts[c.cartId+':'+memberId]})),
  pendingOrders:pending.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(o=>({id:o.id,memberName:o.memberName,memberEmail:o.memberEmail,createdAt:o.createdAt,totalCents:o.totalCents,currency:o.currency||'BRL',status:o.status,items:o.items.map(i=>i.name)}))};
 }

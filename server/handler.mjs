@@ -1,3 +1,4 @@
+import {assertReminderCron,runCartReminders,sendCartReminder,recoverCart,unsubscribeCartReminders} from './cart-reminders.mjs';
 import {recordActivity,recordCart,analyticsReport} from './analytics.mjs';
 import {publicReviews,memberFeedback,submitReview,sendMemberMessage,readThread,adminFeedback,moderateReview,creatorReply,feedbackPhoto} from './feedback.mjs';
 import {serveCatalogImage} from './media.mjs';
@@ -40,6 +41,7 @@ export default async function handler(req,res){
    res.setHeader('Content-Disposition',`attachment; filename="licenca-${license.productId}.pdf"`);
    return res.end(Buffer.from(pdf));
   }
+  if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);return json(res,200,await runCartReminders());}
   if(method==='GET'&&route==='reviews')return json(res,200,await publicReviews(url.searchParams.get('productId')));
   if(method==='GET'&&route==='club/feedback')return json(res,200,await memberFeedback(await requireClub(req)));
   if(method==='GET'&&route==='admin/analytics'){await requireAdmin(req);return json(res,200,await analyticsReport(url.searchParams.get('days')||30));}
@@ -79,6 +81,9 @@ export default async function handler(req,res){
   assertOrigin(req);
   const input=await body(req);
   if(method==='POST'&&route==='analytics/event'){if(!configured())return json(res,200,{ok:true});await rateLimit(req,'site-activity',120,60_000);return json(res,200,await recordActivity(req,input));}
+  if(method==='POST'&&route==='admin/cart-reminders/send'){await requireAdmin(req);await rateLimit(req,'manual-cart-reminder',20,60_000);return json(res,200,await sendCartReminder(input.id));}
+  if(method==='POST'&&route==='club/cart-recover'){const member=await requireClub(req);await rateLimit(req,'recover-cart',30,60_000);return json(res,200,await recoverCart(member,input.token));}
+  if(method==='POST'&&route==='cart-reminders/unsubscribe'){await rateLimit(req,'unsubscribe-cart',30,60_000);return json(res,200,await unsubscribeCartReminders(input.token));}
   if(method==='POST'&&route==='club/cart-activity'){const member=await requireClub(req);await rateLimit(req,'cart-activity',80,60_000);return json(res,200,await recordCart(member,input));}
   if(method==='POST'&&['club/reviews','club/messages','club/messages/read'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,`feedback:${member.id}`,30,60_000);
