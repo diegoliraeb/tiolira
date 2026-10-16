@@ -1,0 +1,5 @@
+import Link from 'next/link';
+import {localized,dictionaries} from '../lib/i18n';
+import {productPath,seoCopy} from '../lib/seo.mjs';
+import {isAvailable} from '../lib/product-order.mjs';
+export default function CatalogProductGrid({products,lang}){const t=dictionaries[lang],copy=seoCopy[lang];return <div className="seo-product-grid">{products.map(raw=>{const p=localized(raw,lang);return <article className="product-card" key={p.id}><Link className="product-image" href={productPath(lang,p)} aria-label={p.name}><img src={p.image} alt={p.name} width="600" height="600" loading="lazy"/><span className={`badge ${!isAvailable(p)?'coming':''}`}>{!isAvailable(p)?t.soon:p.access==='paid'?new Intl.NumberFormat(lang==='pt'?'pt-BR':lang,{style:'currency',currency:'BRL'}).format(p.priceCents/100):t[p.access==='site'?'free':p.access]}</span></Link><div className="product-info"><h2><Link href={productPath(lang,p)}>{p.name}</Link></h2>{p.size&&<p>{p.size}</p>}<Link className="text-link" href={productPath(lang,p)}>{copy.productDetails} →</Link></div></article>})}</div>}
