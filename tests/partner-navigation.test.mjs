@@ -12,3 +12,5 @@ test('partner navigation preserves Asaas and collection deep links',()=>{
  assert.equal(partnerRoute().section,'inicio');
  assert.equal(partnerRoute('#contato','?feedbackProduct=saci&feedbackMode=review').section,'contato');
 });
+
+test('private cost calculator and worksheets have dedicated deep links',()=>{for(const section of ['calculadora','fichas'])assert.equal(partnerRoute('#'+section).section,section);});
