@@ -60,6 +60,21 @@ test('private cost sheets persist per account without touching catalog or commer
   assert.equal((await post({...sheet,revision,productId:null,customName:'  '})).status,400);
   assert.equal((await post({...sheet,revision,productId:null})).status,400);
  });
+ await t.test('groups save quantities, restore privately and update without replacing individual sheets',async()=>{
+  const products=seed.products.filter(p=>p.published&&seed.collections.some(c=>c.id===p.collection&&c.published));
+  const items=products.slice(0,2).map((p,i)=>({productId:p.id,quantity:i+2}));
+  const before=(await call()).body.sheets.length;
+  const r=await post({...sheet,revision,productId:null,items,values:{...artworkDefaults,grams:451.67,hours:27.3592}});assert.equal(r.status,200);revision=r.body.revision;const groupId=r.body.sheets[0].groupId;
+  assert.ok(groupId);assert.deepEqual(r.body.sheets[0].items,items);assert.equal(r.body.sheets.length,before+1);assert.equal(r.body.sheets[0].values.grams,451.67);
+  assert.deepEqual((await call()).body.sheets[0].items,items);assert.equal((await call({cookie:cb})).body.sheets.length,0);
+  const edit=await post({...sheet,revision,productId:null,groupId,items:[items[1]]});assert.equal(edit.status,200);revision=edit.body.revision;assert.equal(edit.body.sheets.length,before+1);assert.deepEqual(edit.body.sheets[0].items,[items[1]]);
+  assert.ok(edit.body.sheets.some(s=>s.productId===product.id));
+  for(const invalid of [[],[{productId:product.id,quantity:0}],[{productId:product.id,quantity:1.5}],[{productId:product.id,quantity:1000}],[items[0],items[0]]])assert.equal((await post({...sheet,revision,productId:null,items:invalid})).status,400);
+  assert.equal((await post({...sheet,revision,productId:null,items:[{productId:'missing',quantity:1}]})).status,404);
+  assert.equal((await post({...sheet,revision,items})).status,400);
+  assert.equal((await post({...sheet,revision,productId:null,items,customName:'conflict'})).status,400);
+  assert.equal((await post({...sheet,revision,groupId})).status,400);
+ });
  await t.test('catalog prices, orders, downloads and licenses are unchanged',async()=>{
   assert.deepEqual(await readRecord('catalog.json'),originalCatalog);assert.deepEqual(await readRecord('commerce.json'),originalCommerce);
  });

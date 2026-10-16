@@ -32,3 +32,16 @@ test('selection fills validated profile totals, while custom or unverified piece
  const v=artworkStartingValues({printEstimate:{grams:123.45,hours:7.123456}}, {kgPrice:150});assert.equal(v.grams,123.45);assert.equal(v.hours,7.1235);assert.equal(v.kgPrice,150);
  for(const product of [null,{}, {name:'Saci'}]){const v=artworkStartingValues(product,null);assert.ok(Number.isNaN(v.grams));assert.ok(Number.isNaN(v.hours));assert.throws(()=>calculateArtwork(v));}
 });
+
+
+test('group references sum each quantity, and add/remove never retain stale totals',async()=>{
+ const {artworkGroupTotals}=await import('../lib/artwork-selection.mjs');
+ const products=[{id:'saci',printEstimate:{grams:91.12,hours:20556/3600}},{id:'curupira',printEstimate:{grams:89.81,hours:19127/3600}}];
+ const items=[{productId:'saci',quantity:2},{productId:'curupira',quantity:3}];
+ const result=artworkGroupTotals(items,products);assert.equal(result.quantity,5);assert.equal(result.grams,451.67);near(result.hours,Math.round((20556*2+19127*3)/3600*10000)/10000);
+ assert.equal(artworkGroupTotals(items.slice(1),products).grams,269.43);
+ assert.equal(artworkGroupTotals([{productId:'saci',quantity:1}],products).grams,91.12);
+ for(const group of [[],[{productId:'missing',quantity:1}],[...items,{productId:'missing',quantity:1}]]){const r=artworkGroupTotals(group,products);assert.equal(r.complete,false);assert.ok(Number.isNaN(r.grams));assert.ok(Number.isNaN(r.hours));}
+ for(const quantity of [0,-1,1.5,1000,NaN])assert.throws(()=>artworkGroupTotals([{productId:'saci',quantity}],products));
+ assert.deepEqual(items,[{productId:'saci',quantity:2},{productId:'curupira',quantity:3}]);
+});

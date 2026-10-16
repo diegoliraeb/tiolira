@@ -201,3 +201,5 @@ A Área do Parceiro usa `data/print-estimates.json` para preencher filamento e h
 Os custos da oficina continuam sendo informados pelo parceiro em BRL. Selecionar uma obra carrega a referência; abrir uma ficha salva recupera seus valores pessoais. Peças avulsas têm nome e identificador próprios, ficam na mesma conta privada e não alteram catálogo, pedidos ou licenças. O servidor recalcula os resultados e valida os números antes de salvar.
 
 Validação adicional do importador: `python3 tests/print-importer.test.py`.
+
+A calculadora começa com a seleção vazia e aceita grupos de obras com quantidades de 1 a 999 por obra. O filamento e o tempo são somados a partir dos perfis completos; adicionar, remover ou alterar quantidades substitui eventuais ajustes manuais desses dois campos pelas referências. Trabalho manual, embalagem e outros custos são informados como totais do conjunto. Fichas de grupo usam `groupId` e `items`, preservando as fichas individuais e avulsas existentes.
