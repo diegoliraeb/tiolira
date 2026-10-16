@@ -45,3 +45,26 @@ test('group references sum each quantity, and add/remove never retain stale tota
  for(const quantity of [0,-1,1.5,1000,NaN])assert.throws(()=>artworkGroupTotals([{productId:'saci',quantity}],products));
  assert.deepEqual(items,[{productId:'saci',quantity:2},{productId:'curupira',quantity:3}]);
 });
+
+test('individual group costs preserve the total and allocate shared costs only once',async()=>{
+ const {artworkGroupBreakdown}=await import('../lib/artwork-selection.mjs');
+ const products=[{id:'a',printEstimate:{grams:100,hours:2}},{id:'b',printEstimate:{grams:50,hours:4}}],items=[{productId:'a',quantity:2},{productId:'b',quantity:3}];
+ const v={...defaults,grams:700,hours:32,minutes:50,packaging:10,extras:5,fileCost:15,overhead:20,shipping:25};
+ const breakdown=artworkGroupBreakdown(items,products,v),[a,b]=breakdown.lines;
+ const expectedA=calculateArtwork({...v,grams:200,hours:4,minutes:10,packaging:2,extras:1,fileCost:3,overhead:4,shipping:5});
+ const expectedB=calculateArtwork({...v,grams:100,hours:8,minutes:10,packaging:2,extras:1,fileCost:3,overhead:4,shipping:5});
+ near(a.unit.cost,expectedA.cost);near(b.unit.cost,expectedB.cost);assert.equal(a.unit.price,expectedA.price);assert.equal(b.unit.price,expectedB.price);
+ near(a.cost+b.cost,calculateArtwork(v).cost);near(breakdown.individualTotal,a.unit.price*2+b.unit.price*3);assert.equal(a.subtotal,Math.round(a.unit.price*100)*2/100);
+ for(const changed of [{...v,fee:18,margin:20},{...v,grams:0,hours:0},{...v,grams:451.67,hours:27.3592}]){const r=artworkGroupBreakdown(items,products,changed);near(r.lines.reduce((n,l)=>n+l.cost,0),calculateArtwork(changed).cost);}
+ const one=artworkGroupBreakdown([{productId:'a',quantity:1}],products,v);near(one.lines[0].unit.cost,calculateArtwork(v).cost);assert.equal(one.lines[0].unit.price,calculateArtwork(v).price);
+ assert.equal(artworkGroupBreakdown([],products,v),null);assert.equal(artworkGroupBreakdown([...items,{productId:'unknown',quantity:1}],products,v),null);
+ assert.throws(()=>artworkGroupBreakdown(items,products,{...v,grams:NaN}));
+});
+
+test('individual rounding is separate from group rounding; repeated copies are unit priced',async()=>{
+ const {artworkGroupBreakdown}=await import('../lib/artwork-selection.mjs');
+ const zero=Object.fromEntries(Object.keys(defaults).map(k=>[k,0]));
+ const items=[{productId:'a',quantity:3}],products=[{id:'a',printEstimate:{grams:1,hours:1}}];
+ const v={...zero,packaging:3};const r=artworkGroupBreakdown(items,products,v);assert.equal(r.lines[0].unit.cost,1);assert.equal(r.lines[0].unit.price,1.9);assert.equal(r.individualTotal,5.7);assert.equal(calculateArtwork(v).price,3.9);
+ assert.equal(artworkGroupBreakdown(items,products,zero).individualTotal,0);
+});
