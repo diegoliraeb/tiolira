@@ -1,3 +1,4 @@
+import {recordActivity,recordCart,analyticsReport} from './analytics.mjs';
 import {publicReviews,memberFeedback,submitReview,sendMemberMessage,readThread,adminFeedback,moderateReview,creatorReply,feedbackPhoto} from './feedback.mjs';
 import {serveCatalogImage} from './media.mjs';
 import {auditProductFile} from './file-audit.mjs';
@@ -41,6 +42,7 @@ export default async function handler(req,res){
   }
   if(method==='GET'&&route==='reviews')return json(res,200,await publicReviews(url.searchParams.get('productId')));
   if(method==='GET'&&route==='club/feedback')return json(res,200,await memberFeedback(await requireClub(req)));
+  if(method==='GET'&&route==='admin/analytics'){await requireAdmin(req);return json(res,200,await analyticsReport(url.searchParams.get('days')||30));}
   if(method==='GET'&&route==='admin/feedback'){await requireAdmin(req);return json(res,200,await adminFeedback());}
   if(method==='GET'&&route==='feedback/photo'){
    let memberId,admin=false;try{memberId=(await requireClub(req)).id;}catch{}try{await requireAdmin(req);admin=true;}catch{}
@@ -76,6 +78,8 @@ export default async function handler(req,res){
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req);
+  if(method==='POST'&&route==='analytics/event'){if(!configured())return json(res,200,{ok:true});await rateLimit(req,'site-activity',120,60_000);return json(res,200,await recordActivity(req,input));}
+  if(method==='POST'&&route==='club/cart-activity'){const member=await requireClub(req);await rateLimit(req,'cart-activity',80,60_000);return json(res,200,await recordCart(member,input));}
   if(method==='POST'&&['club/reviews','club/messages','club/messages/read'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,`feedback:${member.id}`,30,60_000);
    return json(res,200,await ({'club/reviews':submitReview,'club/messages':sendMemberMessage,'club/messages/read':readThread}[route])(member,input));

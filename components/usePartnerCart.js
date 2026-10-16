@@ -1,5 +1,6 @@
 'use client';
 import {useCallback,useEffect,useState} from 'react';
+import useCartActivity from './useCartActivity';
 import {returnedPaymentId} from '../lib/payment-return.mjs';
 
 export default function usePartnerCart(memberId){
@@ -12,6 +13,7 @@ export default function usePartnerCart(memberId){
  const [returnedOrderId,setReturnedOrderId]=useState(null);
  const [shopView,setShopView]=useState('catalog'),[activeOrderId,setActiveOrderId]=useState(null);
  const key=`tiolira-cart:${memberId}`;
+ useCartActivity(memberId,ready,data,cart,couponCode);
  const load=useCallback(async()=>{
   const response=await fetch('/api/club/shop',{cache:'no-store'}),next=await response.json();
   if(!response.ok)throw Error(next.error||'Não foi possível carregar o carrinho.');

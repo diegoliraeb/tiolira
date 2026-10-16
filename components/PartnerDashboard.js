@@ -1,4 +1,5 @@
 'use client';
+import {trackActivity} from '../lib/track-activity';
 import PartnerFeedback from './PartnerFeedback';
 import {feedbackCopy,feedbackLink} from '../lib/feedback-copy.mjs';
 import {shopText} from '../lib/shop-fr.mjs';
@@ -40,6 +41,7 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
  const bundle=collectionOffers(cartState.data).find(c=>c.id===collection&&!c.owned);
  const currentCollectionLicense=collectionLicenses.find(l=>l.collectionId===collection);
  const currentCollection=groups.find(c=>c.id===collection),visibleItems=items.filter(item=>(collection==='all'||item.collection===collection)&&item.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()));
+ useEffect(()=>{if(selected)trackActivity({type:'product',productId:selected.id,lang});},[selected?.id,lang]);
  useEffect(()=>{if(selected){setMessage('');setCopyMessage('');dialog.current.showModal();}},[selected]);
  useEffect(()=>{
   const read=()=>{const route=partnerRoute(window.location.hash,window.location.search);setSection(route.section);setCollection(route.collection);setQuery('');};

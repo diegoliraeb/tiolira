@@ -1,8 +1,10 @@
+import ActivityTracker from '../components/ActivityTracker';
 import {headers} from 'next/headers';
 import Script from 'next/script';
 import '../public/styles.css';
 import './site.css';
 import './feedback.css';
+import './analytics.css';
 import './movement.css';
 import './partner-movement.css';
 import './admin-movement.css';
@@ -13,6 +15,7 @@ export default async function Layout({children}){
     <html lang={lang==='en'?'en':lang==='es'?'es':lang==='fr'?'fr':'pt-BR'}>
       <body>
         {children}
+        <ActivityTracker/>
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-QYWJ8F1HT9"
           strategy="afterInteractive"
