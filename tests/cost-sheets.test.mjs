@@ -42,7 +42,7 @@ test('private cost sheets persist per account without touching catalog or commer
  await t.test('workshop defaults persist separately and preserve saved calculations',async()=>{
   const profile=Object.fromEntries(workshopKeys.map(k=>[k,artworkDefaults[k]]));profile.kgPrice=150;
   const r=await post({action:'profile',revision,profile});assert.equal(r.status,200);revision=r.body.revision;
-  assert.equal(r.body.profile.kgPrice,150);assert.equal(r.body.sheets[0].values.kgPrice,100);
+  assert.equal(r.body.profile.kgPrice,150);assert.equal(r.body.sheets[0].values.kgPrice,120);
   assert.equal((await call({cookie:cb})).body.profile,null);assert.equal((await call()).body.profile.kgPrice,150);
  });
  await t.test('rejects invalid data, invalid percentages and unavailable works',async()=>{

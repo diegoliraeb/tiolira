@@ -4,9 +4,9 @@ import {artworkDefaults as defaults,calculateArtwork,artworkOffer,workshopKeys} 
 import {calculatorCopy} from '../lib/artwork-calculator-copy.mjs';
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} != ${b}`);
 test('worksheet includes material, power, equipment, failed prints, manual work and packaging',()=>{
- const r=calculateArtwork(defaults),cost=(10+.72+3.6)/.95+6+3;
- near(r.cost,cost);near(r.material,10);near(r.printing,4.32);near(r.labor,6);near(r.extras,3);near(r.material+r.printing+r.labor+r.extras+r.risk,cost);
- assert.equal(r.price,43.9);near(r.basePrice,cost/.55);near(r.profit,43.9*.95-cost);near(r.breakEven,cost/.95);assert.ok(r.profit/r.price>=.4);
+ const r=calculateArtwork(defaults),cost=(12+.72+3.6)/.95+6+3;
+ near(r.cost,cost);near(r.material,12);near(r.printing,4.32);near(r.labor,6);near(r.extras,3);near(r.material+r.printing+r.labor+r.extras+r.risk,cost);
+ assert.equal(r.price,47.9);near(r.basePrice,cost/.55);near(r.profit,47.9*.95-cost);near(r.breakEven,cost/.95);assert.ok(r.profit/r.price>=.4);
 });
 test('all extra costs and workshop adjustments contribute once',()=>{
  const v={...defaults,kgPrice:160,energy:1.5,watts:200,machine:1,minutes:30,labor:40,extras:2,fileCost:1,overhead:3,shipping:7,fee:18,margin:30},r=calculateArtwork(v);
