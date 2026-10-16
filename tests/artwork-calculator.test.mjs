@@ -26,3 +26,9 @@ test('invalid percentages, numbers and unsafe totals cannot generate a price',()
 test('calculator copy covers all fields and every site language',()=>{
  const pt=calculatorCopy('pt');for(const lang of ['pt','en','es','fr']){const c=calculatorCopy(lang);assert.deepEqual(Object.keys(c),Object.keys(pt));for(const k of [...Object.keys(defaults),...workshopKeys].filter(k=>k!=='fee'&&k!=='margin'))assert.ok(c[k]);for(const value of Object.values(c))assert.equal(typeof value,'string');}
 });
+
+test('selection fills validated profile totals, while custom or unverified pieces start blank',async()=>{
+ const {artworkStartingValues}=await import('../lib/artwork-selection.mjs');
+ const v=artworkStartingValues({printEstimate:{grams:123.45,hours:7.123456}}, {kgPrice:150});assert.equal(v.grams,123.45);assert.equal(v.hours,7.1235);assert.equal(v.kgPrice,150);
+ for(const product of [null,{}, {name:'Saci'}]){const v=artworkStartingValues(product,null);assert.ok(Number.isNaN(v.grams));assert.ok(Number.isNaN(v.hours));assert.throws(()=>calculateArtwork(v));}
+});

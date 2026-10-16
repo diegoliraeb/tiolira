@@ -52,6 +52,14 @@ test('private cost sheets persist per account without touching catalog or commer
   assert.equal((await post({...sheet,revision,offer:-1})).status,400);
   assert.equal((await post({action:'profile',revision,profile:{failure:100}})).status,400);
  });
+ await t.test('custom pieces have separate named sheets and remain private',async()=>{
+  const r=await post({...sheet,revision,productId:null,customName:'Vaso da oficina'});assert.equal(r.status,200);revision=r.body.revision;const id=r.body.sheets[0].customId;assert.ok(id);assert.equal(r.body.sheets[0].productName,'Vaso da oficina');
+  const second=await post({...sheet,revision,productId:null,customName:'Porta-lápis'});assert.equal(second.status,200);revision=second.body.revision;assert.equal(second.body.sheets.length,3);
+  const edit=await post({...sheet,revision,productId:null,customId:id,customName:'Vaso grande',values:{...artworkDefaults,grams:300}});assert.equal(edit.status,200);revision=edit.body.revision;assert.equal(edit.body.sheets.length,3);assert.equal(edit.body.sheets[0].values.grams,300);assert.equal(edit.body.sheets[0].productName,'Vaso grande');
+  assert.equal((await call({cookie:cb})).body.sheets.length,0);
+  assert.equal((await post({...sheet,revision,productId:null,customName:'  '})).status,400);
+  assert.equal((await post({...sheet,revision,productId:null})).status,400);
+ });
  await t.test('catalog prices, orders, downloads and licenses are unchanged',async()=>{
   assert.deepEqual(await readRecord('catalog.json'),originalCatalog);assert.deepEqual(await readRecord('commerce.json'),originalCommerce);
  });

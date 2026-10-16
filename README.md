@@ -191,3 +191,13 @@ As ondas e os efeitos respeitam redução de movimento e podem ser pausados. O d
 - `tests/cart-reminders.test.mjs` usa destinatários `.invalid` e provedor simulado: limite de 6 horas, envio manual, concorrência, retries, bloqueio pós-compra, opt-out, propriedade do link, coleções, cupons inválidos, idiomas e proteção das rotas. Nenhuma mensagem real é disparada pelos testes.
 
 - **Enviar um teste para minha conta**, no painel de lembretes, exige um membro existente e envia uma peça disponível com assunto `[TESTE]`. Usa o mesmo remetente, template, assinatura e verificação de propriedade do link. O carrinho de teste fica isolado no job, sem criar abandono fictício, pedido ou conta. O endpoint `POST /api/admin/cart-reminders/test` exige administrador e limite de frequência; segue opt-out e deduplicação.
+
+### Referências de impressão e peças avulsas
+
+A Área do Parceiro usa `data/print-estimates.json` para preencher filamento e horas por obra. A página pública e o detalhe do parceiro exibem os mesmos totais através de `PrintEstimate`. Cada registro é associado ao ID, caminho do arquivo e URL publicados: uma troca de arquivo invalida a referência anterior. Não há estimativas inventadas para obras sem perfil validado.
+
+`scripts/import-print-estimates.py manifest.json output.json` importa referências de projetos Bambu Studio completos. O manifesto local relaciona ID, 3MF e, opcionalmente, todos os G-codes. O importador exige todas as bandejas, soma o peso de todos os filamentos e o tempo estimado total. Nos arquivos em que o cabeçalho omite o peso, aceita o `used_g` do `slice_info.config` do próprio arquivo, conferindo a concordância do tempo. Arquivos e caminhos locais do manifesto não devem ser publicados. O JSON de saída contém apenas a referência necessária ao site; não contém modelos digitais nem credenciais.
+
+Os custos da oficina continuam sendo informados pelo parceiro em BRL. Selecionar uma obra carrega a referência; abrir uma ficha salva recupera seus valores pessoais. Peças avulsas têm nome e identificador próprios, ficam na mesma conta privada e não alteram catálogo, pedidos ou licenças. O servidor recalcula os resultados e valida os números antes de salvar.
+
+Validação adicional do importador: `python3 tests/print-importer.test.py`.

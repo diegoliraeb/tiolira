@@ -1,3 +1,4 @@
+import {productPrintEstimate} from '../lib/print-estimates.mjs';
 import {internationalBuyer,marketCatalog} from '../lib/international-pricing.mjs';
 import {memberOwnedIds,isPaidProduct,purchaseLicenses,canPurchaseProduct} from './commerce.mjs';
 import {passwordResetEmail} from './club-email.mjs';
@@ -18,7 +19,7 @@ export function publicClubMember(member){
 export function clubProducts(data,owned=new Set()){
  const collections=new Set(data.collections.filter(c=>c.published).map(c=>c.id));
  return data.products.filter(p=>p.published&&collections.has(p.collection)&&['site','maker','paid'].includes(p.access)&&isAvailable(p)).map(({filePath,...p})=>({
-  ...p,canPurchase:!owned.has(p.id)&&canPurchaseProduct({...p,filePath},data),downloadUrl:isPaidProduct(p)&&!owned.has(p.id)?'':['site','paid'].includes(p.access)&&filePath&&!p.exclusive?`/api/download?id=${encodeURIComponent(p.id)}`:p.url,
+  ...p,printEstimate:productPrintEstimate({...p,filePath}),canPurchase:!owned.has(p.id)&&canPurchaseProduct({...p,filePath},data),downloadUrl:isPaidProduct(p)&&!owned.has(p.id)?'':['site','paid'].includes(p.access)&&filePath&&!p.exclusive?`/api/download?id=${encodeURIComponent(p.id)}`:p.url,
   canLicense:isPaidProduct(p)?owned.has(p.id):p.collection==='presepio'||p.allowPhysicalSales===true||data.collections.some(c=>c.id===p.collection&&c.free)
  }));
 }
