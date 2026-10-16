@@ -1,6 +1,6 @@
 const config = {
  poweredByHeader: false,
- outputFileTracingIncludes: {'/api/*':['./public/geography/*.json']},
+ outputFileTracingIncludes: {'/api/*':['./public/geography/*.json','./public/assets/tl-monogram-3d-icon.png']},
  async redirects() { return [
  {source:'/3d',destination:'/pt',permanent:true},
  {source:'/3d/produto/:slug',destination:'/pt/produto/:slug',permanent:true},

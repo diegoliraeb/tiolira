@@ -20,3 +20,10 @@ test('recovered public photos work while the private store is unavailable',async
  await serveCatalogImage('images/e656fe5f-c279-4c91-ad21-982a53346e89.png',res,async()=>{assert.fail('must not spend private storage quota')});
  assert.equal(res.statusCode,307);assert.equal(headers.Location,'/assets/catalog/nazare.webp');assert.equal(ended,true);
 });
+test('Prece em Familia gallery serves optimized public copies without private storage',async()=>{
+ for(const [id,name] of [['63bd1653-ddae-497e-8907-589628aa885c','prece-em-familia'],['6227c0c7-7e2c-4a1b-b716-b0b68ebf36df','prece-em-familia-detalhe']]){
+  const headers={},res={setHeader(k,v){headers[k]=v},end(){}};
+  await serveCatalogImage(`images/${id}.png`,res,async()=>assert.fail('No private storage request'));
+  assert.equal(res.statusCode,307);assert.equal(headers.Location,`/assets/catalog/${name}.webp`);
+ }
+});

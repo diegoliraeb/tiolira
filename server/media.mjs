@@ -4,6 +4,8 @@ import {pipeline} from 'node:stream/promises';
 
 // Published image copies keep the catalog independent of private download quotas.
 const catalogCopies={
+ 'images/63bd1653-ddae-497e-8907-589628aa885c.png':'/assets/catalog/prece-em-familia.webp',
+ 'images/6227c0c7-7e2c-4a1b-b716-b0b68ebf36df.png':'/assets/catalog/prece-em-familia-detalhe.webp',
  'images/e656fe5f-c279-4c91-ad21-982a53346e89.png':'/assets/catalog/nazare.webp',
  'images/15209811-5e1f-48c3-abd0-89f4de58b7db.png':'/assets/643c6e11015bd4b0.jpg',
  'images/49992931-24fc-4812-a0f4-f105035bf577.png':'/assets/catalog/saci.webp',

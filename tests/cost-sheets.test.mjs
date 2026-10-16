@@ -16,7 +16,7 @@ test('private cost sheets persist per account without touching catalog or commer
  Object.assign(process.env,{LOCAL_DATA_DIR:dir,ADMIN_SESSION_SECRET:'cost-sheet-test-secret-not-production-123456'});
  const a={id:randomUUID(),version:randomUUID(),name:'Ana',email:'ana@example.invalid'},b={id:randomUUID(),version:randomUUID(),name:'Bruno',email:'bruno@example.invalid'};
  const ca=`tiolira_club=${await makeSession(a.version,{memberId:a.id})}`,cb=`tiolira_club=${await makeSession(b.version,{memberId:b.id})}`;
- const call=async({method='GET',body={},cookie=ca,origin='http://localhost'}={})=>{let result,headers={};await handler({method,url:'/api/club/cost-sheets',body,headers:{host:'localhost',origin,cookie},socket:{remoteAddress:'cost-test'}},{setHeader(k,v){headers[k]=v;},set statusCode(s){this.status=s;},end(v){result={status:this.status||200,body:JSON.parse(v),headers};}});return result;};
+ const call=async({method='GET',body={},cookie=ca,origin='http://localhost',route='/api/club/cost-sheets'}={})=>{let result,headers={};await handler({method,url:route,body,headers:{host:'localhost',origin,cookie},socket:{remoteAddress:'cost-test'}},{setHeader(k,v){headers[k]=v;},set statusCode(s){this.status=s;},end(v){result={status:this.status||200,body:headers['Content-Type']==='application/pdf'?v:JSON.parse(v),headers};}});return result;};
  const post=body=>call({method:'POST',body});
  const product=seed.products.find(p=>p.published&&seed.collections.some(c=>c.id===p.collection&&c.published));
  const sheet={action:'sheet',revision:null,productId:product.id,values:{...artworkDefaults},channel:'card',offer:39.9};
@@ -74,6 +74,14 @@ test('private cost sheets persist per account without touching catalog or commer
   assert.equal((await post({...sheet,revision,items})).status,400);
   assert.equal((await post({...sheet,revision,productId:null,items,customName:'conflict'})).status,400);
   assert.equal((await post({...sheet,revision,groupId})).status,400);
+ });
+ await t.test('PDF export is private, same-origin, recomputed and never modifies saved sheets',async()=>{
+  const before=await call(),route='/api/club/cost-sheet-pdf',body={customName:'Ficha de exemplo',values:artworkDefaults,lang:'pt'};
+  assert.equal((await call({method:'POST',route,body,cookie:''})).status,401);
+  assert.equal((await call({method:'POST',route,body,origin:'https://evil.invalid'})).status,403);
+  assert.equal((await call({method:'POST',route,body:{...body,values:{...artworkDefaults,margin:100}}})).status,400);
+  const pdf=await call({method:'POST',route,body});assert.equal(pdf.status,200);assert.equal(Buffer.from(pdf.body).subarray(0,4).toString(),'%PDF');assert.match(pdf.headers['Cache-Control'],/private, no-store/);assert.match(pdf.headers['Content-Disposition'],/attachment/);
+  assert.deepEqual((await call()).body,before.body);
  });
  await t.test('catalog prices, orders, downloads and licenses are unchanged',async()=>{
   assert.deepEqual(await readRecord('catalog.json'),originalCatalog);assert.deepEqual(await readRecord('commerce.json'),originalCommerce);

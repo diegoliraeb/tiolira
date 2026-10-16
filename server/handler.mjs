@@ -1,3 +1,4 @@
+import {costSheetReport,costSheetPdf} from './cost-sheet-pdf.mjs';
 import {costSheets,saveCostSheet} from './cost-sheets.mjs';
 import {assertReminderCron,sendTestCartReminder,runCartReminders,sendCartReminder,recoverCart,unsubscribeCartReminders} from './cart-reminders.mjs';
 import {recordActivity,recordCart,analyticsReport} from './analytics.mjs';
@@ -96,6 +97,7 @@ export default async function handler(req,res){
    await requireAdmin(req);return json(res,200,await (route==='admin/reviews'?moderateReview:creatorReply)(input));
   }
   if(method==='POST'&&route==='admin/purchase-email-webhook'){await requireAdmin(req);await rateLimit(req,'configure-email-webhook',5,60_000);return json(res,200,await configurePurchaseEmailWebhook());}
+  if(method==='POST'&&route==='club/cost-sheet-pdf'){const member=await requireClub(req);await rateLimit(req,'cost-sheet-pdf:'+member.id,20,60_000);const {data}=await getCatalog();const pdf=await costSheetPdf(costSheetReport(input,data),{partnerName:member.name});res.setHeader('Content-Type','application/pdf');res.setHeader('Content-Disposition','attachment; filename="ficha-tio-lira.pdf"');return res.end(Buffer.from(pdf));}
   if(method==='POST'&&route==='club/cost-sheets'){const member=await requireClub(req);await rateLimit(req,'cost-sheets:'+member.id,40,60_000);return json(res,200,await saveCostSheet(member,input));}
   if(method==='POST'&&route==='club/cart-quote'){const member=await requireClub(req);await rateLimit(req,'cart-quote',40,60_000);return json(res,200,await quoteCheckout(member,input));}
   if(method==='POST'&&route==='club/checkout'){const member=await requireClub(req);await rateLimit(req,'checkout',10,60_000);return json(res,201,{order:await checkout(member,input)});}
