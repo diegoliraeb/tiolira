@@ -1,3 +1,4 @@
+import {applyFamilyDiscount,allocateDiscount,familyEligible} from '../lib/family-discount.mjs';
 import {z} from 'zod';
 import {readRecord,writeRecord,Conflict} from './store.mjs';
 const KEY='cart-coupons.json';
@@ -13,19 +14,20 @@ export async function saveCartCoupon(input){
 }
 export function discountQuote(quote,code,coupons,now=Date.now()){
  code=couponCodeSchema.parse(code||'');
- const subtotalCents=quote.totalCents;
- if(!code)return {...quote,subtotalCents,discountCents:0,coupon:null};
+ quote=applyFamilyDiscount(quote);
+ const subtotalCents=quote.subtotalCents;
+ if(!code)return quote;
  const coupon=coupons.find(c=>c.code===code);
  const fail=message=>{throw Object.assign(new Error(message),{status:400});};
  if(!coupon||!coupon.active)fail('Cupom inválido ou inativo.');
  if(coupon.expiresAt&&Date.parse(coupon.expiresAt)<=now)fail('Este cupom expirou.');
- if(subtotalCents<coupon.minimumCents)fail(`Este cupom exige uma compra mínima de ${(coupon.minimumCents/100).toLocaleString('pt-BR',{style:'currency',currency:quote.currency||'BRL'})}.`);
- const discountCents=coupon.type==='percent'?Math.round(subtotalCents*coupon.value/100):coupon.value;
- if(discountCents<=0||discountCents>=subtotalCents)fail('Este cupom não se aplica ao valor do carrinho. O total deve ser maior que zero.');
- // Allocate cents deterministically so product revenue sums to the amount actually charged.
- const allocations=quote.items.map((item,index)=>({index,cents:Math.floor(discountCents*item.priceCents/subtotalCents),remainder:(discountCents*item.priceCents)%subtotalCents}));
- let remaining=discountCents-allocations.reduce((n,x)=>n+x.cents,0);
- for(const allocation of [...allocations].sort((a,b)=>b.remainder-a.remainder||a.index-b.index)){if(!remaining)break;allocation.cents++;remaining--;}
- const items=quote.items.map((item,index)=>({...item,discountCents:allocations[index].cents,totalCents:item.priceCents-allocations[index].cents}));
- return {...quote,items,subtotalCents,discountCents,totalCents:subtotalCents-discountCents,coupon:{id:coupon.id,code:coupon.code,type:coupon.type,value:coupon.value}};
+ const eligible=item=>!quote.promotion?.percent||!familyEligible(item);
+ const couponSubtotalCents=quote.items.filter(eligible).reduce((n,item)=>n+item.priceCents,0);
+ if(!couponSubtotalCents)fail('O desconto progressivo não acumula com cupons nas mesmas peças. Remova o cupom para continuar.');
+ if(couponSubtotalCents<coupon.minimumCents)fail(`Este cupom exige uma compra mínima de ${(coupon.minimumCents/100).toLocaleString('pt-BR',{style:'currency',currency:quote.currency||'BRL'})}.`);
+ const discountCents=coupon.type==='percent'?Math.round(couponSubtotalCents*coupon.value/100):coupon.value;
+ if(discountCents<=0||discountCents>=couponSubtotalCents)fail('Este cupom não se aplica ao valor do carrinho. O total deve ser maior que zero.');
+ const allocations=allocateDiscount(quote.items,discountCents,eligible);
+ const items=quote.items.map((item,index)=>({...item,discountCents:item.discountCents+allocations[index],totalCents:item.totalCents-allocations[index]}));
+ return {...quote,items,subtotalCents,discountCents:quote.discountCents+discountCents,couponDiscountCents:discountCents,totalCents:quote.totalCents-discountCents,coupon:{id:coupon.id,code:coupon.code,type:coupon.type,value:coupon.value}};
 }

@@ -47,7 +47,7 @@ export async function sendCartReminder(id,{mode='manual',now=Date.now(),testCart
  const config=purchaseEmailConfig();if(!config)fail('Configure o envio de e-mail.',503);
  if(typeof id!=='string'||!/^[a-f0-9]{64}$/.test(id))fail('Carrinho inválido.');
  let ctx=await context();if(mode==='test'&&testCart)ctx.carts=[...ctx.carts,testCart];let cart=ctx.carts.find(c=>cartKey(c)===id),blocked=reason(cart,ctx,now,mode);if(blocked)fail(blocked,409);
- const member=ctx.members.find(m=>m.id===cart.memberId),selection=cart.items.map(({id,kind})=>({id,kind}));
+ const member=ctx.members.find(m=>m.id===cart.memberId),selection=cart.items.map(({id,kind,quantity})=>({id,kind,...(quantity>1?{quantity}:{})}));
  // Revalidate ownership, availability and current prices, without creating any order.
  await quoteCheckout(member,{items:selection,couponCode:''});
  const attempt=randomUUID(),fresh={...(mode==='test'?{testCart}:{}),id,cartId:cart.cartId,memberId:cart.memberId,memberName:member.name,memberEmail:member.email,mode,lang:cart.lang||'pt',createdAt:new Date(now).toISOString(),cartUpdatedAt:cart.updatedAt,sequence:cart.sequence,items:selection,coupon:cart.coupon||'',status:'sending',attempts:0};
@@ -109,7 +109,7 @@ export async function recoverCart(member,token,now=Date.now()){
  const orders=ctx.orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)&&Date.parse(o.createdAt)>=Date.parse(cart.createdAt)-5000&&cart.productIds.every(id=>o.productIds?.includes(id)));
  const order=orders.find(o=>o.status==='paid')||orders.find(o=>['pending','creating','overdue','review'].includes(o.status));
  if(order)return {orderId:order.id,items:[],status:'order'};
- const available=await shop(member),items=cartSelection(available,cart.items).lines.map(({id,kind})=>({id,kind}));
+ const available=await shop(member),items=cartSelection(available,cart.items).lines.map(({id,kind,quantity})=>({id,kind,...(quantity>1?{quantity}:{})}));
  let coupon=cart.coupon||'',changed=items.length!==cart.items.length;
  if(items.length){try{await quoteCheckout(member,{items,couponCode:coupon});}catch{coupon='';changed=true;await quoteCheckout(member,{items,couponCode:''});}}
  return {items,couponCode:coupon,cartId:cart.cartId,sequence:cart.sequence,status:!items.length?'empty':changed?'changed':'restored'};

@@ -2,7 +2,7 @@
 import {useEffect} from 'react';
 import {cartSelection} from '../lib/cart-lines.mjs';
 export default function useCartActivity(memberId,ready,data,cart,couponCode,lang){
- const items=cartSelection(data,cart).lines.map(({kind,id})=>({kind,id}));
+ const items=cartSelection(data,cart).lines.map(({id,kind,quantity})=>({id,kind,...(quantity>1?{quantity}:{})}));
  const signature=JSON.stringify({items,couponCode,currency:data?.currency});
  useEffect(()=>{
   if(!ready||!data)return;

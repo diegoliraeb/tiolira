@@ -40,7 +40,8 @@ export async function recordActivity(req,input,now=Date.now()){
   return d;
  });return {ok:true};
 }
-const cartSchema=z.object({cartId:z.string().uuid(),sequence:z.number().int().positive().max(1_000_000),lang:z.enum(['pt','en','es','fr']).optional(),items:z.array(z.object({kind:z.enum(['product','collection']),id:z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/)})).max(40),couponCode:z.string().max(40).optional()});
+import {cartItemSchema} from '../lib/cart-schema.mjs';
+const cartSchema=z.object({cartId:z.string().uuid(),sequence:z.number().int().positive().max(1_000_000),lang:z.enum(['pt','en','es','fr']).optional(),items:z.array(cartItemSchema).max(40),couponCode:z.string().max(40).optional()});
 export async function recordCart(member,input,now=Date.now()){
  const parsed=cartSchema.parse(input),key=member.id+':'+parsed.cartId;
  const previous=(await readRecord(CARTS))?.data?.carts?.[key];if(previous?.sequence>=parsed.sequence)return {ok:true};

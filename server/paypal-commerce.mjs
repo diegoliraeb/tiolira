@@ -1,4 +1,5 @@
-import {randomUUID,createHash} from 'node:crypto';
+import {checkoutFingerprint} from './checkout-fingerprint.mjs';
+import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {readRecord,updateRecord,getCatalog} from './store.mjs';
 import {quoteCart,ownedIds,safeOrder,purchaseLicenseTerms} from './commerce.mjs';
@@ -7,7 +8,8 @@ import {paypal,paypalConfig,paypalReady,paypalReturnUrl,verifyPaypalWebhook} fro
 import {marketCatalog,paypalApprovalUrl} from '../lib/international-pricing.mjs';
 import {sendPurchaseEmail} from './purchase-email.mjs';
 const KEY='commerce.json',fail=(m,s=409)=>{throw Object.assign(Error(m),{status:s});};
-const inputSchema=z.object({items:z.array(z.object({kind:z.enum(['product','collection']),id:z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/)})).min(1).max(40),requestId:z.string().uuid(),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es','fr']).default('pt')});
+import {cartSchema} from '../lib/cart-schema.mjs';
+const inputSchema=z.object({items:cartSchema,requestId:z.string().uuid(),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es','fr']).default('pt')});
 export function marketCoupons(coupons,currency){return currency==='USD'?coupons.map(c=>({...c,minimumCents:Math.round(c.minimumCents/6),...(c.type==='fixed'?{value:Math.max(1,Math.round(c.value/6))}:{})})):coupons;}
 export async function checkoutPaypal(member,input){
  if(!paypalReady())fail('Pagamentos internacionais estarão disponíveis em breve.',503);
@@ -20,7 +22,7 @@ export async function checkoutPaypal(member,input){
   const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,ownedIds(s.orders,member.id)),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'));
   if(quote.totalCents!==parsed.expectedTotalCents)fail('O preço mudou. Atualize o carrinho e confira o total em dólar.');
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme o preço integral, sem abatimento.');
-  const fingerprint=createHash('sha256').update(JSON.stringify({items:quote.items,coupon:quote.coupon})).digest('hex');
+  const fingerprint=checkoutFingerprint(quote,'paypal');
   const pending=s.orders.find(o=>o.memberId===member.id&&o.provider==='paypal'&&o.environment===config.environment&&o.fingerprint===fingerprint&&['creating','pending','review'].includes(o.status));
   if(pending){chosen=pending.id;return s;}
   chosen=id;

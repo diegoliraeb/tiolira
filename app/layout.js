@@ -4,6 +4,7 @@ import Script from 'next/script';
 import '../public/styles.css';
 import './site.css';
 import './seo.css';
+import './family-promotion.css';
 import './feedback.css';
 import './analytics.css';
 import './movement.css';
