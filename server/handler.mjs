@@ -1,4 +1,4 @@
-import {assertReminderCron,runCartReminders,sendCartReminder,recoverCart,unsubscribeCartReminders} from './cart-reminders.mjs';
+import {assertReminderCron,sendTestCartReminder,runCartReminders,sendCartReminder,recoverCart,unsubscribeCartReminders} from './cart-reminders.mjs';
 import {recordActivity,recordCart,analyticsReport} from './analytics.mjs';
 import {publicReviews,memberFeedback,submitReview,sendMemberMessage,readThread,adminFeedback,moderateReview,creatorReply,feedbackPhoto} from './feedback.mjs';
 import {serveCatalogImage} from './media.mjs';
@@ -81,6 +81,7 @@ export default async function handler(req,res){
   assertOrigin(req);
   const input=await body(req);
   if(method==='POST'&&route==='analytics/event'){if(!configured())return json(res,200,{ok:true});await rateLimit(req,'site-activity',120,60_000);return json(res,200,await recordActivity(req,input));}
+  if(method==='POST'&&route==='admin/cart-reminders/test'){await requireAdmin(req);await rateLimit(req,'test-cart-reminder',5,3600_000);return json(res,200,await sendTestCartReminder(input));}
   if(method==='POST'&&route==='admin/cart-reminders/send'){await requireAdmin(req);await rateLimit(req,'manual-cart-reminder',20,60_000);return json(res,200,await sendCartReminder(input.id));}
   if(method==='POST'&&route==='club/cart-recover'){const member=await requireClub(req);await rateLimit(req,'recover-cart',30,60_000);return json(res,200,await recoverCart(member,input.token));}
   if(method==='POST'&&route==='cart-reminders/unsubscribe'){await rateLimit(req,'unsubscribe-cart',30,60_000);return json(res,200,await unsubscribeCartReminders(input.token));}

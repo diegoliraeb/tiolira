@@ -7,7 +7,7 @@ import {randomUUID} from 'node:crypto';
 import {writeRecord,readRecord,updateRecord} from '../server/store.mjs';
 import {recordCart} from '../server/analytics.mjs';
 import {cartKey} from '../server/cart-state.mjs';
-import {runCartReminders,sendCartReminder,recoverCart,unsubscribeCartReminders,reminderReport,assertReminderCron,reminderEmail} from '../server/cart-reminders.mjs';
+import {runCartReminders,sendTestCartReminder,sendCartReminder,recoverCart,unsubscribeCartReminders,reminderReport,assertReminderCron,reminderEmail} from '../server/cart-reminders.mjs';
 import {makeSession} from '../server/auth.mjs';
 import {recoveryToken} from '../lib/cart-reminder-copy.mjs';
 import {partnerRoute} from '../lib/partner-navigation.mjs';
@@ -73,6 +73,17 @@ test('cart reminders: delivery, private recovery, opt-out and commerce regressio
   await reset();const c=await newCart({items:pieces.map(p=>({kind:'product',id:p.id}))});await sendCartReminder(c.id,{now});const token=tokens().recover;
   await updateRecord('catalog.json',s=>{s.products.find(p=>p.id==='reminder-cuca').published=false;return s;});await updateRecord('analytics/carts.json',s=>{Object.values(s.carts)[0].coupon='NO-LONGER-VALID';return s;});const result=await recoverCart(member,token,now);assert.equal(result.status,'changed');assert.equal(result.items.length,1);assert.equal(result.couponCode,'');
   const report=await reminderReport(Object.values((await readRecord('analytics/carts.json')).data.carts),[],now);assert.equal(report.history[0].status,'sent');assert.ok(!JSON.stringify(report).includes(token));assert.ok(!JSON.stringify(report).includes('payload'));await updateRecord('catalog.json',()=>catalog);
+ });
+ await t.test('explicit admin test sends only to an existing member and restores without fabricating abandoned carts or orders',async()=>{
+  await reset();const input={email:member.email,requestId:randomUUID()};
+  assert.equal((await call('admin/cart-reminders/test',{method:'POST',body:input})).status,401);
+  assert.equal((await call('admin/cart-reminders/test',{method:'POST',cookie:memberCookie,body:input})).status,401);
+  await assert.rejects(()=>sendTestCartReminder({...input,email:'missing@example.invalid'},now),e=>e.status===404);assert.equal(requests.length,0);
+  const before=structuredClone((await readRecord('commerce.json')).data);
+  const result=await sendTestCartReminder(input,now);assert.equal(result.email,member.email);assert.equal(result.status,'sent');assert.ok(requests[0].body.subject.startsWith('[TESTE] '));assert.deepEqual(requests[0].body.to,[member.email]);
+  assert.equal(Object.keys((await readRecord('analytics/carts.json')).data.carts).length,0);assert.deepEqual((await readRecord('commerce.json')).data,before);
+  const token=tokens().recover;const recovered=await recoverCart(member,token,now);assert.equal(recovered.status,'restored');assert.equal(recovered.items.length,1);assert.equal(recovered.cartId,input.requestId);await assert.rejects(()=>recoverCart(other,token,now),e=>e.status===403);
+  assert.equal((await runCartReminders(now+6*HOUR)).sent,0);await assert.rejects(()=>sendTestCartReminder(input,now),/já enviado/);assert.equal(requests.length,1);
  });
  await t.test('email configuration failure and preview deployments cannot send messages',async()=>{
   await reset();const c=await newCart();delete process.env.RESEND_API_KEY;await assert.rejects(()=>runCartReminders(now),e=>e.status===503);process.env.RESEND_API_KEY='local-mock-only';process.env.VERCEL='1';process.env.VERCEL_ENV='preview';await assert.rejects(()=>sendCartReminder(c.id,{now}),/produção/);delete process.env.VERCEL;delete process.env.VERCEL_ENV;assert.equal(requests.length,0);
