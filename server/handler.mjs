@@ -11,7 +11,7 @@ import {checkPaypalConnection} from './paypal.mjs';
 import {receivePaypalWebhook} from './paypal-commerce.mjs';
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
-import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,purchaseLicenses,downloadablePurchaseLicense,salesReport,downloadPartnersReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct} from './commerce.mjs';
+import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,purchaseLicenses,downloadablePurchaseLicense,salesReport,productSalesSummary,downloadPartnersReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct} from './commerce.mjs';
 import {configurePurchaseEmailWebhook,checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
@@ -63,6 +63,7 @@ export default async function handler(req,res){
    const file=resolveProductFile(product,url.searchParams.get('profile'));if(!file)fail('Perfil não encontrado.',404);
    return json(res,200,await auditProductFile({...product,filePath:file.filePath,name:product.name+' · '+file.name,id:product.id+':'+file.id}));
   }
+  if(method==='GET'&&route==='admin/product-sales'){await requireAdmin(req);return json(res,200,await productSalesSummary());}
   if(method==='GET'&&route==='admin/sales'){await requireAdmin(req);return json(res,200,await salesReport());}
   if(method==='GET'&&route==='admin/paypal-status'){await requireAdmin(req);await rateLimit(req,'paypal-status',6,60_000);return json(res,200,await checkPaypalConnection());}
   if(method==='GET'&&route==='admin/asaas-status'){await requireAdmin(req);await rateLimit(req,'asaas-status',6,60_000);return json(res,200,await checkAsaasConnection(new URL('/api/webhooks/asaas',url.origin).href));}
