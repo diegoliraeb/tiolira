@@ -12,6 +12,7 @@ import './movement.css';
 import './partner-movement.css';
 import './admin-movement.css';
 import './artwork-calculator.css';
+import './free-artwork.css';
 export const metadata={metadataBase:new URL('https://www.tiolira.com.br'),title:{default:'Tio Lira — Ideias que ganham forma',template:'%s · Tio Lira'},description:'Presépio gratuito, coleções autorais para impressão 3D e uma rede de quem imprime. Free nativity and original 3D models.',icons:{icon:'/assets/tl-monogram-3d-icon.png'}};
 export default async function Layout({children}){
   const lang=(await headers()).get('x-tiolira-language')||'pt';

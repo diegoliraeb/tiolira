@@ -1,0 +1,4 @@
+.product-image,.partner-piece-image{position:relative;isolation:isolate}
+.free-artwork-ribbon{position:absolute;z-index:2;top:14px;left:0;display:block;max-width:calc(100% - 14px);padding:10px 16px;border-radius:0 8px 8px 0;background:#3d4b30;color:#fffaf0;box-shadow:0 3px 12px #0002;font-size:12px;font-weight:750;line-height:1.35;letter-spacing:.035em;text-transform:uppercase;text-align:left;pointer-events:none;box-sizing:border-box}
+.partner-piece-image .free-artwork-ribbon{top:10px;padding:8px 12px;font-size:11px}
+@media(max-width:480px){.free-artwork-ribbon{font-size:11px;padding:9px 12px;top:10px}.partner-piece-image .free-artwork-ribbon{font-size:10px;padding:7px 10px}}
