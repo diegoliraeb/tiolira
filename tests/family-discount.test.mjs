@@ -67,7 +67,7 @@ test('Asaas and PayPal charge the authoritative discounted total and preserve al
   const u=new URL(url);assert.ok(['https://api-sandbox.asaas.com','https://api-m.sandbox.paypal.com'].includes(u.origin));
   if(u.pathname==='/v1/oauth2/token')return {ok:true,json:async()=>({access_token:'fake'})};
   const body=options.body?JSON.parse(options.body):{};let value;
-  if(u.pathname==='/v3/customers')value=options.method==='GET'?{data:[{id:'cus_test',externalReference:u.searchParams.get('externalReference'),cpfCnpj:'12345678901'}]}:{...body,id:'cus_test'};
+  if(u.pathname==='/v3/customers')value=options.method==='GET'?{data:[{id:'cus_test',externalReference:u.searchParams.get('externalReference'),cpfCnpj:'52998224725'}]}:{...body,id:'cus_test'};
   else if(u.pathname==='/v3/payments'&&options.method==='POST'){calls++;value={...body,id:`pay_${calls}`,status:'PENDING',invoiceUrl:'https://sandbox.asaas.com/i/test'};remote.set(value.id,value);}
   else if(u.pathname==='/v2/checkout/orders'&&options.method==='POST'){calls++;value={...body,id:`TESTORDER000${calls}`,status:'PAYER_ACTION_REQUIRED',links:[{rel:'payer-action',href:`https://www.sandbox.paypal.com/checkoutnow?token=TESTORDER000${calls}`}]};remote.set(value.id,value);}
   else if(u.pathname.endsWith('/capture')){value=remote.get(u.pathname.split('/').at(-2));value.status='COMPLETED';value.purchase_units[0].payments={captures:[{id:'CAPTURE'+value.id,status:'COMPLETED',amount:structuredClone(value.purchase_units[0].amount)}]};}
@@ -78,7 +78,7 @@ test('Asaas and PayPal charge the authoritative discounted total and preserve al
  try{
   await writeRecord('catalog.json',catalog,null);await writeRecord('cart-coupons.json',{coupons:[coupon]},null);
   for(const countryCode of ['BR','FR']){
-   const member={id:randomUUID(),name:'Test buyer',email:'buyer@example.invalid',cpfCnpj:'12345678901',countryCode};
+   const member={id:randomUUID(),name:'Test buyer',email:'buyer@example.invalid',cpfCnpj:'52998224725',countryCode};
    const items=[...select(3),{kind:'product',id:'other'}],currency=countryCode==='BR'?'BRL':'USD';
    const quoted=await quoteCheckout(member,{items,couponCode:''}),ui=cartSelection(await shop(member),items);assert.equal(quoted.totalCents,ui.total);
    const input={items,requestId:randomUUID(),billingType:countryCode==='BR'?'PIX':'PAYPAL',expectedTotalCents:ui.total,couponCode:''};

@@ -1,4 +1,5 @@
 import {partnerInstagram} from '../lib/instagram.mjs';
+import {validBillingDocument,BILLING_DOCUMENT_ERROR} from '../lib/billing-document.mjs';
 import {encodeLogo,saveLogo} from './store-logo.mjs';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
@@ -16,7 +17,7 @@ export function partnerProfile(member,data){
  return {...profile,instagram:partnerInstagram(profile),cpfCnpj:member.cpfCnpj||''};
 }
 const profileSchema=applicationSchema.omit({email:true,consent:true,productIds:true,honeypot:true,password:true,directoryConsent:true}).extend({
- cpfCnpj:z.string().max(18).transform(value=>value.replace(/[.\/\-\s]/g,'')).pipe(z.string().regex(/^(|\d{11}|\d{14})$/,'Informe um CPF com 11 dígitos ou CNPJ com 14 dígitos.')).optional(),
+ cpfCnpj:z.string().max(18).transform(value=>value.replace(/[.\/\-\s]/g,'')).refine(value=>!value||validBillingDocument(value),BILLING_DOCUMENT_ERROR).optional(),
  removeLogo:z.boolean().default(false),
  countryCode:z.string().regex(/^[A-Z]{2}$/),stateId:z.string().min(1).max(30),cityId:z.string().min(1).max(30)
 });

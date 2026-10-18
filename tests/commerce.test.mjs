@@ -19,7 +19,7 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
  const env=Object.fromEntries(keys.map(k=>[k,process.env[k]])),originalFetch=globalThis.fetch;
  for(const k of keys)delete process.env[k];
  Object.assign(process.env,{RESEND_API_KEY:'test-resend',EMAIL_FROM:'Tio Lira <test@example.invalid>',SITE_URL:'https://www.tiolira.com.br',LOCAL_DATA_DIR:dir,ASAAS_ENVIRONMENT:'sandbox',ASAAS_API_KEY:'test-only',ASAAS_WEBHOOK_TOKEN:'test-webhook-secret-with-at-least-32-chars',ADMIN_SESSION_SECRET:'test-session-secret-at-least-32-characters'});
- const a={id:randomUUID(),version:randomUUID(),name:'A',email:'a@example.invalid',cpfCnpj:'12345678901'},b={id:randomUUID(),version:randomUUID(),name:'B',email:'b@example.invalid',cpfCnpj:'12345678000199'},c={id:randomUUID(),version:randomUUID(),name:'C',email:'c@example.invalid',cpfCnpj:'12345678901'};
+ const a={id:randomUUID(),version:randomUUID(),name:'A',email:'a@example.invalid',cpfCnpj:'52998224725'},b={id:randomUUID(),version:randomUUID(),name:'B',email:'b@example.invalid',cpfCnpj:'11222333000181'},c={id:randomUUID(),version:randomUUID(),name:'C',email:'c@example.invalid',cpfCnpj:'52998224725'};
  const data=structuredClone(seed);data.collections.push({id:'folclore-test',name:'Folclore Brasileiro Parte 1',published:true,free:false,comingSoon:false,priceCents:4990});
  const products=['saci','curupira','boitata','cuca','mula'].map(id=>({id,name:id,slug:id,collection:'folclore-test',published:true,access:'paid',priceCents:1490,filePath:`models/${id}.zip`}));data.products.push(...products);
  let posts=0,callbackUpdates=0,timeout=false;const remote=new Map(),customers=new Map();
@@ -44,6 +44,10 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
  try{
   await writeRecord('catalog.json',data,null);await writeRecord('club-members.json',{members:[a,b]},null);
   await t.test('checkout requires the private profile document before contacting Asaas',async()=>{await assert.rejects(()=>checkout({...a,cpfCnpj:''},input()),/Meus dados/);assert.equal(customers.size,0);assert.equal(posts,0);assert.equal(await readRecord('commerce.json'),null)});
+  await t.test('invalid check digits are rejected before customer creation or payment intent',async()=>{
+   for(const cpfCnpj of ['12345678901','12345678000199','11111111111'])await assert.rejects(()=>checkout({...a,cpfCnpj},input()),e=>e.status===400&&e.code==='BILLING_DOCUMENT_INVALID'&&e.uncertain===false);
+   assert.equal(customers.size,0);assert.equal(posts,0);assert.equal(await readRecord('commerce.json'),null);
+  });
   await t.test('published singles remain purchasable while their collection is in preparation',async()=>{
    const draft=structuredClone(data);draft.collections.find(c=>c.id==='folclore-test').comingSoon=true;
    draft.products.find(p=>p.id==='curupira').priceCents=1790;
@@ -128,8 +132,10 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
    assert.ok((await paymentDetails(b,boleto.id)).boleto.identificationField.startsWith('00190'));
    const body={...input(),billingType:'CREDIT_CARD',lang:'es'};
    const before=posts;
-   const [order,duplicate]=await Promise.all([checkout(c,body),checkout(c,body)]);
-   assert.equal(order.id,duplicate.id);assert.equal(posts,before+1);
+   const [firstResponse,duplicate]=await Promise.all([checkout(c,body),checkout(c,body)]);
+   assert.equal(firstResponse.id,duplicate.id);assert.equal(posts,before+1);
+   // Either concurrent caller can win the persisted intent; the loser may see creating.
+   const order=await checkout(c,body);assert.equal(order.id,firstResponse.id);assert.equal(posts,before+1);
    assert.equal(order.status,'pending');assert.equal(order.billingType,'CREDIT_CARD');
    assert.match(order.paymentUrl,/^https:\/\/sandbox\.asaas\.com\/i\//);
    const p=[...remote.values()].find(p=>p.externalReference===order.id);

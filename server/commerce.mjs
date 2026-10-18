@@ -1,4 +1,5 @@
 import {countProductSales,soldQuantity} from './product-sales.mjs';
+import {validBillingDocument,BILLING_DOCUMENT_ERROR} from '../lib/billing-document.mjs';
 import {hasProductFiles,publicPrintProfiles} from '../lib/print-profiles.mjs';
 import {cartSchema} from '../lib/cart-schema.mjs';
 import {FAMILY_COLLECTION_ID} from '../lib/family-discount.mjs';
@@ -68,7 +69,7 @@ export async function checkout(member,input){
  if(internationalBuyer(member))return checkoutPaypal(member,input);
  if(!paymentsReady())fail('Os pagamentos ainda não estão configurados.',503);
  const cpfCnpj=String(member.cpfCnpj||'').replace(/\D/g,'');
- if(!/^(\d{11}|\d{14})$/.test(cpfCnpj))fail('Preencha o CPF ou CNPJ em Meus dados antes de comprar.');
+ if(!validBillingDocument(cpfCnpj))throw Object.assign(Error(BILLING_DOCUMENT_ERROR),{status:400,code:'BILLING_DOCUMENT_INVALID',uncertain:false});
  const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive().optional(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es','fr']).default('pt')}).parse(input);
  const {data}=await getCatalog(),environment=asaasConfig().environment,coupons=await cartCoupons();
  const orderId=randomUUID();let chosenId;

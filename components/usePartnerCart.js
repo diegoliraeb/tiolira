@@ -1,4 +1,5 @@
 'use client';
+import {shopApi} from '../lib/shop-api.mjs';
 import {useCallback,useEffect,useState} from 'react';
 import {recoveryToken,reminderCopy} from '../lib/cart-reminder-copy.mjs';
 import useCartActivity from './useCartActivity';
@@ -17,8 +18,7 @@ export default function usePartnerCart(memberId,lang='pt'){
  const key=`tiolira-cart:${memberId}`;
  useCartActivity(memberId,ready,data,cart,couponCode,lang);
  const load=useCallback(async()=>{
-  const response=await fetch('/api/club/shop',{cache:'no-store'}),next=await response.json();
-  if(!response.ok)throw Error(next.error||'Não foi possível carregar o carrinho.');
+  const next=await shopApi('club/shop',undefined,{timeoutMs:20000});
   setData(next);setError('');return next;
  },[memberId]);
  useEffect(()=>{

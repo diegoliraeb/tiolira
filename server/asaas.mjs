@@ -1,4 +1,5 @@
 import {timingSafeEqual} from 'node:crypto';
+import {BILLING_DOCUMENT_ERROR} from '../lib/billing-document.mjs';
 export {invoiceUrl} from '../lib/asaas-payment.mjs';
 // Private API key stays on the server. Card details are entered only on Asaas.
 export function asaasConfig(){
@@ -14,6 +15,8 @@ export async function asaas(path,{method='GET',body,timeoutMs=15000}={}){
  try{response=await fetch(base+path,{method,headers:{access_token:key,'Content-Type':'application/json','User-Agent':'TioLira/1.0'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(timeoutMs)});}
  catch{throw Object.assign(new Error('Não foi possível confirmar a resposta do Asaas. Consulte o pedido antes de tentar novamente.'),{status:503,uncertain:true});}
  const data=await response.json().catch(()=>null);
+ // Provider descriptions can contain private data: map only known errors to our own copy.
+ if(response.status===400&&data?.errors?.some(e=>/CPF|CNPJ/i.test(e.description||'')&&/inválid|invalid/i.test(e.description||'')))throw Object.assign(Error(BILLING_DOCUMENT_ERROR),{status:400,code:'BILLING_DOCUMENT_INVALID',uncertain:false});
  if(!response.ok||!data)throw Object.assign(new Error('O Asaas não concluiu a operação. Confira os dados ou consulte o pedido.'),{status:502,uncertain:response.status>=500||!data});
  return data;
 }

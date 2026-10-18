@@ -1,4 +1,5 @@
 'use client';
+import {validBillingDocument,BILLING_DOCUMENT_ERROR} from '../lib/billing-document.mjs';
 import {shopText} from '../lib/shop-fr.mjs';
 import {useState} from 'react';
 import LocationFields from './LocationFields';
@@ -11,7 +12,7 @@ export default function PartnerProfile({lang,t,member,onSave}){
  const [logo,setLogo]=useState(null),[logoBusy,setLogoBusy]=useState(false),[saving,setSaving]=useState(false),[message,setMessage]=useState('');
  const change=(key,value)=>setProfile(p=>({...p,[key]:value}));
  async function save(event){
-  event.preventDefault();setSaving(true);setMessage('');
+  event.preventDefault();if(profile.cpfCnpj&&!validBillingDocument(profile.cpfCnpj)){setMessage(shopText(lang,BILLING_DOCUMENT_ERROR));document.getElementById('partner-billing-document')?.focus();return;}setSaving(true);setMessage('');
   try{
    const response=await fetch('/api/club/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...profile,country:countryName(profile.countryCode),...(logo===null?{}:logo?{logoData:logo}:{removeLogo:true})})});
    const data=await response.json();if(!response.ok)throw Error(data.error||t.clubError);
