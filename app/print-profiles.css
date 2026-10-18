@@ -1,0 +1,18 @@
+.print-profiles{margin:1.4rem 0;width:100%;min-width:0;text-align:left}
+.print-profiles header h3{font-size:1.2rem;margin:0 0 .45rem}
+.print-profiles header p{font-size:.9rem;line-height:1.5;margin:0 0 1rem;color:#636958}
+.print-profile-list{display:grid;gap:.65rem}
+.print-profile-card{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem;border:1px solid #dad3bf;border-radius:16px;background:#fffaf1;min-width:0}
+.print-profile-card>div{min-width:0}
+.print-profile-card h4{font-size:1rem;margin:0 0 .55rem;overflow-wrap:anywhere;color:#303d29}
+.print-profile-card p{font-size:.86rem;line-height:1.5;margin:.6rem 0 0;white-space:pre-line;overflow-wrap:anywhere}
+.print-profile-card .button{flex-shrink:0;font-size:.85rem;padding:.7rem 1rem;min-height:42px}
+.print-profile-tags{display:flex;gap:.4rem;flex-wrap:wrap}
+.print-profile-tags span{font-size:.75rem;padding:.25rem .6rem;border-radius:100px;background:#eee9dc;color:#3f4935}
+.print-profile-editor>p{line-height:1.55}.print-profile-editor>.field-help{display:block;margin:.8rem 0}
+.print-profile-edit-card{border:1px solid #dad3bf;border-radius:16px;padding:1rem;margin:1rem 0;background:#fffaf1}
+.print-profile-edit-card h4{margin:0 0 1rem}.print-profile-edit-heading{display:flex;justify-content:space-between;gap:1rem;align-items:baseline}
+.print-profile-fields{display:grid;grid-template-columns:2fr 1fr;gap:1rem}.print-profile-fields .full{grid-column:1/-1}
+.print-profile-editor label{display:flex;flex-direction:column;gap:.4rem;min-width:0}.print-profile-editor input,.print-profile-editor textarea{width:100%;min-width:0;box-sizing:border-box}.print-profile-editor textarea{min-height:80px}
+.purchase-download-row:has(.print-profiles){flex-wrap:wrap}.purchase-download-row>.print-profiles{flex:1 1 100%;order:3}
+@media(max-width:600px){.print-profile-card{flex-direction:column;align-items:stretch}.print-profile-card .button{text-align:center}.print-profile-fields{grid-template-columns:1fr}.print-profile-edit-heading{align-items:flex-start}.print-profile-edit-card{padding:.85rem}}

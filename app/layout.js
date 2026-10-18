@@ -1,3 +1,4 @@
+import './print-profiles.css';
 import ActivityTracker from '../components/ActivityTracker';
 import {headers} from 'next/headers';
 import Script from 'next/script';

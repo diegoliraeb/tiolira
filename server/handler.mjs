@@ -1,3 +1,5 @@
+import {serveProductDownload} from './product-download.mjs';
+import {resolveProductFile} from '../lib/print-profiles.mjs';
 import {costSheetReport,costSheetPdf} from './cost-sheet-pdf.mjs';
 import {costSheets,saveCostSheet} from './cost-sheets.mjs';
 import {assertReminderCron,sendTestCartReminder,runCartReminders,sendCartReminder,recoverCart,unsubscribeCartReminders} from './cart-reminders.mjs';
@@ -9,15 +11,14 @@ import {checkPaypalConnection} from './paypal.mjs';
 import {receivePaypalWebhook} from './paypal-commerce.mjs';
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
-import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,purchaseLicenses,downloadablePurchaseLicense,salesReport,downloadPartnersReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct,recordDownload} from './commerce.mjs';
+import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,purchaseLicenses,downloadablePurchaseLicense,salesReport,downloadPartnersReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct} from './commerce.mjs';
 import {configurePurchaseEmailWebhook,checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
 import {clubDashboard,clubProducts,issueLicense,couponSchema,requestPasswordReset,resetPassword} from './club.mjs';
 import {readClickCounts,recordProductClick} from './product-clicks.mjs';
 import { randomUUID } from 'node:crypto';
-import { Readable } from 'node:stream';
-import { get, put } from '@vercel/blob';
+import { put } from '@vercel/blob';
 import { configured, getCatalog, readRecord, writeRecord, updateRecord, Conflict } from './store.mjs';
 import { assertOrigin, requireAdmin, requireClub, passwordHash, verifyPassword, makeSession, sessionCookie, clubSessionCookie, safeEqual, rateLimit, setupReady, verifySetupToken } from './auth.mjs';
 import { productSchema,collectionSchema,planSchema,storeSchema,applicationSchema,clubRegistrationSchema,settingsSchema,publicCatalog } from './schema.mjs';
@@ -57,9 +58,10 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='admin/downloads'){await requireAdmin(req);return json(res,200,await downloadPartnersReport(url.searchParams.get('productId')));}
   if(method==='GET'&&route==='admin/files/verify'){
    await requireAdmin(req);
-   const {data}=await getCatalog(),product=data.products.find(p=>p.id===url.searchParams.get('id')&&p.published&&p.filePath);
+   const {data}=await getCatalog(),product=data.products.find(p=>p.id===url.searchParams.get('id')&&p.published);
    if(!product)fail('Arquivo não encontrado.',404);
-   return json(res,200,await auditProductFile(product));
+   const file=resolveProductFile(product,url.searchParams.get('profile'));if(!file)fail('Perfil não encontrado.',404);
+   return json(res,200,await auditProductFile({...product,filePath:file.filePath,name:product.name+' · '+file.name,id:product.id+':'+file.id}));
   }
   if(method==='GET'&&route==='admin/sales'){await requireAdmin(req);return json(res,200,await salesReport());}
   if(method==='GET'&&route==='admin/paypal-status'){await requireAdmin(req);await rateLimit(req,'paypal-status',6,60_000);return json(res,200,await checkPaypalConnection());}
@@ -79,7 +81,7 @@ export default async function handler(req,res){
    res.setHeader('Content-Type','image/webp');res.setHeader('Cache-Control',approved?'public, max-age=60':'private, no-store');return res.end(Buffer.from(record.data.base64,'base64'));
   }
   if(method==='GET'&&route==='media')return await serveCatalogImage(url.searchParams.get('path'),res);
-  if(method==='GET'&&route==='download'){const member=await requireClub(req);const {data}=await getCatalog();const p=data.products.find(p=>p.id===url.searchParams.get('id')&&p.published);if(!p||!['site','paid'].includes(p.access)||p.exclusive||!p.filePath||!data.collections.some(c=>c.id===p.collection&&c.published))fail('Arquivo não disponível para download direto.',404);if(isPaidProduct(p)&&!await purchaseAccess(member,p.id))fail('Compre esta peça para liberar o download.',403);const blob=await get(p.filePath,{access:'private',useCache:false});if(!blob)fail('Arquivo ainda não enviado.',404);await recordDownload(member,p);res.setHeader('Content-Type','application/octet-stream');res.setHeader('Content-Disposition',`attachment; filename="${p.slug}.${p.filePath.split('.').pop()}"`);return Readable.fromWeb(blob.stream).pipe(res);}
+  if(method==='GET'&&route==='download'){const member=await requireClub(req);const {data}=await getCatalog();return await serveProductDownload({member,data,productId:url.searchParams.get('id'),profileId:url.searchParams.get('profile'),res});}
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req);

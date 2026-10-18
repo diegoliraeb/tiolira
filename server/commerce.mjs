@@ -1,3 +1,4 @@
+import {hasProductFiles,publicPrintProfiles} from '../lib/print-profiles.mjs';
 import {cartSchema} from '../lib/cart-schema.mjs';
 import {FAMILY_COLLECTION_ID} from '../lib/family-discount.mjs';
 import {checkoutFingerprint} from './checkout-fingerprint.mjs';
@@ -21,7 +22,7 @@ const id=z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
 const state=old=>old||{orders:[],downloads:{},recentDownloads:[]};
 const paid=o=>o.status==='paid'&&currentOrderEnvironment(o);
 export const isPaidProduct=p=>p.access==='paid'||Number(p.priceCents)>0;
-export const canPurchaseProduct=(p,data)=>Boolean(p.published&&!p.exclusive&&p.access==='paid'&&p.filePath&&p.priceCents>0&&data.collections.some(c=>c.id===p.collection&&c.published&&!c.free));
+export const canPurchaseProduct=(p,data)=>Boolean(p.published&&!p.exclusive&&p.access==='paid'&&hasProductFiles(p)&&p.priceCents>0&&data.collections.some(c=>c.id===p.collection&&c.published&&!c.free));
 export function ownedIds(orders,memberId){return new Set(orders.filter(o=>o.memberId===memberId&&paid(o)).flatMap(o=>o.productIds));}
 export function quoteCart(data,input,owned=new Set()){
  const selections=cartSchema.parse(input),seen=new Set(),included=new Set(),items=[];
@@ -52,7 +53,7 @@ export function quoteCart(data,input,owned=new Set()){
 export function safeOrder(o){return {provider:o.provider||'asaas',currency:o.currency||'BRL',id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,couponDiscountCents:o.couponDiscountCents??(o.coupon?o.discountCents:0),promotion:o.promotion||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:o.provider==='paypal'?paypalApprovalUrl(o.paymentUrl,o.environment):invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null,licenses:paid(o)?(o.licenses||[]).map(l=>({code:l.code,productId:l.productId,downloadUrl:`/api/club/licenses/download?code=${encodeURIComponent(l.code)}`})):[]};}
 export async function shop(member){
  const [{data:baseData},record]=await Promise.all([getCatalog(),readRecord(KEY)]),currency=internationalBuyer(member)?'USD':'BRL',data=marketCatalog(baseData,currency),orders=state(record?.data).orders,owned=ownedIds(orders,member.id);
- const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&p.filePath).map(p=>({id:p.id,name:p.name,translations:p.translations,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
+ const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&!p.exclusive&&['site','paid'].includes(p.access)&&hasProductFiles(p)&&data.collections.some(c=>c.id===p.collection&&c.published)).map(p=>({id:p.id,name:p.name,translations:p.translations,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),printProfiles:publicPrintProfiles(p,owned.has(p.id)),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
  const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>canPurchaseProduct(p,data))?[{id:c.id,name:c.name,translations:c.translations,image:collectionCover(c),priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
  return {products,collections,orders:orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).map(safeOrder).reverse(),currency,paymentProvider:currency==='USD'?'paypal':'asaas',paymentsReady:currency==='USD'?paypalReady():paymentsReady()};
 }

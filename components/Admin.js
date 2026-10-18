@@ -1,4 +1,5 @@
 'use client';
+import {hasProductFiles} from '../lib/print-profiles.mjs';
 import AdminAnalytics from './AdminAnalytics';
 import AdminFeedback from './AdminFeedback';
 import {localized} from '../lib/i18n';
@@ -34,7 +35,7 @@ export default function Admin({seed}){
  function navigate(key,id=null){setSection(key);setOrderId(id);setMessage('')}
  function newProduct(){edit({...structuredClone(defaults.products),id:crypto.randomUUID()},'products')}
  const [storeFilters,setStoreFilters]=useState(emptyStoreFilters);
- const clubProducts=data.products.filter(p=>p.published&&p.access==='site'&&!p.exclusive&&p.filePath);
+ const clubProducts=data.products.filter(p=>p.published&&p.access==='site'&&!p.exclusive&&hasProductFiles(p));
  const displayed=section==='stores'?data.stores.filter(s=>matchesAdminStore(s,storeFilters)):section==='club'?clubProducts:data[section];
  const preview=status&&!status.configured;
  async function init(){try{const r=await fetch('/api/admin/status');if(!r.ok)throw Error('Não foi possível consultar o servidor.');const s=await r.json();setStatus(s);if(s.loggedIn){const r=await fetch('/api/admin/catalog');if(!r.ok)throw Error('Não foi possível carregar o catálogo.');setData(await r.json());}else if(!s.configured){try{const saved=JSON.parse(localStorage.getItem('tiolira-admin-draft-v1'));if(saved&&Array.isArray(saved.products)&&Array.isArray(saved.stores)&&saved.settings)setData(saved)}catch{}}}catch(e){setMessage(e.message)}}
