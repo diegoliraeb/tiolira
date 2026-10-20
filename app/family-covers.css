@@ -1,0 +1,29 @@
+/* Sagrada Família covers share a full-bleed 4:3 photograph, with the whole sculpture visible. */
+.product-image[data-collection="de1d16c4-5306-4f91-8696-fa0d512a5dbf"],
+.seo-product-grid .product-image[data-collection="de1d16c4-5306-4f91-8696-fa0d512a5dbf"],
+.partner-movement .partner-piece-image[data-collection="de1d16c4-5306-4f91-8696-fa0d512a5dbf"]{
+ display:block;
+ height:auto;
+ aspect-ratio:4/3;
+ overflow:hidden;
+ padding:0;
+}
+.product-image[data-collection="de1d16c4-5306-4f91-8696-fa0d512a5dbf"]>img,
+.seo-product-grid .product-image[data-collection="de1d16c4-5306-4f91-8696-fa0d512a5dbf"]>img,
+.partner-movement .partner-piece-image[data-collection="de1d16c4-5306-4f91-8696-fa0d512a5dbf"]>img,
+.partner-movement .shop-view-content .shop-offer[data-collection="de1d16c4-5306-4f91-8696-fa0d512a5dbf"]>img{
+ display:block;
+ width:100%;
+ height:auto;
+ aspect-ratio:4/3;
+ object-fit:cover;
+ object-position:center;
+}
+.gallery-main[src^="/assets/sagrada-familia/capas-v1/"],
+.partner-movement .partner-dialog-image[src^="/assets/sagrada-familia/capas-v1/"]{
+ width:100%;
+ height:auto;
+ max-height:none;
+ aspect-ratio:4/3;
+ object-fit:cover;
+}

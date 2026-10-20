@@ -1,4 +1,5 @@
 import {databaseUrl,readPostgresRecord,writePostgresRecord} from './postgres.mjs';
+import {migrateFamilyCovers} from './family-covers.mjs';
 import {normalizeCatalogGalleries} from '../lib/product-gallery.mjs';
 import seed from '../data/catalog.json' with { type: 'json' };
 import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
@@ -31,11 +32,11 @@ export async function writeRecord(key,data,etag){
 }
 export async function updateRecord(key,fn){for(let attempt=0;attempt<5;attempt++){const record=await readRecord(key);try{const next=await fn(record?.data??null);await writeRecord(key,next,record?.etag);return next;}catch(e){if(!(e instanceof Conflict)||attempt===4)throw e;await delay(10*(attempt+1));}}}
 export async function getCatalog(){
- // Upgrade legacy covers once, preserving concurrent edits through the record revision.
+ // Upgrade gallery and cover media once, preserving concurrent edits through the record revision.
  for(let attempt=0;attempt<5;attempt++){
   const record=await readRecord('catalog.json');
-  if(!record)return {data:normalizeCatalogGalleries(structuredClone(seed)),etag:null};
-  const data=normalizeCatalogGalleries(record.data);
+  if(!record)return {data:migrateFamilyCovers(normalizeCatalogGalleries(structuredClone(seed))),etag:null};
+  const data=migrateFamilyCovers(normalizeCatalogGalleries(record.data));
   if(data===record.data)return record;
   try{return {data,etag:await writeRecord('catalog.json',data,record.etag)};}
   catch(error){if(!(error instanceof Conflict)||attempt===4)throw error;await delay(10*(attempt+1));}
