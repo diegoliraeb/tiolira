@@ -63,3 +63,25 @@ test('payment mail is persisted, retryable and sent once per purchase',async t=>
   });
  }finally{globalThis.fetch=originalFetch;for(const key of keys){if(env[key]===undefined)delete process.env[key];else process.env[key]=env[key];}await rm(dir,{recursive:true,force:true});}
 });
+
+test('purchase confirmations follow checkout language and international country fallback',()=>{
+ const base={id:'order/123',memberName:'Carlos <&>',items:[{name:'Original',translations:{es:{name:'Obra & familia'}}}]};
+ for(const [fields,lang,subject] of [
+  [{lang:'pt',countryCode:'CO'},'es','Pago confirmado'],
+  [{lang:'pt',countryCode:'US'},'en','Payment confirmed'],
+  [{lang:'pt',countryCode:'FR'},'fr','Paiement confirmé'],
+  [{lang:'pt',countryCode:'BR'},'pt','Pagamento aprovado'],
+  [{lang:'es',countryCode:'US'},'es','Pago confirmado'],
+  [{lang:'en',countryCode:'CO'},'en','Payment confirmed'],
+  [{lang:'fr',countryCode:'CO'},'fr','Paiement confirmé'],
+  [{lang:'pt',countryCode:'CO',emailLanguage:'pt-BR'},'pt','Pagamento aprovado'],
+  [{lang:'pt',countryCode:'PT'},'pt','Pagamento aprovado'],
+  [{lang:'unsupported'},'pt','Pagamento aprovado'],
+ ]){
+  const mail=purchaseApprovedEmail({...base,...fields},'https://www.tiolira.com.br');
+  assert.ok(mail.subject.includes(subject));assert.ok(mail.html.includes(`lang="${lang==='pt'?'pt-BR':lang}"`));
+  assert.ok(mail.text.includes(`/${lang}/clube?pedido=order%2F123#compras`));assert.ok(mail.html.includes('Carlos &lt;&amp;&gt;'));
+  assert.ok(mail.html.includes('/assets/tl-monogram-3d-icon.png'));
+  if(lang==='es'){assert.ok(mail.html.includes('Obra &amp; familia'));assert.ok(mail.text.includes('licencia de venta en PDF'));}
+ }
+});
