@@ -10,6 +10,7 @@ const KEY='product-update-emails.json';
 const fail=m=>{throw Error(m);};
 const state=s=>({campaigns:{},jobs:{},...s});
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export const sameUpdateFiles=(a,b)=>JSON.stringify(a.map(f=>[f.id,f.filePath]))===JSON.stringify(b.map(f=>[f.id,f.filePath]));
 const productId='916d4c3f-cf6b-4f0e-8ca1-0f7ecb9b7cdf';
 const copy={
  pt:{subject:'O Beijo de Maria ganhou uma atualização ✨',hello:'Olá!',body:'Fiz um ajuste no rosto do Menino Jesus na obra O Beijo de Maria. A versão atualizada já está disponível no site.',instruction:'Antes da próxima impressão, entre na Área do Parceiro e baixe novamente o arquivo da obra para usar a nova versão.',thanks:'Obrigado por dar vida às minhas criações!',cta:'Baixar versão atualizada'},
@@ -38,7 +39,7 @@ export async function runProductUpdateEmails(now=Date.now()){
  const s=state((await readRecord(KEY))?.data);let sent=0;
  for(const campaign of Object.values(s.campaigns).filter(c=>['pending','sending'].includes(c.status)).slice(0,1)){
   const [catalog,commerce,members]=await Promise.all([readRecord('catalog.json'),readRecord('commerce.json'),readRecord('club-members.json')]);const product=catalog.data.products.find(p=>p.id===campaign.productId&&p.published);
-  if(!product||JSON.stringify(productFiles(product))!==JSON.stringify(campaign.files))continue;
+  if(!product||!sameUpdateFiles(productFiles(product),campaign.files))continue;
   if(!campaign.fileAudit){try{const audits=[];for(const file of campaign.files)audits.push(await auditProductFile({...product,filePath:file.filePath}));await updateRecord(KEY,old=>{old.campaigns[campaign.id].fileAudit=audits;return old;});}catch{await updateRecord(KEY,old=>{old.campaigns[campaign.id].status='review';old.campaigns[campaign.id].error='Arquivo precisa de revisão; avisos não enviados.';return old;});continue;}}
   const eligible=updateRecipients(commerce.data,members.data.members,product);
   for(const job of Object.values(s.jobs).filter(j=>j.campaignId===campaign.id&&['pending','failed'].includes(j.status)).slice(0,2)){

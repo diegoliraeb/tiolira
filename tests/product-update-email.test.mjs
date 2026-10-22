@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {updateEmail,updateRecipients} from '../server/product-update-email.mjs';
+import {updateEmail,updateRecipients,sameUpdateFiles} from '../server/product-update-email.mjs';
 test('update audience includes paid collection buyers and downloaders once per email',()=>{
  const before=process.env.ASAAS_ENVIRONMENT;process.env.ASAAS_ENVIRONMENT='sandbox';
  try{
@@ -16,3 +16,5 @@ test('approved update has logo, correct change, protected account link and trans
  for(const lang of ['pt','en','es','fr'])assert.match(updateEmail(lang,'https://www.tiolira.com.br').html,new RegExp('lang="'+lang+'"'));
  assert.throws(()=>updateEmail('xx','https://www.tiolira.com.br'));assert.throws(()=>updateEmail('pt','http://unsafe.invalid'));
 });
+
+test('file identity survives JSONB object key reordering',()=>{assert.equal(sameUpdateFiles([{id:'original',name:'A',filePath:'models/a.3mf'}],[{filePath:'models/a.3mf',name:'A',id:'original'}]),true);assert.equal(sameUpdateFiles([{id:'original',filePath:'models/a.3mf'}],[{id:'original',filePath:'models/b.3mf'}]),false);});
