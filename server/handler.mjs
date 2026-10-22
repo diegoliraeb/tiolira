@@ -1,3 +1,4 @@
+import {runProductUpdateEmails} from './product-update-email.mjs';
 import {runPurchaseEmailResends} from './purchase-email-resends.mjs';
 import {serveProductDownload} from './product-download.mjs';
 import {resolveProductFile} from '../lib/print-profiles.mjs';
@@ -45,7 +46,7 @@ export default async function handler(req,res){
    res.setHeader('Content-Disposition',`attachment; filename="licenca-${license.productId}.pdf"`);
    return res.end(Buffer.from(pdf));
   }
-  if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);const resends=await runPurchaseEmailResends();return json(res,200,{...await runCartReminders(),purchaseResends:resends});}
+  if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);const resends=await runPurchaseEmailResends();const productUpdates=await runProductUpdateEmails();return json(res,200,{...await runCartReminders(),purchaseResends:resends,productUpdates});}
   if(method==='GET'&&route==='reviews')return json(res,200,await publicReviews(url.searchParams.get('productId')));
   if(method==='GET'&&route==='club/feedback')return json(res,200,await memberFeedback(await requireClub(req)));
   if(method==='GET'&&route==='admin/analytics'){await requireAdmin(req);return json(res,200,await analyticsReport(url.searchParams.get('days')||30));}
