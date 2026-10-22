@@ -504,7 +504,7 @@
     "material": "PLA"
   },
   "presepio-natalino-arco-estrela-grande": {
-    "grams": 138.0,
+    "grams": 138,
     "seconds": 21483,
     "plates": 3,
     "printer": "Bambu Lab A1 0.4 nozzle",
@@ -646,5 +646,125 @@
     "filePath": "models/c42cb797-283c-471d-8a0e-40529611efe2.3mf",
     "url": "",
     "material": "PLA"
+  },
+  "povos-originarios-01": {
+    "grams": 88.41,
+    "seconds": 24085,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "01_Povos_Originarios_A1_150mm_016_REV4_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.751Z",
+    "filePath": "models/43d3c595-7ec9-48e1-bbce-32252162adab.3mf",
+    "url": ""
+  },
+  "povos-originarios-02": {
+    "grams": 92.03,
+    "seconds": 25661,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "02_Povos_Originarios_A1_150mm_016_REV4_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.755Z",
+    "filePath": "models/30f91f4b-7f5c-4b95-8b0a-65c9cb96f35e.3mf",
+    "url": ""
+  },
+  "povos-originarios-03": {
+    "grams": 92.49,
+    "seconds": 25856,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "03_Povos_Originarios_A1_150mm_016_REV4_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.755Z",
+    "filePath": "",
+    "url": "https://makerworld.com/pt/models/3476721-the-enduring-strength-indigenous-peoples"
+  },
+  "povos-originarios-04": {
+    "grams": 94.04,
+    "seconds": 26217,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "04_Povos_Originarios_A1_150mm_016_REV8_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.755Z",
+    "filePath": "models/e2d778da-bfa7-44ec-8f1b-765985c6480d.3mf",
+    "url": ""
+  },
+  "povos-originarios-05": {
+    "grams": 128.02,
+    "seconds": 34236,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "05_Povos_Originarios_A1_150mm_016_REV4_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.755Z",
+    "filePath": "models/af599adb-7265-4fa8-9b49-868083fe4fed.3mf",
+    "url": ""
+  },
+  "povos-originarios-06": {
+    "grams": 220.56,
+    "seconds": 54125,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "06_Povos_Originarios_A1_150mm_016_REV5_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.755Z",
+    "filePath": "models/e5bc487f-fcee-4091-bda4-d2146c19650f.3mf",
+    "url": ""
+  },
+  "povos-originarios-07": {
+    "grams": 119.81,
+    "seconds": 32673,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "07_Povos_Originarios_A1_150mm_016_REV5_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.755Z",
+    "filePath": "models/2221860b-bcca-40e2-b260-18168f8535c9.3mf",
+    "url": ""
+  },
+  "povos-originarios-08": {
+    "grams": 172.65,
+    "seconds": 42440,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "08_Povos_Originarios_A1_150mm_016_REV4_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.755Z",
+    "filePath": "models/da772258-1770-4c02-b515-9b7e730bf820.3mf",
+    "url": ""
+  },
+  "povos-originarios-09": {
+    "grams": 235.13,
+    "seconds": 55832,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "09_Povos_Originarios_A1_150mm_016_REV5_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.755Z",
+    "filePath": "models/6bf1f69a-d4b7-4dc6-8828-1ff8689b7e5b.3mf",
+    "url": ""
+  },
+  "povos-originarios-10": {
+    "grams": 187.85,
+    "seconds": 44441,
+    "plates": 2,
+    "material": "PLA preto + PLA Silk dourado",
+    "printer": "Bambu Lab A1 · bico 0,4 mm",
+    "layer": "0.16",
+    "source": "10_Povos_Originarios_A1_150mm_016_REV5_PROTOTIPO.3mf",
+    "checkedAt": "2026-10-22T11:14:35.755Z",
+    "filePath": "models/278d31cd-24df-40ba-8d49-9189e0cfba91.3mf",
+    "url": ""
   }
 }

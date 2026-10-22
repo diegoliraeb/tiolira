@@ -1,0 +1,21 @@
+/* Preserve the full portrait mockups, including the sculpture base and title. */
+.product-image[data-collection="povos-originarios"],
+.seo-product-grid .product-image[data-collection="povos-originarios"],
+.partner-movement .partner-piece-image[data-collection="povos-originarios"] {
+ display:block;
+ height:auto;
+ aspect-ratio:941/1672;
+ overflow:hidden;
+ padding:0;
+}
+.product-image[data-collection="povos-originarios"]>img,
+.seo-product-grid .product-image[data-collection="povos-originarios"]>img,
+.partner-movement .partner-piece-image[data-collection="povos-originarios"]>img,
+.partner-movement .shop-view-content .shop-offer[data-collection="povos-originarios"]>img {
+ display:block;
+ width:100%;
+ height:auto;
+ aspect-ratio:941/1672;
+ object-fit:cover;
+ object-position:center;
+}
