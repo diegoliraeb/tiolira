@@ -53,7 +53,7 @@ export default function StoreNetwork({lang,catalog}){
  function quoteUrl(store){
   const selected=piece.startsWith('collection:')?catalog.collections.find(c=>`collection:${c.id}`===piece):catalog.products.find(p=>p.id===piece);
   const request=selected?`${localized(selected,lang).name}${piece.startsWith('collection:')?` — ${t.completeCollection}`:''}`:'';
-  const greeting={pt:'Olá! Encontrei seu contato na rede do Tio Lira. Gostaria de um orçamento',en:'Hello! I found you on the Tio Lira network. I would like a quote',es:'¡Hola! Te encontré en la red de Tio Lira. Quisiera un presupuesto',fr:'Bonjour ! J’ai trouvé vos coordonnées dans le réseau Tio Lira. Je souhaiterais un devis'}[lang];
+  const greeting={pt:'Olá! Vim através do site do Tio Lira e gostaria de um orçamento para impressão 3D',en:'Hello! I found you through the Tio Lira website and would like a quote for 3D printing',es:'¡Hola! Llegué a través del sitio de Tio Lira y quisiera un presupuesto para impresión 3D',fr:'Bonjour ! Je vous contacte via le site de Tio Lira et je souhaiterais un devis pour une impression 3D'}[lang];
   return `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`${greeting}${request?`: ${request}`:'.'}`)}`;
  }
  async function submit(e){
