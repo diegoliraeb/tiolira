@@ -1,4 +1,5 @@
 import './print-profiles.css';
+import {homeMetadata,seoCopy} from '../lib/seo.mjs';
 import ActivityTracker from '../components/ActivityTracker';
 import {headers} from 'next/headers';
 import Script from 'next/script';
@@ -15,7 +16,8 @@ import './artwork-calculator.css';
 import './free-artwork.css';
 import './family-covers.css';
 import './povos-covers.css';
-export const metadata={metadataBase:new URL('https://www.tiolira.com.br'),title:{default:'Tio Lira — Ideias que ganham forma',template:'%s · Tio Lira'},description:'Presépio gratuito, coleções autorais para impressão 3D e uma rede de quem imprime. Free nativity and original 3D models.',icons:{icon:'/assets/tl-monogram-3d-icon.png'}};
+const defaultShare=homeMetadata('pt');
+export const metadata={metadataBase:new URL('https://www.tiolira.com.br'),title:{default:`${seoCopy.pt.homeTitle} · Tio Lira`,template:'%s · Tio Lira'},description:seoCopy.pt.homeDescription,openGraph:defaultShare.openGraph,twitter:defaultShare.twitter,icons:{icon:'/assets/tl-monogram-3d-icon.png'}};
 export default async function Layout({children}){
   const lang=(await headers()).get('x-tiolira-language')||'pt';
   return (
