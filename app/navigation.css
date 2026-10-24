@@ -91,3 +91,15 @@
  #tl-vivo .section-heading{align-items:stretch;gap:18px}
  #tl-vivo .product-grid{gap:16px}
 }
+
+:is(body,#tl-vivo) .tl-instagram{display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;border:1px solid #d9d0be;border-radius:50%;color:#303b29;text-decoration:none;background:transparent}
+.tl-instagram:hover{background:#e8dfcc}
+@media(max-width:380px){
+ :is(body,#tl-vivo) .tl-site-header{gap:6px}
+ :is(body,#tl-vivo) .tl-brand img{width:28px;height:28px}
+ :is(body,#tl-vivo) .tl-brand span{font-size:20px}
+ :is(body,#tl-vivo) .tl-brand small{font-size:5px;letter-spacing:.5px}
+ .tl-header-actions{gap:5px}
+ :is(body,#tl-vivo) .tl-club-button{padding:10px 12px}
+ .tl-club-arrow{display:none}
+}
