@@ -41,7 +41,7 @@
 #tl-vivo .v-card-name{writing-mode:horizontal-tb;transform:none;white-space:normal;font-size:20px;line-height:1.2;left:18px;right:38px;bottom:22px}
 #tl-vivo .v-card-arrow{opacity:1;display:block;bottom:18px;right:14px}
 #tl-vivo .v-all-collections{margin-top:16px}
-@media(max-width:1000px){
+@media(max-width:1200px){
  #tl-vivo{overflow:clip}
  :is(body,#tl-vivo) .tl-site-header{position:sticky;top:0;z-index:50;padding:12px 5%;gap:12px;box-shadow:0 2px 12px #303b2908}
  :is(body,#tl-vivo) nav.tl-desktop-nav,.tl-header-languages{display:none}
@@ -51,7 +51,7 @@
  :is(body,#tl-vivo) .tl-brand small{font-size:6px;letter-spacing:.8px}
  :is(body,#tl-vivo) .tl-brand img{width:36px;height:36px}
  :is(body,#tl-vivo) .tl-club-button{padding:10px 15px;gap:6px;font-size:12px}
- #tl-vivo section[id]{scroll-margin-top:88px}
+ #tl-vivo section[id]{scroll-margin-top:144px}
  #tl-vivo .v-collection-deck{grid-template-columns:repeat(3,minmax(0,1fr))}
  #tl-vivo .v-arrows button{width:44px;height:44px}
 }
@@ -92,8 +92,15 @@
  #tl-vivo .product-grid{gap:16px}
 }
 
-:is(body,#tl-vivo) .tl-instagram{display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;border:1px solid #d9d0be;border-radius:50%;color:#303b29;text-decoration:none;background:transparent}
-.tl-instagram:hover{background:#e8dfcc}
+:is(body,#tl-vivo) .tl-instagram{display:flex;align-items:center;justify-content:center;gap:9px;flex-shrink:0;min-height:44px;padding:10px 16px;border:1px solid #a94e30;border-radius:28px;color:#fffaf1;text-decoration:none;background:#a94e30;font-size:12px;font-weight:600;line-height:1.4;box-sizing:border-box}
+:is(body,#tl-vivo) .tl-instagram:hover{background:#8e3f25}
+.tl-instagram svg{flex-shrink:0}
+@media(max-width:1200px){
+ :is(body,#tl-vivo) .tl-site-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px 12px}
+ .tl-brand{grid-column:1;grid-row:1}
+ .tl-header-actions{grid-column:2;grid-row:1}
+ :is(body,#tl-vivo) .tl-instagram{grid-column:1/-1;grid-row:2;width:100%;padding:10px 12px;font-size:13px;border-radius:12px}
+}
 @media(max-width:380px){
  :is(body,#tl-vivo) .tl-site-header{gap:6px}
  :is(body,#tl-vivo) .tl-brand img{width:28px;height:28px}

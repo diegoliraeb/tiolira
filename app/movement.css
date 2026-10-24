@@ -85,7 +85,6 @@
 #tl-vivo .v-gift:hover>img{transform:scale(1.025)}
 #tl-vivo .v-gift h2{font-size:36px;line-height:1.15;margin:12px 0}
 #tl-vivo .v-gift p{font-size:12px;line-height:1.6;margin-bottom:20px;max-width:300px}
-#tl-vivo .v-gift-mark{position:absolute;right:-30px;top:-35px;font-size:170px;color:#aa54351a;pointer-events:none}
 #tl-vivo .v-work-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:8%;align-items:center}
 #tl-vivo .v-work-image{position:relative;overflow:hidden;padding:0;border-radius:44% 44% 5px 5px;background:#dfd3c1;transform:perspective(900px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg));transition:transform .4s;isolation:isolate;clip-path:inset(0 round 44% 44% 5px 5px)}
 #tl-vivo .v-work-image img{width:100%;aspect-ratio:1.08;object-fit:cover;transition:transform 1s}
