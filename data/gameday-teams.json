@@ -1,0 +1,194 @@
+[
+  {
+    "key": "packers",
+    "city": "Green Bay",
+    "team": "Packers",
+    "division": "NFC North"
+  },
+  {
+    "key": "49ers",
+    "city": "San Francisco",
+    "team": "49ers",
+    "division": "NFC West"
+  },
+  {
+    "key": "chiefs",
+    "city": "Kansas City",
+    "team": "Chiefs",
+    "division": "AFC West"
+  },
+  {
+    "key": "patriots",
+    "city": "New England",
+    "team": "Patriots",
+    "division": "AFC East"
+  },
+  {
+    "key": "seahawks",
+    "city": "Seattle",
+    "team": "Seahawks",
+    "division": "NFC West"
+  },
+  {
+    "key": "cowboys",
+    "city": "Dallas",
+    "team": "Cowboys",
+    "division": "NFC East"
+  },
+  {
+    "key": "steelers",
+    "city": "Pittsburgh",
+    "team": "Steelers",
+    "division": "AFC North"
+  },
+  {
+    "key": "eagles",
+    "city": "Philadelphia",
+    "team": "Eagles",
+    "division": "NFC East"
+  },
+  {
+    "key": "bills",
+    "city": "Buffalo",
+    "team": "Bills",
+    "division": "AFC East"
+  },
+  {
+    "key": "giants",
+    "city": "New York",
+    "team": "Giants",
+    "division": "NFC East"
+  },
+  {
+    "key": "ravens",
+    "city": "Baltimore",
+    "team": "Ravens",
+    "division": "AFC North"
+  },
+  {
+    "key": "broncos",
+    "city": "Denver",
+    "team": "Broncos",
+    "division": "AFC West"
+  },
+  {
+    "key": "saints",
+    "city": "New Orleans",
+    "team": "Saints",
+    "division": "NFC South"
+  },
+  {
+    "key": "vikings",
+    "city": "Minnesota",
+    "team": "Vikings",
+    "division": "NFC North"
+  },
+  {
+    "key": "raiders",
+    "city": "Las Vegas",
+    "team": "Raiders",
+    "division": "AFC West"
+  },
+  {
+    "key": "bears",
+    "city": "Chicago",
+    "team": "Bears",
+    "division": "NFC North"
+  },
+  {
+    "key": "colts",
+    "city": "Indianapolis",
+    "team": "Colts",
+    "division": "AFC South"
+  },
+  {
+    "key": "dolphins",
+    "city": "Miami",
+    "team": "Dolphins",
+    "division": "AFC East"
+  },
+  {
+    "key": "rams",
+    "city": "Los Angeles",
+    "team": "Rams",
+    "division": "NFC West"
+  },
+  {
+    "key": "falcons",
+    "city": "Atlanta",
+    "team": "Falcons",
+    "division": "NFC South"
+  },
+  {
+    "key": "bengals",
+    "city": "Cincinnati",
+    "team": "Bengals",
+    "division": "AFC North"
+  },
+  {
+    "key": "buccaneers",
+    "city": "Tampa Bay",
+    "team": "Buccaneers",
+    "division": "NFC South"
+  },
+  {
+    "key": "lions",
+    "city": "Detroit",
+    "team": "Lions",
+    "division": "NFC North"
+  },
+  {
+    "key": "chargers",
+    "city": "Los Angeles",
+    "team": "Chargers",
+    "division": "AFC West"
+  },
+  {
+    "key": "cardinals",
+    "city": "Arizona",
+    "team": "Cardinals",
+    "division": "NFC West"
+  },
+  {
+    "key": "jets",
+    "city": "New York",
+    "team": "Jets",
+    "division": "AFC East"
+  },
+  {
+    "key": "commanders",
+    "city": "Washington",
+    "team": "Commanders",
+    "division": "NFC East"
+  },
+  {
+    "key": "browns",
+    "city": "Cleveland",
+    "team": "Browns",
+    "division": "AFC North"
+  },
+  {
+    "key": "jaguars",
+    "city": "Jacksonville",
+    "team": "Jaguars",
+    "division": "AFC South"
+  },
+  {
+    "key": "panthers",
+    "city": "Carolina",
+    "team": "Panthers",
+    "division": "NFC South"
+  },
+  {
+    "key": "texans",
+    "city": "Houston",
+    "team": "Texans",
+    "division": "AFC South"
+  },
+  {
+    "key": "titans",
+    "city": "Tennessee",
+    "team": "Titans",
+    "division": "AFC South"
+  }
+]

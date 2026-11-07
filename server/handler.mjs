@@ -46,6 +46,7 @@ export default async function handler(req,res){
    res.setHeader('Content-Disposition',`attachment; filename="licenca-${license.productId}.pdf"`);
    return res.end(Buffer.from(pdf));
   }
+  if(method==='GET'&&route==='cron/gameday-prices'){assertReminderCron(req);const {refreshGamedayPrices}=await import('./gameday-pricing.mjs');return json(res,200,await refreshGamedayPrices());}
   if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);const resends=await runPurchaseEmailResends();const productUpdates=await runProductUpdateEmails();return json(res,200,{...await runCartReminders(),purchaseResends:resends,productUpdates});}
   if(method==='GET'&&route==='reviews')return json(res,200,await publicReviews(url.searchParams.get('productId')));
   if(method==='GET'&&route==='club/feedback')return json(res,200,await memberFeedback(await requireClub(req)));

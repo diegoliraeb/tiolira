@@ -53,7 +53,13 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
  useEffect(()=>{if(selected)trackActivity({type:'product',productId:selected.id,lang});},[selected?.id,lang]);
  useEffect(()=>{if(selected){setMessage('');setCopyMessage('');dialog.current.showModal();}},[selected]);
  useEffect(()=>{
-  const read=()=>{const route=partnerRoute(window.location.hash,window.location.search);setSection(route.section);setCollection(route.collection);setQuery('');};
+  const read=()=>{
+   const purchase=/^#comprar=(gameday-santa-[a-z0-9-]+)$/.exec(window.location.hash);
+   if(purchase){
+    setRequestedProductId(purchase[1]);cartState.setActiveOrderId(null);cartState.setShopView('cart');setSection('compras');
+    window.history.replaceState(null,'','#compras');return;
+   }
+   const route=partnerRoute(window.location.hash,window.location.search);setSection(route.section);setCollection(route.collection);setQuery('');};
   read();window.addEventListener('hashchange',read);window.addEventListener('popstate',read);return()=>{window.removeEventListener('hashchange',read);window.removeEventListener('popstate',read)};
  },[]);
  function navigate(next,id='all'){
