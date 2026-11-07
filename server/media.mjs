@@ -15,7 +15,7 @@ const catalogCopies={
  'images/ac5a3430-75d8-4adc-9bd1-264bae0e4319.png':'/assets/catalog/mula.webp',
 };
 
-export async function serveCatalogImage(path,res,readBlob=get){
+export async function serveCatalogImage(path,res,readBlob=get,{head=false}={}){
  if(!/^images\/[a-zA-Z0-9._-]+\.(png|jpg|jpeg|webp)$/.test(path||''))throw Object.assign(new Error('Imagem não encontrada.'),{status:404});
  if(catalogCopies[path]){res.statusCode=307;res.setHeader('Location',catalogCopies[path]);res.setHeader('Cache-Control','public, max-age=3600, s-maxage=86400');res.end();return;}
  let blob;
@@ -29,5 +29,6 @@ export async function serveCatalogImage(path,res,readBlob=get){
  if(!blob?.stream)throw Object.assign(new Error('Imagem não encontrada.'),{status:404});
  res.setHeader('Content-Type',blob.blob.contentType);
  res.setHeader('Cache-Control','public, max-age=86400, s-maxage=86400');
+ if(head){await blob.stream.cancel();res.end();return;}
  await pipeline(Readable.fromWeb(blob.stream),res);
 }

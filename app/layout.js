@@ -20,7 +20,7 @@ import './navigation.css';
 const defaultShare=homeMetadata('pt');
 export const metadata={metadataBase:new URL('https://www.tiolira.com.br'),title:{default:`${seoCopy.pt.homeTitle} · Tio Lira`,template:'%s · Tio Lira'},description:seoCopy.pt.homeDescription,openGraph:defaultShare.openGraph,twitter:defaultShare.twitter,icons:{icon:'/assets/tl-monogram-3d-icon.png'}};
 export default async function Layout({children}){
-  const lang=(await headers()).get('x-tiolira-language')||'pt';
+  const requestHeaders=await headers(),lang=requestHeaders.get('x-tiolira-language')||'pt',nonce=requestHeaders.get('x-tiolira-nonce');
   return (
     <html data-scroll-behavior="smooth" lang={lang==='en'?'en':lang==='es'?'es':lang==='fr'?'fr':'pt-BR'}>
       <body>
@@ -29,8 +29,9 @@ export default async function Layout({children}){
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-QYWJ8F1HT9"
           strategy="afterInteractive"
+          nonce={nonce}
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="google-analytics" strategy="afterInteractive" nonce={nonce}>
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}

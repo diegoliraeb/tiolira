@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {sitemapEntries,productMetadata,productSchema,collectionMetadata,collectionSlug,jsonLd,SITE_ORIGIN,SITE_SHARE_IMAGE,SITE_SLOGAN,homeMetadata,homeSchema,pageMetadata,seoCopy} from '../lib/seo.mjs';
+import {sitemapEntries,productMetadata,productSchema,collectionMetadata,collectionBundleSchema,collectionSlug,jsonLd,SITE_ORIGIN,SITE_SHARE_IMAGE,SITE_SLOGAN,homeMetadata,homeSchema,pageMetadata,seoCopy} from '../lib/seo.mjs';
 const family={id:'de1d16c4-5306-4f91-8696-fa0d512a5dbf',name:'Esculturas Sagrada Família',description:'Esculturas autorais.',image:'/assets/collections/sagrada-familia-v3.webp',published:true};
 const piece={id:'test-nazare',slug:'sagrada-familia-caminho-de-nazare',name:'Escultura Sagrada Família - Caminho de Nazaré',description:'Maria e José caminham com Jesus.',image:'/api/media?path=images%2Ftest.png',gallery:[],hasFile:true,access:'paid',priceCents:1290,collection:family.id,published:true,translations:{en:{name:'Holy Family — Path of Nazareth',description:'Mary and Joseph walk with Jesus.'}}};
 test('sitemap covers every public product and language while excluding private, draft and empty content',()=>{
@@ -20,6 +20,23 @@ test('product structured data uses actual visible prices and never fabricates ra
  for(const changed of [{access:'soon'},{access:'maker',url:'https://makerworld.com/model'},{access:'members'},{hasFile:false}])assert.equal(productSchema({...piece,...changed},'pt',family).offers,undefined);
 });
 test('JSON-LD escapes HTML termination so catalog text cannot inject scripts',()=>{const raw={name:'</script><script>alert(1)</script>',description:'A & B'};const result=jsonLd(raw);assert.ok(!result.includes('<'));assert.deepEqual(JSON.parse(result),raw);});
+test('NFL offers match the visible 14.99 individual and 199 complete pack, with daily BRL values',()=>{
+ const collection={id:'nfl-santas',name:'Gameday Santas',priceCents:100543,priceUsdCents:19900,published:true,image:'/assets/nfl.jpg'};
+ const products=Array.from({length:32},(_,i)=>({...piece,id:`team-${i}`,collection:'nfl-santas',priceUsdCents:1499,priceCents:7574}));
+ assert.equal(productSchema(products[0],'en',collection).offers.price,'14.99');
+ assert.equal(productSchema(products[0],'pt',collection).offers.price,'75.74');
+ assert.equal(collectionBundleSchema(collection,products,'en').offers.price,'199.00');
+ assert.equal(collectionBundleSchema(collection,products,'pt').offers.price,'1005.43');
+ assert.equal(collectionBundleSchema(collection,products,'en').offers.priceCurrency,'USD');
+ assert.equal(collectionBundleSchema(collection,products,'es'),null);
+ assert.equal(collectionBundleSchema(collection,products.slice(1),'en'),null);
+ assert.equal(collectionBundleSchema(collection,products.map((p,i)=>i? p:{...p,hasFile:false}),'en'),null);
+ assert.equal(collectionBundleSchema({...collection,comingSoon:true},products,'en'),null);
+ assert.equal(productSchema({...products[0],priceUsdCents:undefined},'en',collection).offers,undefined);
+ assert.equal(productSchema({...products[0],priceUsdCents:undefined,access:'site'},'en',collection).offers.price,'0.00');
+ assert.match(collectionMetadata(collection,'en',32).title,/NFL Santa Claus 3D/);
+ assert.ok(collectionMetadata(collection,'en',32).description.length<=180);
+});
 test('all four home languages and general pages share the institutional image, not a collection cover',()=>{
  for(const lang of ['pt','en','es','fr']){
   for(const metadata of [homeMetadata(lang),pageMetadata({lang,path:'/colecoes',title:seoCopy[lang].collections,description:seoCopy[lang].collectionIntro}),pageMetadata({lang,path:'/calculadora',title:seoCopy[lang].calculatorTitle,description:seoCopy[lang].calculatorDescription})]){

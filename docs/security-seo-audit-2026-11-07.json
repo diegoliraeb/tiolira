@@ -1,0 +1,78 @@
+{
+  "checkedAt": "2026-11-07T03:15:40.699632+00:00",
+  "site": "https://www.tiolira.com.br",
+  "scope": "Revisão de código, dependências de produção, testes locais de abuso e leitura pública do site. Não é um teste de invasão exaustivo.",
+  "dependencyAudit": {
+    "before": {
+      "info": 0,
+      "low": 1,
+      "moderate": 7,
+      "high": 8,
+      "critical": 2
+    },
+    "after": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0
+    }
+  },
+  "fixes": [
+    "Atualização de Next.js, Sharp e Zod; versões indiretas corrigidas de undici, source-map-js e Zod.",
+    "CSP por requisição com nonce, bloqueio de scripts inline não autorizados, objetos e enquadramento por outros sites.",
+    "Limites de tamanho em bytes por rota e autenticação antes da leitura de uploads administrativos.",
+    "Limites por conta em login, downloads e licenças; Retry-After nas respostas de limitação.",
+    "Separação explícita entre sessões de parceiro e administrador.",
+    "Uploads assinados exigem origem do próprio site e autenticação administrativa.",
+    "Áreas privadas e respostas de API não devem ser indexadas; imagens públicas continuam acessíveis.",
+    "Metadados da vitrine NFL e oferta estruturada do pacote completo, coerentes com USD/BRL da página.",
+    "Suporte HEAD para imagens públicas, preservando validação que impede acesso a arquivos privados."
+  ],
+  "seo": {
+    "products": 134,
+    "collections": 9,
+    "sitemapUrls": 584,
+    "metadataChecked": 536,
+    "offersChecked": 412,
+    "bundle": {
+      "pt": {
+        "@type": "Offer",
+        "url": "https://www.tiolira.com.br/pt/colecao/nfl-santas#gameday-pack-title",
+        "priceCurrency": "BRL",
+        "price": "1094.76",
+        "availability": "https://schema.org/InStock",
+        "seller": {
+          "@type": "Organization",
+          "name": "Tio Lira",
+          "url": "https://www.tiolira.com.br"
+        }
+      },
+      "en": {
+        "@type": "Offer",
+        "url": "https://www.tiolira.com.br/en/colecao/nfl-santas#gameday-pack-title",
+        "priceCurrency": "USD",
+        "price": "199.00",
+        "availability": "https://schema.org/InStock",
+        "seller": {
+          "@type": "Organization",
+          "name": "Tio Lira",
+          "url": "https://www.tiolira.com.br"
+        }
+      }
+    }
+  },
+  "verification": {
+    "testsPassed": 218,
+    "productionBuild": "next build --webpack: passed",
+    "localBrowser": "Login, saída, carrinho, remoção e navegação entre páginas: sem erros no console. Nenhum pagamento criado.",
+    "localCsp": "Nonces distintos por resposta; todos os scripts do HTML com nonce; cabeçalhos enviados pelo cliente substituídos.",
+    "publicImages": "18 URLs examinadas. Quatro recusavam HEAD, mas respondiam 200 ao GET; suporte HEAD corrigido."
+  },
+  "limits": [
+    "A revisão não comprova ausência de invasão nem proteção absoluta contra ataques, com ou sem IA.",
+    "Regras personalizadas do Vercel Firewall não foram alteradas. A consulta do conjunto ativo retornou configuração não encontrada; isso não significa ausência da proteção padrão da plataforma.",
+    "Indexação e posição nas buscas dependem do Google; não foi solicitado reprocessamento no Search Console nesta revisão.",
+    "Ainda existem descrições com fallback para português: inglês 28, espanhol 60, francês 53. O catálogo já tinha essa lacuna; a revisão técnica não substitui a tradução editorial."
+  ]
+}

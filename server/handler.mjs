@@ -1,3 +1,4 @@
+import {readJsonBody,requestBodyLimit} from './request-security.mjs';
 import {adminCollectionAccess,saveCollectionAccess} from './collection-access.mjs';
 import {runProductUpdateEmails} from './product-update-email.mjs';
 import {runPurchaseEmailResends} from './purchase-email-resends.mjs';
@@ -29,7 +30,7 @@ import {encodeLogo,saveLogo,logoPath} from './store-logo.mjs';
 import {geographyOptions,normalizeStoreLocation} from './geography.mjs';
 const schemas={products:productSchema,collections:collectionSchema,plans:planSchema,stores:storeSchema};
 function fail(message,status=400){throw Object.assign(new Error(message),{status});}
-async function body(req){if(req.body!==undefined)return typeof req.body==='string'?JSON.parse(req.body):req.body;let data='',bytes=0;for await(const part of req){bytes+=part.length;if(bytes>40_000_000)fail('Conteúdo muito grande.',413);data+=part;}return data?JSON.parse(data):{};}
+const body=(req,route='')=>readJsonBody(req,requestBodyLimit(route));
 function json(res,status,data){res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(data));}
 export default async function handler(req,res){
  res.setHeader('Cache-Control','private, no-store');res.setHeader('X-Content-Type-Options','nosniff');
@@ -37,11 +38,13 @@ export default async function handler(req,res){
   const url=new URL(req.url,'https://'+(req.headers.host||'localhost'));
   const route=String((Array.isArray(req.query?.route)?req.query.route.join('/'):req.query?.route)||url.searchParams.get('route')||url.pathname.replace(/^\/api\/?/,'')).replace(/^\/+|\/+$/g,'');
   const method=req.method;
+  if(!['media','store-logo','feedback/photo'].includes(route))res.setHeader('X-Robots-Tag','noindex, nofollow');
+  if(['POST','PUT','DELETE'].includes(method)&&route.startsWith('admin/')&&!['admin/login','admin/setup','admin/logout'].includes(route))await requireAdmin(req);
   if(method==='POST'&&route==='webhooks/paypal'){let raw=typeof req.body==='string'?req.body:null;if(raw===null&&req.body!==undefined)fail('Webhook exige corpo original.',400);if(raw===null){const chunks=[];let size=0;for await(const part of req){size+=Buffer.byteLength(part);if(size>1_000_000)fail('Evento muito grande.',413);chunks.push(Buffer.from(part));}raw=Buffer.concat(chunks).toString('utf8');}await receivePaypalWebhook(req.headers,raw);return json(res,200,{received:true});}
-  if(method==='POST'&&route==='webhooks/purchase-email'){assertWebhook(req);await receiveWebhook(await body(req),{emailRequired:true});return json(res,200,{received:true});}
-  if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req));return json(res,200,{received:true});}
+  if(method==='POST'&&route==='webhooks/purchase-email'){assertWebhook(req);await receiveWebhook(await body(req,route),{emailRequired:true});return json(res,200,{received:true});}
+  if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req,route));return json(res,200,{received:true});}
   if(method==='GET'&&route==='club/licenses/download'){
-   const member=await requireClub(req),license=await downloadablePurchaseLicense(member,url.searchParams.get('code'));
+   const member=await requireClub(req);await rateLimit(req,'license-pdf',120,600_000,member.id);const license=await downloadablePurchaseLicense(member,url.searchParams.get('code'));
    const pdf=await purchaseLicensePdf(license);
    res.setHeader('Content-Type','application/pdf');
    res.setHeader('Content-Disposition',`attachment; filename="licenca-${license.productId}.pdf"`);
@@ -87,11 +90,11 @@ export default async function handler(req,res){
    const record=await readRecord(`logos/${id}.json`);if(!record)fail('Logo não encontrada.',404);
    res.setHeader('Content-Type','image/webp');res.setHeader('Cache-Control',approved?'public, max-age=60':'private, no-store');return res.end(Buffer.from(record.data.base64,'base64'));
   }
-  if(method==='GET'&&route==='media')return await serveCatalogImage(url.searchParams.get('path'),res);
-  if(method==='GET'&&route==='download'){const member=await requireClub(req);const {data}=await getCatalog();return await serveProductDownload({member,data,productId:url.searchParams.get('id'),profileId:url.searchParams.get('profile'),res});}
+  if(['GET','HEAD'].includes(method)&&route==='media')return await serveCatalogImage(url.searchParams.get('path'),res,undefined,{head:method==='HEAD'});
+  if(method==='GET'&&route==='download'){const member=await requireClub(req);await rateLimit(req,'file-download',120,600_000,member.id);const {data}=await getCatalog();return await serveProductDownload({member,data,productId:url.searchParams.get('id'),profileId:url.searchParams.get('profile'),res});}
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
-  const input=await body(req);
+  const input=await body(req,route);
   if(method==='POST'&&route==='analytics/event'){if(!configured())return json(res,200,{ok:true});await rateLimit(req,'site-activity',120,60_000);return json(res,200,await recordActivity(req,input));}
   if(method==='POST'&&route==='admin/cart-reminders/test'){await requireAdmin(req);await rateLimit(req,'test-cart-reminder',5,3600_000);return json(res,200,await sendTestCartReminder(input));}
   if(method==='POST'&&route==='admin/cart-reminders/send'){await requireAdmin(req);await rateLimit(req,'manual-cart-reminder',20,60_000);return json(res,200,await sendCartReminder(input.id));}
@@ -114,6 +117,7 @@ export default async function handler(req,res){
   if(method==='POST'&&route==='club/orders/refresh'){const member=await requireClub(req);await rateLimit(req,'payment-refresh',20,60_000);return json(res,200,{order:await refreshOrder(member,input.id)});}
   if(method==='POST'&&route==='products/click'){
    if(!configured())return json(res,200,{ok:true});
+   await rateLimit(req,'product-click',120,60_000);
    if(typeof input.id!=='string'||!/^[a-z0-9][a-z0-9-]{0,99}$/.test(input.id))fail('Obra inválida.');
    const {data}=await getCatalog();if(!publicCatalog(data).products.some(p=>p.id===input.id))fail('Obra não encontrada.',404);
    await recordProductClick(req,input.id);return json(res,200,{ok:true});
@@ -129,6 +133,7 @@ export default async function handler(req,res){
   }
   if(method==='POST'&&route==='club/licenses'){
    const member=await requireClub(req);
+   await rateLimit(req,'license-issue',120,600_000,member.id);
    const owned=await memberHasAccess(member,input.productId)?new Set([input.productId]):new Set();
    const product=clubProducts((await getCatalog()).data,owned).find(p=>p.id===input.productId&&p.canLicense);
    if(!product)fail('Licença de venda não disponível para esta peça.',403);
@@ -137,6 +142,7 @@ export default async function handler(req,res){
   }
   if(method==='PUT'&&route==='club/profile'){
    const member=await requireClub(req);
+   await rateLimit(req,'profile-save',20,600_000,member.id);
    const updated=await updatePartnerProfile(member,input);
    return json(res,200,await clubDashboard(updated,(await getCatalog()).data));
   }
@@ -155,6 +161,7 @@ export default async function handler(req,res){
   if(method==='POST'&&route==='club/login'){
    if(!configured())fail('O Clube ainda não está conectado ao armazenamento seguro.',503);
    await rateLimit(req,'club-login',8,15*60_000);
+   if(typeof input.email==='string')await rateLimit(req,'club-login-account',40,15*60_000,input.email.trim().toLowerCase().slice(0,254));
    const email=typeof input.email==='string'?input.email.trim().toLowerCase():'';const record=await readRecord('club-members.json');const member=record?.data?.members?.find(item=>safeEqual(item.email,email));
    if(!member||typeof input.password!=='string'||input.password.length>200||!await verifyPassword(input.password,member.hash))fail('E-mail ou senha incorretos.',401);
    res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));return json(res,200,{ok:true,...await clubDashboard(member,(await getCatalog()).data)});
@@ -169,7 +176,7 @@ export default async function handler(req,res){
    if(typeof input.email!=='string'||!/^\S+@\S+\.\S+$/.test(input.email))fail('Informe seu e-mail.');
    const admin={email:input.email.trim().toLowerCase(),hash:await passwordHash(input.password),version:randomUUID(),createdAt:new Date().toISOString()};await writeRecord('admin.json',admin,null);res.setHeader('Set-Cookie',sessionCookie(await makeSession(admin.version)));return json(res,201,{ok:true});
   }
-  if(method==='POST'&&route==='admin/login'){await rateLimit(req,'login',8,15*60_000);const auth=await readRecord('admin.json');if(typeof input.password!=='string'||input.password.length>200||!auth||!safeEqual(input.email?.trim().toLowerCase(),auth.data.email)||!await verifyPassword(input.password,auth.data.hash))fail('E-mail ou senha incorretos.',401);res.setHeader('Set-Cookie',sessionCookie(await makeSession(auth.data.version)));return json(res,200,{ok:true});}
+  if(method==='POST'&&route==='admin/login'){await rateLimit(req,'login',8,15*60_000);if(typeof input.email==='string')await rateLimit(req,'admin-login-account',40,15*60_000,input.email.trim().toLowerCase().slice(0,254));const auth=await readRecord('admin.json');if(typeof input.email!=='string'||typeof input.password!=='string'||input.password.length>200||!auth||!safeEqual(input.email?.trim().toLowerCase(),auth.data.email)||!await verifyPassword(input.password,auth.data.hash))fail('E-mail ou senha incorretos.',401);res.setHeader('Set-Cookie',sessionCookie(await makeSession(auth.data.version)));return json(res,200,{ok:true});}
   if(method==='POST'&&route==='admin/logout'){res.setHeader('Set-Cookie',sessionCookie('',true));return json(res,200,{ok:true});}
   if(method==='POST'&&route==='stores/apply'){
    if(input.honeypot)return json(res,201,{ok:true});await rateLimit(req,'store-application',3,3600_000);
@@ -211,5 +218,5 @@ export default async function handler(req,res){
    if(current.data.products.some(p=>p.id!==parsed.id&&p.slug===parsed.slug))fail('Já existe uma obra com este endereço.');
   }const index=current.data[kind].findIndex(item=>item.id===parsed.id);if(index<0)current.data[kind].push(parsed);else current.data[kind][index]=parsed;}
   current.data.updatedAt=new Date().toISOString();const revision=await writeRecord('catalog.json',current.data,current.etag);return json(res,200,{ok:true,revision});
- }catch(error){const status=error.status|| (error.name==='ZodError'||error instanceof SyntaxError?400:500);if(status===500)console.error('API failure',error.name,error.code||'internal');return json(res,status,{...(typeof error.uncertain==='boolean'?{uncertain:error.uncertain}:{}),...(['INVALID_LOGO','PARTNER_EXISTS','BILLING_DOCUMENT_INVALID'].includes(error.code)?{code:error.code}:{}),error:status===500?'Não foi possível concluir. Tente novamente.':error.issues?.map(i=>i.message).join(' ')||error.message});}
+ }catch(error){const status=error.status|| (error.name==='ZodError'||error instanceof SyntaxError?400:500);if(error.retryAfter)res.setHeader('Retry-After',String(error.retryAfter));if(status===500)console.error('API failure',error.name,error.code||'internal');return json(res,status,{...(typeof error.uncertain==='boolean'?{uncertain:error.uncertain}:{}),...(['INVALID_LOGO','PARTNER_EXISTS','BILLING_DOCUMENT_INVALID'].includes(error.code)?{code:error.code}:{}),error:status===500?'Não foi possível concluir. Tente novamente.':error.issues?.map(i=>i.message).join(' ')||error.message});}
 }

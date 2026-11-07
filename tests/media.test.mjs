@@ -2,6 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Writable} from 'node:stream';
 import {serveCatalogImage} from '../server/media.mjs';
+import handler from '../server/handler.mjs';
+
+test('HEAD supports image crawlers without streaming the body or exposing model files',async()=>{
+ let cancelled=false,ended=false;const headers={};
+ const stream=new ReadableStream({cancel(){cancelled=true}});
+ await serveCatalogImage('images/example.png',{setHeader(k,v){headers[k]=v},end(data){assert.equal(data,undefined);ended=true}},async()=>({stream,blob:{contentType:'image/png'}}),{head:true});
+ assert.equal(cancelled,true);assert.equal(ended,true);assert.equal(headers['Content-Type'],'image/png');
+ for(const [path,status] of [['images/139f92e3-605d-4d0f-8e60-1ce64d27e828.png',307],['models/private.3mf',404]]){
+  const result={},responseHeaders={};await handler({method:'HEAD',url:'/api/media?path='+encodeURIComponent(path),headers:{host:'localhost'}},{set statusCode(v){result.status=v},setHeader(k,v){responseHeaders[k]=v},end(){}});
+  assert.equal(result.status,status);if(status===307)assert.equal(responseHeaders.Location,'/assets/catalog/curupira.webp');
+ }
+});
 
 test('catalog images use private storage, finish streaming and cache only successful images',async()=>{
  let calls=0;

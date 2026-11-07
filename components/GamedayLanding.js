@@ -7,7 +7,7 @@ import {formatMoney} from '../lib/international-pricing.mjs';
 import '../app/gameday.css';
 
 const copy={
- en:{title:'Santa hits',accent:'the field.',lead:'A football Santa for every fan. Pick your colors and print your own game-day Santa at home.',action:'Find my team',pick:'Pick your team',search:'Search by city or team',all:'All teams',teams:'teams',conferences:'conferences',file:'3MF download',details:'View model',empty:'No teams found',reset:'Clear filters',prev:'Previous team',next:'Next team'},
+ en:{title:'Santa hits',accent:'the field.',lead:'NFL Santa Claus models for 3D printing. Pick your team, download the 3MF files and print your own game-day Santa at home.',action:'Find my team',pick:'Pick your team',search:'Search by city or team',all:'All teams',teams:'teams',conferences:'conferences',file:'3MF download',details:'View model',empty:'No teams found',reset:'Clear filters',prev:'Previous team',next:'Next team'},
  pt:{title:'Noel entra',accent:'em campo.',lead:'Um Papai Noel para cada torcida. Escolha as cores do seu time e imprima o seu Noel em 3D.',action:'Encontrar meu time',pick:'Escolha seu time',search:'Buscar por cidade ou time',all:'Todos',teams:'times',conferences:'conferências',file:'Arquivo 3MF',details:'Ver obra',empty:'Nenhum time encontrado',reset:'Limpar filtros',prev:'Time anterior',next:'Próximo time'}
 };
 
