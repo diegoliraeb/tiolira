@@ -1,5 +1,5 @@
 'use client';
-import {localized} from '../lib/i18n';
+import {catalogTranslationField} from '../lib/i18n';
 import {useEffect,useState} from 'react';
 import GalleryUpload from './GalleryUpload';
 import PrintProfileEditor from './PrintProfileEditor';
@@ -8,7 +8,7 @@ import {money} from './PartnerShop';
 export default function AdminProductEditor({draft,setDraft,editorLang,collections,busy,preview,onBusyChange}){
  const [tab,setTab]=useState('info');
  useEffect(()=>setTab('info'),[editorLang]);
- const value=key=>editorLang==='pt'?draft[key]??'':editorLang==='fr'?(localized(draft,'fr')[key]??''):draft.translations?.[editorLang]?.[key]||'';
+ const value=key=>editorLang==='pt'?draft[key]??'':catalogTranslationField(draft,editorLang,key);
  function field(key,value){setDraft(current=>editorLang==='pt'?{...current,[key]:value}:{...current,translations:{...current.translations,[editorLang]:{...current.translations?.[editorLang],[key]:value}}});}
  function revealInvalid(e){const panel=e.target.closest('[data-editor-panel]')?.dataset.editorPanel;if(panel&&tab!==panel){e.preventDefault();setTab(panel);requestAnimationFrame(()=>e.target.focus());}}
  const translated=editorLang!=='pt';
