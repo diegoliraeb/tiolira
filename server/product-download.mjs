@@ -1,9 +1,9 @@
 import {get} from '@vercel/blob';
 import {Readable} from 'node:stream';
-import {isPaidProduct,purchaseAccess,recordDownload} from './commerce.mjs';
+import {isPaidProduct,memberHasAccess,recordDownload} from './commerce.mjs';
 import {resolveProductFile} from '../lib/print-profiles.mjs';
 const fail=(message,status)=>{throw Object.assign(new Error(message),{status});};
-export async function serveProductDownload({member,data,productId,profileId,res},{readBlob=get,hasAccess=purchaseAccess,record=recordDownload}={}){
+export async function serveProductDownload({member,data,productId,profileId,res},{readBlob=get,hasAccess=memberHasAccess,record=recordDownload}={}){
  const product=data.products.find(p=>p.id===productId&&p.published);
  if(!product||!['site','paid'].includes(product.access)||product.exclusive||!data.collections.some(c=>c.id===product.collection&&c.published))fail('Arquivo não disponível para download direto.',404);
  if(isPaidProduct(product)&&!await hasAccess(member,product.id))fail('Compre esta peça para liberar o download.',403);

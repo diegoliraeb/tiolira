@@ -1,3 +1,4 @@
+import {adminCollectionAccess,saveCollectionAccess} from './collection-access.mjs';
 import {runProductUpdateEmails} from './product-update-email.mjs';
 import {runPurchaseEmailResends} from './purchase-email-resends.mjs';
 import {serveProductDownload} from './product-download.mjs';
@@ -13,7 +14,7 @@ import {checkPaypalConnection} from './paypal.mjs';
 import {receivePaypalWebhook} from './paypal-commerce.mjs';
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
-import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,purchaseLicenses,downloadablePurchaseLicense,salesReport,productSalesSummary,downloadPartnersReport,assertWebhook,receiveWebhook,purchaseAccess,isPaidProduct} from './commerce.mjs';
+import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,memberLicenses,downloadablePurchaseLicense,salesReport,productSalesSummary,downloadPartnersReport,assertWebhook,receiveWebhook,memberHasAccess,isPaidProduct} from './commerce.mjs';
 import {configurePurchaseEmailWebhook,checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
@@ -76,6 +77,8 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='admin/cart-coupons'){await requireAdmin(req);return json(res,200,await cartCoupons());}
   if(method==='GET'&&route==='admin/coupons'){await requireAdmin(req);const record=await readRecord('partner-coupons.json');return json(res,200,{coupons:record?.data?.coupons||[],revision:record?.etag||null});}
   if(method==='GET'&&route==='admin/status'){const auth=await readRecord('admin.json');let loggedIn=false;try{await requireAdmin(req);loggedIn=true;}catch{}return json(res,200,{configured:configured(),initialized:Boolean(auth),loggedIn,setupReady:await setupReady()});}
+  if(method==='GET'&&route==='admin/collection-access'){await requireAdmin(req);return json(res,200,await adminCollectionAccess({query:url.searchParams.get('q')||'',memberId:url.searchParams.get('memberId')||''}));}
+  if(method==='PUT'&&route==='admin/collection-access'){assertOrigin(req);const admin=await requireAdmin(req);return json(res,200,await saveCollectionAccess(admin,await body(req)));}
   if(method==='GET'&&route==='admin/catalog'){await requireAdmin(req);const {data,etag}=await getCatalog();return json(res,200,{...data,revision:etag});}
   if(method==='GET'&&route==='store-logo'){
    const id=url.searchParams.get('id');if(!/^[a-f0-9-]{36}$/.test(id||''))fail('Logo não encontrada.',404);
@@ -126,10 +129,10 @@ export default async function handler(req,res){
   }
   if(method==='POST'&&route==='club/licenses'){
    const member=await requireClub(req);
-   const owned=await purchaseAccess(member,input.productId)?new Set([input.productId]):new Set();
+   const owned=await memberHasAccess(member,input.productId)?new Set([input.productId]):new Set();
    const product=clubProducts((await getCatalog()).data,owned).find(p=>p.id===input.productId&&p.canLicense);
    if(!product)fail('Licença de venda não disponível para esta peça.',403);
-   if(isPaidProduct(product)){const license=(await purchaseLicenses(member)).find(l=>l.productId===product.id&&l.status==='active');if(!license)fail('Licença aguardando confirmação do pagamento.',409);return json(res,200,{license});}
+   if(isPaidProduct(product)){const license=(await memberLicenses(member)).find(l=>l.productId===product.id&&l.status==='active');if(!license)fail('Licença aguardando confirmação do pagamento.',409);return json(res,200,{license});}
    return json(res,200,{license:await issueLicense(member,product)});
   }
   if(method==='PUT'&&route==='club/profile'){

@@ -1,6 +1,6 @@
 import {PDFDocument,StandardFonts,rgb} from 'pdf-lib';
 
-// Generated only from the authenticated buyer's active, persisted purchase license.
+// Generated only after checking the authenticated member's active purchase or collection grant.
 export async function purchaseLicensePdf(license){
  const doc=await PDFDocument.create(),regular=await doc.embedFont(StandardFonts.Helvetica),bold=await doc.embedFont(StandardFonts.HelveticaBold);
  doc.setTitle('Licença de venda de peças impressas - Tio Lira');doc.setAuthor('Tio Lira');
@@ -19,8 +19,9 @@ export async function purchaseLicensePdf(license){
  function field(label,value){text(label,{size:9,font:bold,color:muted,gap:1});text(value,{size:12,gap:14});}
  newPage();text('Licença de venda',{size:27,font:bold,color:green,gap:0});text('PEÇAS FÍSICAS IMPRESSAS EM 3D',{size:10,font:bold,color:muted,gap:24});
  field('OBRA LICENCIADA',license.productName);field('PARCEIRO TITULAR',license.partnerName);field('CÓDIGO DA LICENÇA',license.code);
- field('EMITIDA EM',new Date(license.issuedAt).toLocaleDateString('pt-BR',{timeZone:'America/Maceio'}));field('PEDIDO',license.orderId);
+ field('EMITIDA EM',new Date(license.issuedAt).toLocaleDateString('pt-BR',{timeZone:'America/Maceio'}));field(license.source==='courtesy'?'LIBERAÇÃO GRATUITA':'PEDIDO',license.source==='courtesy'?license.grantId:license.orderId);
  text('Autorização de uso',{size:15,font:bold,color:green,gap:8});text(license.terms,{size:11,gap:18});
- text('Emitida automaticamente após a confirmação do pagamento. A validade desta licença acompanha a situação da compra. Consulte o registro atualizado em Meus pedidos e Minhas licenças, na área do parceiro em tiolira.com.br.',{size:10,color:muted});
+ if(license.productTerms)text(license.productTerms,{size:11,gap:18});
+ text(license.source==='courtesy'?'Emitida por liberação gratuita do Tio Lira. Válida enquanto a liberação estiver ativa. Consulte Minhas licenças na Área do Parceiro.':'Emitida automaticamente após a confirmação do pagamento. A validade desta licença acompanha a situação da compra. Consulte o registro atualizado em Meus pedidos e Minhas licenças, na área do parceiro em tiolira.com.br.',{size:10,color:muted});
  return doc.save();
 }

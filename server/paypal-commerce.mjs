@@ -1,3 +1,4 @@
+import {collectionAccess} from './collection-access.mjs';
 import {checkoutFingerprint} from './checkout-fingerprint.mjs';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
@@ -13,13 +14,13 @@ const inputSchema=z.object({items:cartSchema,requestId:z.string().uuid(),couponC
 export function marketCoupons(coupons,currency){return currency==='USD'?coupons.map(c=>({...c,minimumCents:Math.round(c.minimumCents/6),...(c.type==='fixed'?{value:Math.max(1,Math.round(c.value/6))}:{})})):coupons;}
 export async function checkoutPaypal(member,input){
  if(!paypalReady())fail('Pagamentos internacionais estarão disponíveis em breve.',503);
- const parsed=inputSchema.parse(input),{data}=await getCatalog(),coupons=await cartCoupons(),config=paypalConfig();
+ const parsed=inputSchema.parse(input),{data}=await getCatalog(),coupons=await cartCoupons(),config=paypalConfig(),granted=await collectionAccess(member,data);
  const id=randomUUID();let chosen;
  await updateRecord(KEY,old=>{
   const s=old||{orders:[],downloads:{},recentDownloads:[]};
   const existing=s.orders.find(o=>o.memberId===member.id&&o.provider==='paypal'&&o.environment===config.environment&&o.requestId===parsed.requestId);
   if(existing){chosen=existing.id;return s;}
-  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,ownedIds(s.orders,member.id)),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'));
+  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'));
   if(quote.totalCents!==parsed.expectedTotalCents)fail('O preço mudou. Atualize o carrinho e confira o total em dólar.');
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme o preço integral, sem abatimento.');
   const fingerprint=checkoutFingerprint(quote,'paypal');
