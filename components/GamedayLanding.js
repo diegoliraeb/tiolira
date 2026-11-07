@@ -11,7 +11,7 @@ const copy={
  pt:{title:'Noel entra',accent:'em campo.',lead:'Um Papai Noel para cada torcida. Escolha as cores do seu time e imprima o seu Noel em 3D.',action:'Encontrar meu time',pick:'Escolha seu time',search:'Buscar por cidade ou time',all:'Todos',teams:'times',conferences:'conferências',file:'Arquivo 3MF',details:'Ver obra',empty:'Nenhum time encontrado',reset:'Limpar filtros',prev:'Time anterior',next:'Próximo time'}
 };
 
-export default function GamedayLanding({lang,products}){
+export default function GamedayLanding({lang,products,collection}){
  const t=copy[lang], [query,setQuery]=useState(''), [conference,setConference]=useState(''), [spot,setSpot]=useState(0);
  const byId=new Map(products.map(p=>[p.id,p]));
  const lineup=teams.map(team=>({...team,p:byId.get('gameday-santa-'+team.key)})).filter(team=>team.p);
@@ -19,11 +19,18 @@ export default function GamedayLanding({lang,products}){
  const matches=lineup.filter(team=>team.division.startsWith(conference)&&(team.city+' '+team.team).toLowerCase().includes(query.trim().toLowerCase()));
  const link=p=>'/'+lang+'/produto/'+p.slug;
  const price=p=>lang==='pt'?formatMoney(p.priceCents,'BRL','pt-BR'):formatMoney(p.priceUsdCents,'USD','en-US');
+ const packAvailable=collection?.priceCents>0&&collection?.priceUsdCents>0&&!collection.free&&!collection.comingSoon&&lineup.length===32&&products.length===32&&products.every(p=>p.access==='paid'&&p.hasFile&&!p.exclusive);
+ const individualTotal=products.reduce((total,p)=>total+(lang==='pt'?p.priceCents:p.priceUsdCents),0);
+ const savings=packAvailable?individualTotal-(lang==='pt'?collection.priceCents:collection.priceUsdCents):0;
  return <main className="gameday">
   <section className="gd-hero"><div className="gd-yard" aria-hidden="true"/><div className="gd-shell gd-pitch">
    <div className="gd-intro"><p className="gd-label"><span className="gd-stitch"/> GAMEDAY SANTAS</p><h1>{t.title.toUpperCase()}<br/><em>{t.accent.toUpperCase()}</em></h1><p className="gd-lead">{t.lead}</p><a className="gd-cta" href="#lineup">{t.action} ↓</a></div>
    {hero&&<div className="gd-showcase"><div className="gd-ghost" aria-hidden="true"/><figure className="gd-trade"><div className="gd-tradebar"><b>GAMEDAY SANTAS</b><span aria-hidden="true">★ ★ ★</span></div><Link href={link(hero.p)}><img className="gd-feature-photo" src={hero.p.image} alt={hero.city+' '+hero.team} fetchPriority="high"/></Link><figcaption><span>{hero.city.toUpperCase()}</span><strong>{hero.team.toUpperCase()}</strong><i aria-hidden="true">★</i></figcaption></figure><div className="gd-switch"><button aria-label={t.prev} onClick={()=>setSpot((spot+featured.length-1)%featured.length)}>←</button><span aria-live="polite">0{spot+1} / 0{featured.length}</span><button aria-label={t.next} onClick={()=>setSpot((spot+1)%featured.length)}>→</button></div></div>}
   </div></section>
+  {packAvailable&&<section className="gd-shell gd-pack" aria-labelledby="gameday-pack-title">
+   <img src={collection.image} alt={lang==='pt'?'Coleção Gameday Santas':'Gameday Santas collection'} loading="lazy"/>
+   <div><p className="gd-kicker">GAMEDAY SANTAS · {lang==='pt'?'PACK COMPLETO':'COMPLETE COLLECTION'}</p><h2 id="gameday-pack-title">{lang==='pt'?'Todos os 32 times.':'All 32 teams.'}</h2><p>{lang==='pt'?'32 arquivos digitais 3MF e licença para vender as peças físicas impressas.':'32 digital 3MF files and a commercial license to sell your physical prints.'}</p><p className="gd-pack-price"><strong>{price(collection)}</strong>{savings>0&&<span>{lang==='pt'?'Economize':'Save'} {formatMoney(savings,lang==='pt'?'BRL':'USD',lang==='pt'?'pt-BR':'en-US')}</span>}</p><Link className="gd-cta" href={`/${lang}/clube#colecao=${collection.id}`}>{lang==='pt'?'Comprar coleção completa':'Get the complete collection'} ↗</Link><small>{lang==='pt'?'Download digital · Peças físicas não incluídas':'Digital download · Physical models not included'}</small></div>
+  </section>}
   <section id="lineup" className="gd-shell gd-lineup"><div className="gd-sectionhead"><h2>{t.pick}<span>.</span></h2><p>{lineup.length} {t.teams} / 2 {t.conferences}</p></div>
    <div className="gd-filters"><label className="gd-search"><input type="search" value={query} placeholder={t.search} aria-label={t.search} onChange={e=>setQuery(e.target.value)}/></label><div className="gd-pills">{['','AFC','NFC'].map(c=><button key={c} aria-pressed={conference===c} onClick={()=>setConference(c)}>{c||t.all}</button>)}</div></div>
    <p id="count" aria-live="polite">{matches.length} {t.teams} · {t.file}</p><div id="grid">{matches.map(({key,city,team,division,p})=><Link key={key} href={link(p)} className="gd-card"><div className="gd-pic"><img src={p.image} alt={city+' '+team+' Santa'} loading="lazy"/></div><div className="gd-cardbody"><span className="gd-teammeta">{city.toUpperCase()} / {division}</span><strong className="gd-clubname">{team}</strong><span className="gd-cardfoot">{price(p)} <small>{t.details} ↗</small></span></div></Link>)}</div>

@@ -24,8 +24,14 @@ export async function refreshGamedayPrices(){
    if(priceCents===p.priceCents)return p;
    changed++;return {...p,priceCents};
   });
+  const collections=data.collections.map(c=>{
+   if(c.id!==collection||c.free||!(c.priceCents>0)||!(c.priceUsdCents>0))return c;
+   const priceCents=Math.round(c.priceUsdCents*quote.rate);
+   if(priceCents===c.priceCents)return c;
+   changed++;return {...c,priceCents};
+  });
   if(!changed)return {...quote,changed};
-  try{await writeRecord('catalog.json',{...data,products,updatedAt:new Date().toISOString()},etag);return {...quote,changed};}
+  try{await writeRecord('catalog.json',{...data,products,collections,updatedAt:new Date().toISOString()},etag);return {...quote,changed};}
   catch(error){if(!(error instanceof Conflict)||attempt===3)throw error;}
  }
 }
