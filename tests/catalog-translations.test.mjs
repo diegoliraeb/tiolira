@@ -36,6 +36,7 @@ test('French mixed-language paragraph repairs retain saved technical details and
  const tail='\n\nProfil 0,16 mm : 16h 56min 16s · 238,2 g de PLA.\n\nProfil 0,20 mm : 14h 4min 26s · 238,1 g.';
  const p={id:'6172a405-5f85-43ba-a543-feddc42fe79d',name:'Jardim',summary:sentence,translations:{fr:{description:sentence+tail}}};
  const t=localized(p,'fr');assert.match(t.description,/^Une fleur partagée/);assert.ok(t.description.endsWith(tail));assert.match(t.summary,/^Une fleur partagée/);
+ assert.equal(t.name,'Sculpture de la Sainte Famille — Le Jardin de Nazareth');
  assert.equal(catalogTranslationField(p,'fr','description'),t.description);
  const custom={...p,translations:{fr:{description:'Mon nouveau texte.'+tail}}};assert.equal(localized(custom,'fr').description,custom.translations.fr.description);
 });
