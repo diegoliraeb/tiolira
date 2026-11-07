@@ -1,4 +1,5 @@
 import {applyFamilyDiscount,allocateDiscount,familyEligible} from '../lib/family-discount.mjs';
+import {applyNatalPromotion,natalEligible} from '../lib/natal-promotion.mjs';
 import {z} from 'zod';
 import {readRecord,writeRecord,Conflict} from './store.mjs';
 const KEY='cart-coupons.json';
@@ -12,18 +13,19 @@ export async function saveCartCoupon(input){
  const coupons=[...current.coupons.filter(c=>c.id!==coupon.id),coupon];
  return {coupons,revision:await writeRecord(KEY,{coupons},current.revision)};
 }
-export function discountQuote(quote,code,coupons,now=Date.now()){
+export function discountQuote(quote,code,coupons,now=Date.now(),natalContext){
  code=couponCodeSchema.parse(code||'');
  quote=applyFamilyDiscount(quote);
+ quote=applyNatalPromotion(quote,natalContext,now);
  const subtotalCents=quote.subtotalCents;
  if(!code)return quote;
  const coupon=coupons.find(c=>c.code===code);
  const fail=message=>{throw Object.assign(new Error(message),{status:400});};
  if(!coupon||!coupon.active)fail('Cupom inválido ou inativo.');
  if(coupon.expiresAt&&Date.parse(coupon.expiresAt)<=now)fail('Este cupom expirou.');
- const eligible=item=>!quote.promotion?.percent||!familyEligible(item);
+ const eligible=item=>(!quote.promotion?.percent||!familyEligible(item))&&(!quote.natalPromotion||!natalEligible(item));
  const couponSubtotalCents=quote.items.filter(eligible).reduce((n,item)=>n+item.priceCents,0);
- if(!couponSubtotalCents)fail('O desconto progressivo não acumula com cupons nas mesmas peças. Remova o cupom para continuar.');
+ if(!couponSubtotalCents)fail(quote.natalPromotion?'A oferta Black Friday não acumula com cupons nas mesmas peças. Remova o cupom para continuar.':'O desconto progressivo não acumula com cupons nas mesmas peças. Remova o cupom para continuar.');
  if(couponSubtotalCents<coupon.minimumCents)fail(`Este cupom exige uma compra mínima de ${(coupon.minimumCents/100).toLocaleString('pt-BR',{style:'currency',currency:quote.currency||'BRL'})}.`);
  const discountCents=coupon.type==='percent'?Math.round(couponSubtotalCents*coupon.value/100):coupon.value;
  if(discountCents<=0||discountCents>=couponSubtotalCents)fail('Este cupom não se aplica ao valor do carrinho. O total deve ser maior que zero.');

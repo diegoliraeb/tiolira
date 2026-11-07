@@ -1,4 +1,6 @@
 import {collectionAccess} from './collection-access.mjs';
+import {memberNatalState,natalReservation} from './natal-promotion.mjs';
+import {natalProductAccess} from '../lib/natal-promotion.mjs';
 import {countProductSales,soldQuantity} from './product-sales.mjs';
 import {validBillingDocument,BILLING_DOCUMENT_ERROR} from '../lib/billing-document.mjs';
 import {hasProductFiles,publicPrintProfiles} from '../lib/print-profiles.mjs';
@@ -26,7 +28,7 @@ const state=old=>old||{orders:[],downloads:{},recentDownloads:[]};
 const paid=o=>o.status==='paid'&&currentOrderEnvironment(o);
 export const isPaidProduct=p=>p.access==='paid'||Number(p.priceCents)>0;
 export const canPurchaseProduct=(p,data)=>Boolean(p.published&&!p.exclusive&&p.access==='paid'&&hasProductFiles(p)&&p.priceCents>0&&data.collections.some(c=>c.id===p.collection&&c.published&&!c.free));
-export function ownedIds(orders,memberId){return new Set(orders.filter(o=>o.memberId===memberId&&paid(o)).flatMap(o=>o.productIds));}
+export function ownedIds(orders,memberId){const current=orders.filter(currentOrderEnvironment);return new Set(current.filter(o=>o.memberId===memberId&&paid(o)).flatMap(o=>o.productIds.filter(id=>natalProductAccess(o,id,current))));}
 export function quoteCart(data,input,owned=new Set()){
  const selections=cartSchema.parse(input),seen=new Set(),included=new Set(),items=[];
  // A collection supersedes its individual pieces in the same basket.
@@ -53,12 +55,12 @@ export function quoteCart(data,input,owned=new Set()){
  if(!Number.isSafeInteger(totalCents)||totalCents<=0||totalCents>10_000_000)fail('Valor de compra inválido.');
  return {items,totalCents,productIds:[...included].sort(),overlap:[...included].filter(x=>owned.has(x))};
 }
-export function safeOrder(o){return {provider:o.provider||'asaas',currency:o.currency||'BRL',id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,couponDiscountCents:o.couponDiscountCents??(o.coupon?o.discountCents:0),promotion:o.promotion||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:o.provider==='paypal'?paypalApprovalUrl(o.paymentUrl,o.environment):invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null,licenses:paid(o)?(o.licenses||[]).map(l=>({code:l.code,productId:l.productId,downloadUrl:`/api/club/licenses/download?code=${encodeURIComponent(l.code)}`})):[]};}
+export function safeOrder(o,orders){return {provider:o.provider||'asaas',currency:o.currency||'BRL',id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,couponDiscountCents:o.couponDiscountCents??(o.coupon?o.discountCents:0),promotion:o.promotion||null,natalPromotion:o.natalPromotion||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:o.provider==='paypal'?paypalApprovalUrl(o.paymentUrl,o.environment):invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null,licenses:paid(o)?(o.licenses||[]).filter(l=>!orders||natalProductAccess(o,l.productId,orders.filter(currentOrderEnvironment))).map(l=>({code:l.code,productId:l.productId,downloadUrl:`/api/club/licenses/download?code=${encodeURIComponent(l.code)}`})):[]};}
 export async function shop(member){
  const [{data:baseData},record]=await Promise.all([getCatalog(),readRecord(KEY)]),currency=internationalBuyer(member)?'USD':'BRL',data=marketCatalog(baseData,currency),orders=state(record?.data).orders,granted=await collectionAccess(member,baseData),owned=new Set([...ownedIds(orders,member.id),...granted.productIds]);
  const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&!p.exclusive&&['site','paid'].includes(p.access)&&hasProductFiles(p)&&data.collections.some(c=>c.id===p.collection&&c.published)).map(p=>({id:p.id,name:p.name,translations:p.translations,image:p.image,collection:p.collection,priceCents:p.priceCents,owned:owned.has(p.id),printProfiles:publicPrintProfiles(p,owned.has(p.id)),downloadUrl:owned.has(p.id)?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
  const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>canPurchaseProduct(p,data))?[{id:c.id,name:c.name,translations:c.translations,image:collectionCover(c),priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
- return {products,collections,orders:orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).map(safeOrder).reverse(),currency,paymentProvider:currency==='USD'?'paypal':'asaas',paymentsReady:currency==='USD'?paypalReady():paymentsReady()};
+ return {products,collections,natalCampaign:memberNatalState(orders,member.id,baseData),orders:orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).map(o=>safeOrder(o,orders)).reverse(),currency,paymentProvider:currency==='USD'?'paypal':'asaas',paymentsReady:currency==='USD'?paypalReady():paymentsReady()};
 }
 export async function memberOwnedIds(member){return ownedIds(state((await readRecord(KEY))?.data).orders,member.id);}
 export async function purchaseAccess(member,productId){return (await memberOwnedIds(member)).has(productId);}
@@ -66,10 +68,28 @@ export async function memberAccessIds(member){const [owned,granted]=await Promis
 export async function memberHasAccess(member,productId){return (await memberAccessIds(member)).has(productId);}
 export async function memberLicenses(member){const [purchased,granted]=await Promise.all([purchaseLicenses(member),collectionAccess(member)]);const paid=new Set(purchased.filter(l=>l.status==='active').map(l=>l.productId));return [...purchased,...granted.licenses.filter(l=>!paid.has(l.productId))];}
 export async function quoteCheckout(member,input){
- const [{data},coupons,owned]=await Promise.all([getCatalog(),cartCoupons(),memberAccessIds(member)]);
- const currency=internationalBuyer(member)?'USD':'BRL';return {...discountQuote({...quoteCart(marketCatalog(data,currency),input.items,owned),currency},input.couponCode,marketCoupons(coupons.coupons,currency)),currency};
+ const [{data},coupons,owned,record]=await Promise.all([getCatalog(),cartCoupons(),memberAccessIds(member),readRecord(KEY)]);
+ const currency=internationalBuyer(member)?'USD':'BRL';return {...discountQuote({...quoteCart(marketCatalog(data,currency),input.items,owned),currency},input.couponCode,marketCoupons(coupons.coupons,currency),Date.now(),memberNatalState(state(record?.data).orders,member.id,data)),currency};
+}
+async function claimNatalOffer(member,input){
+ const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.literal(0),lang:z.enum(['pt','en','es','fr']).default('pt')}).parse(input);
+ const {data}=await getCatalog(),granted=await collectionAccess(member,data),currency=internationalBuyer(member)?'USD':'BRL',environment=asaasConfig().environment;
+ let result;
+ const updated=await updateRecord(KEY,old=>{
+  const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.provider==='promotion'&&o.environment===environment&&o.requestId===parsed.requestId);
+  if(existing){result=existing.id;return s;}
+  natalReservation(s.orders,member.id,data,parsed,'promotion',environment);
+  const quote=discountQuote({...quoteCart(marketCatalog(data,currency),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency},parsed.couponCode,[],Date.now(),memberNatalState(s.orders,member.id,data));
+  if(quote.totalCents!==0||!quote.natalPromotion||quote.natalPromotion.percent!==100)fail('Sua oferta mudou. Atualize o carrinho para conferir o benefício disponível.',409);
+  const issuedAt=new Date().toISOString(),orderId=randomUUID();result=orderId;
+  const o={id:orderId,requestId:parsed.requestId,memberId:member.id,memberName:member.name,memberEmail:member.email,createdAt:issuedAt,paidAt:issuedAt,status:'paid',provider:'promotion',currency,environment,billingType:'PROMOTION',lang:parsed.lang,...quote};
+  o.licenses=o.items.flatMap(i=>i.products).map(p=>({code:`TL-COMPRA-${randomUUID().toUpperCase()}`,orderId,memberId:member.id,partnerName:member.name,productId:p.id,productName:p.name,issuedAt,terms:purchaseLicenseTerms,source:'purchase'}));
+  s.orders.push(o);return s;
+ });
+ return safeOrder(updated.orders.find(o=>o.id===result),updated.orders);
 }
 export async function checkout(member,input){
+ if(input?.expectedTotalCents===0)return claimNatalOffer(member,input);
  if(internationalBuyer(member))return checkoutPaypal(member,input);
  if(!paymentsReady())fail('Os pagamentos ainda não estão configurados.',503);
  const cpfCnpj=String(member.cpfCnpj||'').replace(/\D/g,'');
@@ -80,8 +100,9 @@ export async function checkout(member,input){
  await updateRecord(KEY,old=>{
   const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.provider!=='paypal'&&o.environment===environment&&o.requestId===parsed.requestId);
   if(existing){chosenId=existing.id;return s;}
-  const quote=discountQuote(quoteCart(data,parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),parsed.couponCode,coupons.coupons);
-  if((parsed.couponCode||quote.promotion||parsed.expectedTotalCents!==undefined)&&parsed.expectedTotalCents!==quote.totalCents)fail('O desconto mudou. Confira o total atualizado antes de pagar.',409);
+  const reserved=natalReservation(s.orders,member.id,data,parsed,'asaas',environment);if(reserved){chosenId=reserved.id;return s;}
+  const quote=discountQuote(quoteCart(data,parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),parsed.couponCode,coupons.coupons,Date.now(),memberNatalState(s.orders,member.id,data));
+  if((parsed.couponCode||quote.promotion||quote.natalPromotion||parsed.expectedTotalCents!==undefined)&&parsed.expectedTotalCents!==quote.totalCents)fail('O desconto mudou. Confira o total atualizado antes de pagar.',409);
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme a compra pelo valor integral, sem abatimento.',409);
   const fingerprint=checkoutFingerprint(quote);
   const pending=s.orders.find(o=>o.memberId===member.id&&o.provider!=='paypal'&&o.environment===environment&&o.fingerprint===fingerprint&&['creating','pending','overdue','review'].includes(o.status));
@@ -136,6 +157,7 @@ export async function applyPayment(orderId,payment,eventId){
 }
 export async function refreshOrder(member,orderId){
  const o=state((await readRecord(KEY))?.data).orders.find(o=>o.id===orderId&&o.memberId===member.id);if(!o)fail('Pedido não encontrado.',404);
+ if(o.provider==='promotion'){if(!currentOrderEnvironment(o))fail('Pedido de outro ambiente.',409);return safeOrder(o,state((await readRecord(KEY))?.data).orders);}
  if(o.provider==='paypal')return refreshPaypal(member,orderId);
  if(o.environment!==asaasConfig().environment)fail('Pedido de outro ambiente.',409);
  let payment;
@@ -194,7 +216,8 @@ export async function salesReport(){
 
 export async function purchaseLicenses(member){
  const orders=state((await readRecord(KEY))?.data).orders;
- return orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).flatMap(o=>(o.licenses||[]).map(l=>({...l,status:paid(o)?'active':'suspended'})));
+ const current=orders.filter(currentOrderEnvironment);
+ return current.filter(o=>o.memberId===member.id).flatMap(o=>(o.licenses||[]).map(l=>({...l,status:paid(o)&&natalProductAccess(o,l.productId,current)?'active':'suspended'})));
 }
 export async function paymentDetails(member,orderId){
  const order=await refreshOrder(member,orderId);

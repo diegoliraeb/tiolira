@@ -1,4 +1,5 @@
 import {collectionAccess} from './collection-access.mjs';
+import {memberNatalState,natalReservation} from './natal-promotion.mjs';
 import {checkoutFingerprint} from './checkout-fingerprint.mjs';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
@@ -20,7 +21,8 @@ export async function checkoutPaypal(member,input){
   const s=old||{orders:[],downloads:{},recentDownloads:[]};
   const existing=s.orders.find(o=>o.memberId===member.id&&o.provider==='paypal'&&o.environment===config.environment&&o.requestId===parsed.requestId);
   if(existing){chosen=existing.id;return s;}
-  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'));
+  const reserved=natalReservation(s.orders,member.id,data,parsed,'paypal',config.environment);if(reserved){chosen=reserved.id;return s;}
+  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'),Date.now(),memberNatalState(s.orders,member.id,data));
   if(quote.totalCents!==parsed.expectedTotalCents)fail('O preço mudou. Atualize o carrinho e confira o total em dólar.');
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme o preço integral, sem abatimento.');
   const fingerprint=checkoutFingerprint(quote,'paypal');
