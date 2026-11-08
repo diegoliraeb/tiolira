@@ -1,5 +1,5 @@
 import {applyFamilyDiscount,allocateDiscount,familyEligible} from '../lib/family-discount.mjs';
-import {applyNatalPromotion,natalEligible} from '../lib/natal-promotion.mjs';
+import {applyNatalPromotion,natalEligible,promotionEntries} from '../lib/natal-promotion.mjs';
 import {z} from 'zod';
 import {readRecord,writeRecord,Conflict} from './store.mjs';
 const KEY='cart-coupons.json';
@@ -23,7 +23,7 @@ export function discountQuote(quote,code,coupons,now=Date.now(),natalContext){
  const fail=message=>{throw Object.assign(new Error(message),{status:400});};
  if(!coupon||!coupon.active)fail('Cupom inválido ou inativo.');
  if(coupon.expiresAt&&Date.parse(coupon.expiresAt)<=now)fail('Este cupom expirou.');
- const eligible=item=>(!quote.promotion?.percent||!familyEligible(item))&&(!quote.natalPromotion||!natalEligible(item));
+ const eligible=item=>(!quote.promotion?.percent||!familyEligible(item))&&(!promotionEntries(quote.natalPromotion).some(p=>natalEligible(item,p.collectionId)));
  const couponSubtotalCents=quote.items.filter(eligible).reduce((n,item)=>n+item.priceCents,0);
  if(!couponSubtotalCents)fail(quote.natalPromotion?'A oferta Black Friday não acumula com cupons nas mesmas peças. Remova o cupom para continuar.':'O desconto progressivo não acumula com cupons nas mesmas peças. Remova o cupom para continuar.');
  if(couponSubtotalCents<coupon.minimumCents)fail(`Este cupom exige uma compra mínima de ${(coupon.minimumCents/100).toLocaleString('pt-BR',{style:'currency',currency:quote.currency||'BRL'})}.`);

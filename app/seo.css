@@ -2,6 +2,7 @@
 
 /* Square Natal artwork fills its hero without letterboxing or cropping figures. */
 .seo-collection-hero img.natal-collection-cover{aspect-ratio:1;width:100%;height:auto;max-height:none;object-fit:cover}
+.seo-collection-hero img.brasileirao-collection-cover{border-radius:24px}
 
 /* Approved Brasileirão posters keep their full portrait framing in catalog cards. */
 .seo-product-grid .product-image[data-collection="noeis-brasileirao"]{aspect-ratio:auto}

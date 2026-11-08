@@ -4,7 +4,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {natalState,natalActive,NATAL_START,NATAL_END,NATAL_COLLECTION_ID as N,NATAL_PROMOTION_ID as P} from '../lib/natal-promotion.mjs';
+import {natalState,natalActive,NATAL_START,NATAL_END,NATAL_COLLECTION_IDS,campaignId} from '../lib/natal-promotion.mjs';
 import {discountQuote} from '../server/cart-coupons.mjs';
 import {memberNatalState} from '../server/natal-promotion.mjs';
 import {cartSelection} from '../lib/cart-lines.mjs';
@@ -15,14 +15,17 @@ import {makeSession} from '../server/auth.mjs';
 import handler from '../server/handler.mjs';
 import {marketCatalog} from '../lib/international-pricing.mjs';
 const now=Date.parse('2026-11-15T12:00:00Z');
+for(const N of NATAL_COLLECTION_IDS){
+const P=campaignId(N);
+const campaign=state=>state.campaigns?.find(c=>c.collectionId===N)||state;
 const products=Array.from({length:5},(_,i)=>({id:`noel-${i}`,name:`Noel ${i}`,slug:`noel-${i}`,collection:N,access:'paid',published:true,priceCents:1990,filePath:`models/noel-${i}.3mf`,image:'/assets/demo.jpg',printProfiles:[{id:'fine',name:'0.16 mm',filePath:`models/noel-${i}-fine.3mf`,published:true},{id:'fast',name:'0.20 mm',filePath:`models/noel-${i}-fast.3mf`,published:true}]}));
 const data={collections:[{id:N,name:'Natal Brasileiro',published:true,free:false,priceCents:0},{id:'other',name:'Other',published:true,free:false},{id:F,name:'Família',published:true,free:false}],products:[...products,{...products[0],id:'free-noel',access:'site',priceCents:0},{...products[0],id:'other-piece',collection:'other',priceCents:1290},{...products[0],id:'family-piece',collection:F,priceCents:1290}]};
 const selections=ids=>ids.map(id=>({kind:'product',id}));
 const previous=(memberId,count,status='paid')=>Array.from({length:count},(_,i)=>({id:randomUUID(),memberId,status,provider:'asaas',environment:'sandbox',currency:'BRL',totalCents:1990,createdAt:'2026-10-30T12:00:00Z',items:[{kind:'product',id:`noel-${i}`,collection:N,priceCents:1990,products:[{id:`noel-${i}`,name:`Noel ${i}`}]}],productIds:[`noel-${i}`]}));
 const coupon={id:randomUUID(),code:'TEN',type:'percent',value:10,minimumCents:0,active:true};
-const quote=(ids,prior=0,orders)=>discountQuote(quoteCart(data,selections(ids)), '',[],now,natalState(orders||previous('a',prior),data.products,'a',now));
+const quote=(ids,prior=0,orders)=>discountQuote(quoteCart(data,selections(ids)), '',[],now,natalState(orders||previous('a',prior),data.products,'a',now,N));
 
-test('Natal dates, thresholds, exclusions and non-stacking',()=>{
+test(`${N}: dates, thresholds, exclusions and non-stacking`,()=>{
  assert.equal(natalActive(Date.parse(NATAL_START)-1),false);assert.equal(natalActive(Date.parse(NATAL_START)),true);
  assert.equal(natalActive(Date.parse(NATAL_END)-1),true);assert.equal(natalActive(Date.parse(NATAL_END)),false);
  for(const [qty,total] of [[1,1990],[2,2985],[3,3980],[4,5970],[5,7960]])assert.equal(quote(products.slice(0,qty).map(p=>p.id)).totalCents,total);
@@ -33,7 +36,7 @@ test('Natal dates, thresholds, exclusions and non-stacking',()=>{
  assert.throws(()=>quoteCart(data,selections(['free-noel'])));
  assert.throws(()=>quoteCart(data,[{kind:'product',id:'noel-0',quantity:2}]));
  assert.equal(quoteCart(data,selections(['noel-0','noel-0'])).items.length,1);
- const context=natalState([],data.products,'a',now);
+ const context=natalState([],data.products,'a',now,N);
  assert.throws(()=>discountQuote(quoteCart(data,selections(['noel-0','noel-1'])),coupon.code,[coupon],now,context),/não acumula/);
  const mixed=discountQuote(quoteCart(data,[...selections(['noel-0','noel-1','other-piece']),{kind:'product',id:'family-piece',quantity:3}]),coupon.code,[coupon],now,context);
  assert.equal(mixed.natalPromotion.discountCents,995);assert.equal(mixed.promotion.discountCents,387);assert.equal(mixed.couponDiscountCents,129);
@@ -41,17 +44,17 @@ test('Natal dates, thresholds, exclusions and non-stacking',()=>{
  const unequal=structuredClone(data);unequal.products[0].priceCents=1001;
  const uq=discountQuote(quoteCart(unequal,selections(['noel-0','noel-1'])),'',[],now,context);assert.equal(uq.natalPromotion.discountCents,501);assert.equal(uq.totalCents,2490);
 });
-test('Historical eligibility counts only distinct full-price confirmed purchases',()=>{
+test(`${N}: historical eligibility counts only distinct full-price confirmed purchases`,()=>{
  const orders=previous('a',3);orders.push({...orders[0],id:'duplicate'});orders.push(...previous('b',4));
  orders[1].items[0].discountCents=100;orders[1].items[0].totalCents=1890;
  orders[2].status='refunded';
- assert.equal(natalState(orders,data.products,'a',now).previousCount,1);
+ assert.equal(natalState(orders,data.products,'a',now,N).previousCount,1);
  orders.push({...previous('a',1)[0],id:'promotion-used',natalPromotion:{id:P},status:'paid'});
- const state=natalState(orders,data.products,'a',now);assert.equal(state.used,true);assert.equal(quote(['noel-4'],0,orders).totalCents,1990);
- orders.at(-1).status='pending';assert.equal(natalState(orders,data.products,'a',now).reserved,true);
+ const state=natalState(orders,data.products,'a',now,N);assert.equal(state.used,true);assert.equal(quote(['noel-4'],0,orders).totalCents,1990);
+ orders.at(-1).status='pending';assert.equal(natalState(orders,data.products,'a',now,N).reserved,true);
  assert.equal(quote(['noel-3','noel-4'],0,orders).totalCents,3980);
 });
-test('Natal checkout and free redemption integrate with existing payment, files and licenses',async t=>{
+test(`${N}: checkout and free redemption integrate with existing payment, files and licenses`,async t=>{
  const dir=await mkdtemp(join(tmpdir(),'tiolira-natal-test-')),keys=['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN','LOCAL_DATA_DIR','ASAAS_ENVIRONMENT','ASAAS_API_KEY','PAYPAL_ENVIRONMENT','PAYPAL_CLIENT_ID','PAYPAL_CLIENT_SECRET','ADMIN_SESSION_SECRET','RESEND_API_KEY','ASAAS_WEBHOOK_TOKEN','PAYPAL_MERCHANT_ID','PAYPAL_WEBHOOK_ID','SITE_URL'];
  const env=Object.fromEntries(keys.map(k=>[k,process.env[k]])),oldFetch=globalThis.fetch;
  for(const k of keys)delete process.env[k];
@@ -67,7 +70,7 @@ test('Natal checkout and free redemption integrate with existing payment, files 
     const store=await shop(m),back=await quoteCheckout(m,{items:selections(ids)}),front=cartSelection(store,selections(ids));assert.equal(front.total,back.totalCents);
    }
    const orders=[...previous(b.id,3)];orders.forEach(o=>o.environment='production');assert.equal(memberNatalState(orders,b.id,data,now).previousCount,0);
-   assert.equal((await shop(a)).natalCampaign.previousCount,3);assert.equal((await shop(us)).currency,'USD');
+   assert.equal(campaign((await shop(a)).natalCampaign).previousCount,3);assert.equal((await shop(us)).currency,'USD');
   });
   let gift;
   await t.test('atomic free gift, duplicate retries, all profiles and PDF license, no payment or email',async()=>{
@@ -79,7 +82,7 @@ test('Natal checkout and free redemption integrate with existing payment, files 
    const cookie=`tiolira_club=${await makeSession(a.version,{memberId:a.id})}`;let response;
    await handler({method:'GET',url:gift.licenses[0].downloadUrl,headers:{host:'localhost',cookie},socket:{remoteAddress:'natal-test'}},{setHeader(){},set statusCode(v){this.status=v},end(v){response={status:this.status||200,body:v}}});
    assert.equal(response.status,200);assert.equal(response.body.subarray(0,5).toString(),'%PDF-');assert.equal(network,0);
-   await assert.rejects(()=>checkout(a,input(['noel-4'],0)));assert.equal((await shop(a)).natalCampaign.used,true);
+   await assert.rejects(()=>checkout(a,input(['noel-4'],0)));assert.equal(campaign((await shop(a)).natalCampaign).used,true);
   });
   await t.test('international customer redeems free without entering PayPal',async()=>{
    const g=await checkout(us,{...input(['noel-4'],0),lang:'en'});assert.equal(g.currency,'USD');assert.equal(g.totalCents,0);assert.equal(g.licenses.length,1);assert.equal(network,0);
@@ -116,7 +119,7 @@ test('Natal checkout and free redemption integrate with existing payment, files 
     assert.equal(u.origin,'https://api-m.sandbox.paypal.com');
     if(u.pathname==='/v1/oauth2/token')return {ok:true,status:200,json:async()=>({access_token:'token',expires_in:300})};
     const body=JSON.parse(opts.body);assert.equal(u.pathname,'/v2/checkout/orders');assert.equal(body.purchase_units[0].amount.currency_code,'USD');
-    const prices=marketCatalog(data,'USD');const expected=discountQuote({...quoteCart(prices,selections(['noel-0','noel-1','noel-2'])),currency:'USD'},'',[],now,natalState([],data.products,us.id,now)).totalCents;
+    const prices=marketCatalog(data,'USD');const expected=discountQuote({...quoteCart(prices,selections(['noel-0','noel-1','noel-2'])),currency:'USD'},'',[],now,natalState([],data.products,us.id,now,N)).totalCents;
     assert.equal(body.purchase_units[0].amount.value,(expected/100).toFixed(2));payments++;
     return {ok:true,status:201,json:async()=>({...body,id:'PAYPALNATAL00001',status:'CREATED',links:[{rel:'approve',href:'https://www.sandbox.paypal.com/checkoutnow?token=PAYPALNATAL00001'}]})};
    };
@@ -126,3 +129,5 @@ test('Natal checkout and free redemption integrate with existing payment, files 
   });
  }finally{globalThis.fetch=oldFetch;t.mock.timers.reset();for(const k of keys){if(env[k]===undefined)delete process.env[k];else process.env[k]=env[k];}await rm(dir,{recursive:true,force:true});}
 });
+
+}
