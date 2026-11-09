@@ -61,3 +61,34 @@ test('new catalog clubs match their home cities with UUID ids and keep their ser
  assert.equal(brasileiraoTeam(product({category:'Natal · Série '+series})).series,series);
  }
  });
+
+test('state names and exact abbreviations return all clubs in that state across cities and series',()=>{
+ const rows=[['noel-csa','D'],['noel-crb','B'],['noel-internacional','A'],['noel-gremio','A'],['noel-mengao','A'],['noel-volta-redonda','C'],['noel-palmeiras','A'],['noel-guarani','C'],['noel-athletic','B'],['noel-remo','A'],['noel-athletico-pr','A']];
+ const lineup=brasileiraoLineup(rows.map(([slug,series])=>product({id:slug,slug,name:slug,brasileiraoSeries:series})));
+ const slugs=(query,series='')=>filterBrasileirao(lineup,query,series).map(t=>t.product.slug);
+ assert.deepEqual(slugs(' al '),['noel-csa','noel-crb']);
+ assert.deepEqual(slugs('Alagoas'),slugs('AL'));
+ assert.deepEqual(slugs('AL','D'),['noel-csa']);
+ assert.deepEqual(slugs('Rio de Janeiro'),['noel-mengao','noel-volta-redonda']);
+ assert.deepEqual(slugs('rj'),slugs('Rio de Janeiro'));
+ assert.deepEqual(slugs('sao paulo'),['noel-palmeiras','noel-guarani']);
+ assert.deepEqual(slugs('SP'),slugs('São Paulo'));
+ assert.deepEqual(slugs('Pará'),['noel-remo']);
+ assert.deepEqual(slugs('PA'),slugs('Pará'));
+ assert.deepEqual(slugs('Paraná'),['noel-athletico-pr']);
+ assert.deepEqual(slugs('Minas Gerais'),['noel-athletic']);
+ assert.deepEqual(slugs('AC'),[]);
+ assert.deepEqual(slugs('maceio'),['noel-csa','noel-crb']);
+ assert.equal(slugs('').length,rows.length);
+});
+test('state admin override survives catalog validation and invalid states are rejected',()=>{
+ const p=productSchema.parse(product({brasileiraoCity:'Cidade Nova',brasileiraoState:'RN'}));
+ const pub=publicCatalog({collections:[{id:BRASILEIRAO_ID,published:true}],products:[p],stores:[],plans:[],settings:{}}).products[0];
+ assert.equal(pub.brasileiraoState,'RN');
+ assert.equal(brasileiraoTeam(pub).state,'Rio Grande do Norte');
+ assert.equal(filterBrasileirao(brasileiraoLineup([pub]),'RN').length,1);
+ assert.equal(filterBrasileirao(brasileiraoLineup([pub]),'RS').length,0);
+ assert.equal(productSchema.safeParse(product({brasileiraoState:'XX'})).success,false);
+ assert.equal(brasileiraoTeam(product({brasileiraoState:''})).stateCode,'RS');
+ assert.equal(brasileiraoTeam(product({id:'new',slug:'new',brasileiraoCity:'Unknown'})).stateCode,'');
+});
