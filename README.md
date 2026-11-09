@@ -217,3 +217,10 @@ Em **Obras → Editar → Imagens e arquivos → Perfis de impressão**, o admin
 A página pública mostra apenas descrições dos perfis. A Área do Parceiro, Meus arquivos e os pedidos pagos mostram um botão por perfil. O catálogo público e os dados do parceiro nunca expõem os caminhos privados. `GET /api/download?id=…&profile=…` valida sessão, obra/coleção publicadas, tipo de acesso e compra confirmada antes de localizar o arquivo exclusivamente entre os perfis daquela obra. A compra avulsa ou da coleção e a licença permanecem vinculadas ao ID da obra: compradores antigos também recebem perfis novos; estornos continuam bloqueando todos. Preços, pagamentos, descontos e emissão de licenças não são alterados.
 
 A verificação de integridade do admin passa por todos os perfis 3MF. As referências de filamento/tempo e a calculadora continuam correspondendo ao arquivo principal validado; não são copiadas para os perfis adicionais sem medição. Testes em `tests/print-profiles.test.mjs` cobrem validação, privacidade, streaming correto, arquivos antigos, compras antigas/coleções, novos perfis, estornos, licença PDF e controle de acesso.
+
+
+### Vitrine Noel Brasileirão
+
+A coleção `noeis-brasileirao` abre uma vitrine dedicada em `/pt/colecao/noeis-brasileirao`, com versões EN/ES/FR, busca por time/cidade e filtros Série A/B. A classificação inicial acompanha a edição cadastrada da coleção, não uma tabela esportiva em tempo real.
+
+No editor de obras dessa coleção, **Série do Brasileirão** permite selecionar A, B ou Especiais. O campo opcional `brasileiraoSeries` prevalece sobre a categoria e a classificação inicial. Importações também podem usar `Série A` ou `Série B` na categoria. Obras sem classificação conhecida entram em Especiais. A Série B aparece como “Em breve” enquanto não houver obras publicadas nela. A página mantém os links dos produtos e a promoção existente da coleção, sem cálculo paralelo de carrinho.

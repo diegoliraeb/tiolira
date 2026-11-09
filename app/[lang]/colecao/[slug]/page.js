@@ -1,5 +1,6 @@
 import {NATAL_COLLECTION_IDS} from '../../../../lib/natal-promotion.mjs';
 import NatalPromotion from '../../../../components/NatalPromotion';
+import BrasileiraoLanding from '../../../../components/BrasileiraoLanding';
 import GamedayLanding from '../../../../components/GamedayLanding';
 import PublicFamilyPromotion from '../../../../components/PublicFamilyPromotion';
 import {FAMILY_COLLECTION_ID} from '../../../../lib/family-discount.mjs';
@@ -20,6 +21,7 @@ export default async function Page({params}){
  const {lang,raw,products}=await content(params),c=localized(raw,lang),copy=seoCopy[lang],t=dictionaries[lang],metadata=collectionMetadata(raw,lang,products.length);
  const bundle=collectionBundleSchema(raw,products,lang);
  const crumbs=[{name:copy.home,path:`/${lang}`},{name:copy.collections,path:`/${lang}/colecoes`},{name:c.name,path:collectionPath(lang,raw)}];
+ if(raw.id==='noeis-brasileirao')return <><StructuredData data={collectionSchema(raw,products,lang)}/><StructuredData data={breadcrumbs(crumbs)}/><Header lang={lang}/><BrasileiraoLanding lang={lang} products={products}/><Footer lang={lang}/></>;
  if(raw.id==='nfl-santas'&&['pt','en'].includes(lang))return <>{bundle&&<StructuredData data={bundle}/>}<StructuredData data={collectionSchema(raw,products,lang)}/><StructuredData data={breadcrumbs(crumbs)}/><Header lang={lang}/><GamedayLanding lang={lang} products={products} collection={raw}/><Footer lang={lang}/></>;
  return <><StructuredData data={collectionSchema(raw,products,lang)}/><StructuredData data={breadcrumbs(crumbs)}/><Header lang={lang}/><main className="wrap section seo-collection"><nav className="seo-breadcrumb" aria-label="Breadcrumb">{crumbs.map((item,i)=><span key={item.path}>{i>0&&' / '}{i===crumbs.length-1?item.name:<Link href={item.path}>{item.name}</Link>}</span>)}</nav><section className="seo-collection-hero"><div><p className="eyebrow">TIO LIRA · {t.collections}</p><h1>{metadata.title}</h1><p>{c.description}</p><p className="seo-digital-note">{copy.collectionNote}</p><Link className="button primary" href={`/${lang}/clube#colecao=${encodeURIComponent(c.id)}`}>{t.clubArea} ↗</Link></div><img className={raw.id==='noeis-brasileirao'?'natal-collection-cover brasileirao-collection-cover':raw.id==='natal-brasileiro'?'natal-collection-cover':undefined} src={collectionCover(raw)} alt={c.name} width="600" height="600" fetchPriority="high"/></section>{NATAL_COLLECTION_IDS.includes(raw.id)&&<NatalPromotion lang={lang} collectionId={raw.id}/>}{raw.id===FAMILY_COLLECTION_ID&&<PublicFamilyPromotion lang={lang}/>}<p className="seo-catalog-count">{products.length} {t.results}</p><CatalogProductGrid lang={lang} products={products}/>{!products.length&&<p className="notice">{t.notReleased}</p>}<p className="seo-collection-back"><Link className="text-link" href={`/${lang}/colecoes`}>{copy.allCollections} →</Link></p></main><Footer lang={lang}/></>;
 }
