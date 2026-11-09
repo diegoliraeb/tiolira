@@ -28,14 +28,28 @@ test('search combines series and accent-insensitive names, aliases and cities; e
  assert.equal(filterBrasileirao(lineup,'unknown').length,0);
 });
 test('series persists through validation and public catalog without exposing downloads or changing price',()=>{
- const p=productSchema.parse(product({brasileiraoSeries:'B'}));
+ const p=productSchema.parse(product({brasileiraoSeries:'B',brasileiraoCity:'  Cidade Nova  '}));
  const result=publicCatalog({collections:[{id:BRASILEIRAO_ID,published:true}],products:[p],stores:[],plans:[],settings:{}}).products[0];
  assert.equal(result.brasileiraoSeries,'B');
+ assert.equal(result.brasileiraoCity,'Cidade Nova');
+ assert.equal(brasileiraoTeam(result).city,'Cidade Nova');
+ assert.equal(filterBrasileirao(brasileiraoLineup([result]),'porto alegre').length,0);
+ assert.equal(filterBrasileirao(brasileiraoLineup([result]),'cidade nova','B').length,1);
  assert.equal(result.priceCents,1990);
  assert.equal(result.hasFile,true);
  assert.equal(result.filePath,undefined);
  assert.equal(productSchema.safeParse(product()).success,true);
  assert.equal(productSchema.safeParse(product({brasileiraoSeries:'invalid'})).success,false);
+});
+
+test('new catalog clubs match their home cities with UUID ids and keep their series',()=>{
+ const rows=[['noel-crb','B','Maceió'],['noel-csa','D','Maceió'],['noel-nautico','B','Recife'],['noel-sport','B','Recife'],['noel-santa-cruz','C','Recife'],['noel-avai','B','Florianópolis'],['noel-figueirense','C','Florianópolis'],['noel-guarani','C','Campinas'],['noel-ponte-preta','B','Campinas'],['noel-botafogo-sp','B','Ribeirão Preto'],['noel-botafogo-pb','C','João Pessoa'],['noel-barra-sc','C','Balneário Camboriú'],['noel-athletic','B','São João del Rei']];
+ const lineup=brasileiraoLineup(rows.map(([slug,series,city],i)=>product({id:`uuid-${i}`,slug,name:slug,brasileiraoSeries:series})));
+ for(const [slug,series,city] of rows){const item=lineup.find(t=>t.product.slug===slug);assert.equal(item.city,city);assert.equal(item.series,series);assert.ok(filterBrasileirao(lineup,city,series).includes(item));}
+ assert.deepEqual(filterBrasileirao(lineup,'maceio').map(t=>t.product.slug),['noel-crb','noel-csa']);
+ assert.deepEqual(filterBrasileirao(lineup,'maceio','D').map(t=>t.product.slug),['noel-csa']);
+ assert.equal(filterBrasileirao(lineup,'  Sao   Joao del Rei  ').length,1);
+ assert.equal(brasileiraoTeam(product({id:'noel-crb',slug:'renamed',brasileiraoCity:' '})).city,'Maceió');
 });
 
  test('Séries C and D retain their classifications, prices and protected files',()=>{
