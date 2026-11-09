@@ -92,3 +92,12 @@ test('state admin override survives catalog validation and invalid states are re
  assert.equal(brasileiraoTeam(product({brasileiraoState:''})).stateCode,'RS');
  assert.equal(brasileiraoTeam(product({id:'new',slug:'new',brasileiraoCity:'Unknown'})).stateCode,'');
 });
+
+test('selected state combines with text and series and can be cleared',()=>{
+ const lineup=brasileiraoLineup([product({id:'noel-csa',slug:'noel-csa',name:'CSA',brasileiraoSeries:'D'}),product({id:'noel-crb',slug:'noel-crb',name:'CRB',brasileiraoSeries:'B'}),product()]);
+ assert.equal(filterBrasileirao(lineup,'','','AL').length,2);
+ assert.equal(filterBrasileirao(lineup,'','B','AL')[0].product.slug,'noel-crb');
+ assert.equal(filterBrasileirao(lineup,'csa','','AL')[0].product.slug,'noel-csa');
+ assert.equal(filterBrasileirao(lineup,'gremio','','AL').length,0);
+ assert.equal(filterBrasileirao(lineup,'','','').length,3);
+});
