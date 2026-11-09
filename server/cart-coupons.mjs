@@ -1,3 +1,4 @@
+import {isCourtesyCode,courtesyQuote} from './brasileirao-courtesy.mjs';
 import {applyFamilyDiscount,allocateDiscount,familyEligible} from '../lib/family-discount.mjs';
 import {applyNatalPromotion,natalEligible,promotionEntries} from '../lib/natal-promotion.mjs';
 import {z} from 'zod';
@@ -9,12 +10,14 @@ export async function cartCoupons(){const r=await readRecord(KEY);return {coupon
 export async function saveCartCoupon(input){
  const current=await cartCoupons();if(current.revision!==input.revision)throw new Conflict();
  const coupon=cartCouponSchema.parse(input.item);
+ if(isCourtesyCode(coupon.code))throw Object.assign(Error('Este código é reservado à campanha Brasileirão.'),{status:409});
  if(current.coupons.some(c=>c.id!==coupon.id&&c.code===coupon.code))throw Object.assign(new Error('Já existe um cupom com esse código.'),{status:409});
  const coupons=[...current.coupons.filter(c=>c.id!==coupon.id),coupon];
  return {coupons,revision:await writeRecord(KEY,{coupons},current.revision)};
 }
-export function discountQuote(quote,code,coupons,now=Date.now(),natalContext){
+export function discountQuote(quote,code,coupons,now=Date.now(),natalContext,courtesyContext){
  code=couponCodeSchema.parse(code||'');
+ if(isCourtesyCode(code))return courtesyQuote(quote,courtesyContext);
  quote=applyFamilyDiscount(quote);
  quote=applyNatalPromotion(quote,natalContext,now);
  const subtotalCents=quote.subtotalCents;

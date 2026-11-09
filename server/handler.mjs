@@ -1,3 +1,5 @@
+import {configureDeliveryTracking,receiveEmailDelivery} from './email-delivery-events.mjs';
+import {adminBrasileiraoCourtesy,prepareBrasileiraoCourtesy,releaseBrasileiraoCourtesy,runBrasileiraoCourtesyEmails} from './brasileirao-courtesy.mjs';
 import {readJsonBody,requestBodyLimit} from './request-security.mjs';
 import {adminCollectionAccess,saveCollectionAccess} from './collection-access.mjs';
 import {runProductUpdateEmails} from './product-update-email.mjs';
@@ -41,6 +43,7 @@ export default async function handler(req,res){
   if(!['media','store-logo','feedback/photo'].includes(route))res.setHeader('X-Robots-Tag','noindex, nofollow');
   if(['POST','PUT','DELETE'].includes(method)&&route.startsWith('admin/')&&!['admin/login','admin/setup','admin/logout'].includes(route))await requireAdmin(req);
   if(method==='POST'&&route==='webhooks/paypal'){let raw=typeof req.body==='string'?req.body:null;if(raw===null&&req.body!==undefined)fail('Webhook exige corpo original.',400);if(raw===null){const chunks=[];let size=0;for await(const part of req){size+=Buffer.byteLength(part);if(size>1_000_000)fail('Evento muito grande.',413);chunks.push(Buffer.from(part));}raw=Buffer.concat(chunks).toString('utf8');}await receivePaypalWebhook(req.headers,raw);return json(res,200,{received:true});}
+  if(method==='POST'&&route==='webhooks/email-delivery'){let raw=typeof req.body==='string'?req.body:null;if(raw===null&&req.body!==undefined)fail('Webhook exige corpo original.',400);if(raw===null){const chunks=[];let size=0;for await(const part of req){size+=Buffer.byteLength(part);if(size>1_000_000)fail('Evento muito grande.',413);chunks.push(Buffer.from(part));}raw=Buffer.concat(chunks).toString('utf8');}await receiveEmailDelivery(req.headers,raw);return json(res,200,{received:true});}
   if(method==='POST'&&route==='webhooks/purchase-email'){assertWebhook(req);await receiveWebhook(await body(req,route),{emailRequired:true});return json(res,200,{received:true});}
   if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req,route));return json(res,200,{received:true});}
   if(method==='GET'&&route==='club/licenses/download'){
@@ -51,7 +54,7 @@ export default async function handler(req,res){
    return res.end(Buffer.from(pdf));
   }
   if(method==='GET'&&route==='cron/gameday-prices'){assertReminderCron(req);const {refreshGamedayPrices}=await import('./gameday-pricing.mjs');return json(res,200,await refreshGamedayPrices());}
-  if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);const resends=await runPurchaseEmailResends();const productUpdates=await runProductUpdateEmails();return json(res,200,{...await runCartReminders(),purchaseResends:resends,productUpdates});}
+  if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);const resends=await runPurchaseEmailResends();const productUpdates=await runProductUpdateEmails();const brasileiraoUpdate=await runBrasileiraoCourtesyEmails();return json(res,200,{...await runCartReminders(),purchaseResends:resends,productUpdates,brasileiraoUpdate});}
   if(method==='GET'&&route==='reviews')return json(res,200,await publicReviews(url.searchParams.get('productId')));
   if(method==='GET'&&route==='club/feedback')return json(res,200,await memberFeedback(await requireClub(req)));
   if(method==='GET'&&route==='admin/analytics'){await requireAdmin(req);return json(res,200,await analyticsReport(url.searchParams.get('days')||30));}
@@ -77,6 +80,7 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
   if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
+  if(method==='GET'&&route==='admin/brasileirao-update'){await requireAdmin(req);return json(res,200,await adminBrasileiraoCourtesy());}
   if(method==='GET'&&route==='admin/cart-coupons'){await requireAdmin(req);return json(res,200,await cartCoupons());}
   if(method==='GET'&&route==='admin/coupons'){await requireAdmin(req);const record=await readRecord('partner-coupons.json');return json(res,200,{coupons:record?.data?.coupons||[],revision:record?.etag||null});}
   if(method==='GET'&&route==='admin/status'){const auth=await readRecord('admin.json');let loggedIn=false;try{await requireAdmin(req);loggedIn=true;}catch{}return json(res,200,{configured:configured(),initialized:Boolean(auth),loggedIn,setupReady:await setupReady()});}
@@ -189,6 +193,9 @@ export default async function handler(req,res){
    return json(res,201,{ok:true});
   }
   await requireAdmin(req);
+  if(method==='POST'&&route==='admin/brasileirao-update/tracking'){await rateLimit(req,'configure-delivery-tracking',3,60_000);await configureDeliveryTracking();return json(res,200,await adminBrasileiraoCourtesy());}
+  if(method==='POST'&&route==='admin/brasileirao-update/prepare')return json(res,200,await prepareBrasileiraoCourtesy());
+  if(method==='POST'&&route==='admin/brasileirao-update/release')return json(res,200,await releaseBrasileiraoCourtesy(input));
   if(method==='PUT'&&route==='admin/cart-coupons')return json(res,200,await saveCartCoupon(input));
   if(route==='admin/coupons'&&['PUT','DELETE'].includes(method)){
    const current=await readRecord('partner-coupons.json');if((current?.etag||null)!==input.revision)throw new Conflict();

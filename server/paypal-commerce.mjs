@@ -23,7 +23,8 @@ export async function checkoutPaypal(member,input){
   const existing=s.orders.find(o=>o.memberId===member.id&&o.provider==='paypal'&&o.environment===config.environment&&o.requestId===parsed.requestId);
   if(existing){chosen=existing.id;return s;}
   const reserved=natalReservation(s.orders,member.id,data,parsed,'paypal',config.environment);if(reserved){chosen=reserved.id;return s;}
-  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'),Date.now(),memberNatalState(s.orders,member.id,data));
+  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'),Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id});
+  if(quote.totalCents===0)fail('Confirme o resgate gratuito no carrinho.',409);
   if(quote.totalCents!==parsed.expectedTotalCents)fail('O preço mudou. Atualize o carrinho e confira o total em dólar.');
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme o preço integral, sem abatimento.');
   const fingerprint=checkoutFingerprint(quote,'paypal');

@@ -1,3 +1,4 @@
+import {isCourtesyCode} from './brasileirao-courtesy.mjs';
 import {collectionAccess} from './collection-access.mjs';
 import {memberNatalState,natalReservation} from './natal-promotion.mjs';
 import {natalProductAccess} from '../lib/natal-promotion.mjs';
@@ -74,7 +75,7 @@ export async function memberHasAccess(member,productId){return (await memberAcce
 export async function memberLicenses(member){const [purchased,granted]=await Promise.all([purchaseLicenses(member),collectionAccess(member)]);const paid=new Set(purchased.filter(l=>l.status==='active').map(l=>l.productId));return [...purchased,...granted.licenses.filter(l=>!paid.has(l.productId))];}
 export async function quoteCheckout(member,input){
  const [{data},coupons,owned,record]=await Promise.all([getCatalog(),cartCoupons(),memberAccessIds(member),readRecord(KEY)]);
- const currency=internationalBuyer(member)?'USD':'BRL';return {...discountQuote({...quoteCart(marketCatalog(data,currency),input.items,owned),currency},input.couponCode,marketCoupons(coupons.coupons,currency),Date.now(),memberNatalState(state(record?.data).orders,member.id,data)),currency};
+ const currency=internationalBuyer(member)?'USD':'BRL';return {...discountQuote({...quoteCart(marketCatalog(data,currency),input.items,owned),currency},input.couponCode,marketCoupons(coupons.coupons,currency),Date.now(),memberNatalState(state(record?.data).orders,member.id,data),{campaign:record?.data?.brasileiraoCourtesy,orders:state(record?.data).orders,memberId:member.id}),currency};
 }
 async function claimNatalOffer(member,input){
  const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.literal(0),lang:z.enum(['pt','en','es','fr']).default('pt')}).parse(input);
@@ -83,10 +84,13 @@ async function claimNatalOffer(member,input){
  let result;
  const updated=await updateRecord(KEY,old=>{
   const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.provider==='promotion'&&o.environment===environment&&o.requestId===parsed.requestId);
-  if(existing){result=existing.id;return s;}
-  natalReservation(s.orders,member.id,data,parsed,'promotion',environment);
-  const quote=discountQuote({...quoteCart(marketCatalog(data,currency),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency},parsed.couponCode,[],Date.now(),memberNatalState(s.orders,member.id,data));
-  if(quote.totalCents!==0||!quote.natalPromotion||quote.natalPromotion.percent!==100)fail('Sua oferta mudou. Atualize o carrinho para conferir o benefício disponível.',409);
+  if(existing){
+   if(existing.courtesy&&(existing.coupon?.code!==parsed.couponCode||JSON.stringify(existing.productIds)!==JSON.stringify(parsed.items.map(i=>i.id).sort())))fail('Este pedido de cortesia já foi utilizado para outra seleção.',409);
+   result=existing.id;return s;
+  }
+  if(!isCourtesyCode(parsed.couponCode))natalReservation(s.orders,member.id,data,parsed,'promotion',environment);
+  const quote=discountQuote({...quoteCart(marketCatalog(data,currency),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency},parsed.couponCode,[],Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id});
+  if(quote.totalCents!==0||(!quote.courtesy&&(!quote.natalPromotion||quote.natalPromotion.percent!==100)))fail('Sua oferta mudou. Atualize o carrinho para conferir o benefício disponível.',409);
   const issuedAt=new Date().toISOString(),orderId=randomUUID();result=orderId;
   const o={id:orderId,requestId:parsed.requestId,memberId:member.id,memberName:member.name,memberEmail:member.email,createdAt:issuedAt,paidAt:issuedAt,status:'paid',provider:'promotion',currency,environment,billingType:'PROMOTION',lang:parsed.lang,...quote};
   o.licenses=o.items.flatMap(i=>i.products).map(p=>({code:`TL-COMPRA-${randomUUID().toUpperCase()}`,orderId,memberId:member.id,partnerName:member.name,productId:p.id,productName:p.name,issuedAt,terms:purchaseLicenseTerms,source:'purchase'}));
@@ -108,7 +112,8 @@ export async function checkout(member,input){
   const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.provider!=='paypal'&&o.environment===environment&&o.requestId===parsed.requestId);
   if(existing){chosenId=existing.id;return s;}
   const reserved=natalReservation(s.orders,member.id,data,parsed,'asaas',environment);if(reserved){chosenId=reserved.id;return s;}
-  const quote=discountQuote(quoteCart(data,parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),parsed.couponCode,coupons.coupons,Date.now(),memberNatalState(s.orders,member.id,data));
+  const quote=discountQuote(quoteCart(data,parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),parsed.couponCode,coupons.coupons,Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id});
+  if(quote.totalCents===0)fail('Confirme o resgate gratuito no carrinho.',409);
   if((parsed.couponCode||quote.promotion||quote.natalPromotion||parsed.expectedTotalCents!==undefined)&&parsed.expectedTotalCents!==quote.totalCents)fail('O desconto mudou. Confira o total atualizado antes de pagar.',409);
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme a compra pelo valor integral, sem abatimento.',409);
   const fingerprint=checkoutFingerprint(quote);
