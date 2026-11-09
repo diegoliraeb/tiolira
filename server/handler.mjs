@@ -1,3 +1,4 @@
+import {setCollectionPreparation} from './collection-status.mjs';
 import {configureDeliveryTracking,receiveEmailDelivery} from './email-delivery-events.mjs';
 import {adminBrasileiraoCourtesy,prepareBrasileiraoCourtesy,releaseBrasileiraoCourtesy,runBrasileiraoCourtesyEmails} from './brasileirao-courtesy.mjs';
 import {readJsonBody,requestBodyLimit} from './request-security.mjs';
@@ -213,6 +214,7 @@ export default async function handler(req,res){
    const mime={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',pdf:'application/pdf'}[extension]||'application/octet-stream';
    await put(path,bytes,{access:'private',addRandomSuffix:false,contentType:mime});return json(res,201,{path,url:kind==='image'?`/api/media?path=${encodeURIComponent(path)}`:null});
   }
+  if(route==='admin/collection-preparation'&&method==='PUT')return json(res,200,await setCollectionPreparation(input));
   if(route==='admin/settings'&&method==='PUT'){const parsed=settingsSchema.parse(input.settings);const current=await getCatalog();if(current.etag!==input.revision)throw new Conflict();current.data.settings=parsed;current.data.updatedAt=new Date().toISOString();const revision=await writeRecord('catalog.json',current.data,current.etag);return json(res,200,{ok:true,revision});}
   const kind=route.replace('admin/','');if(!schemas[kind]||!['PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   const current=await getCatalog();if(current.etag!==input.revision)throw new Conflict();
