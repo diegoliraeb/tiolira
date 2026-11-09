@@ -35,5 +35,15 @@ test('series persists through validation and public catalog without exposing dow
  assert.equal(result.hasFile,true);
  assert.equal(result.filePath,undefined);
  assert.equal(productSchema.safeParse(product()).success,true);
- assert.equal(productSchema.safeParse(product({brasileiraoSeries:'C'})).success,false);
+ assert.equal(productSchema.safeParse(product({brasileiraoSeries:'invalid'})).success,false);
 });
+
+ test('Séries C and D retain their classifications, prices and protected files',()=>{
+ for(const series of ['C','D']){
+ const p=productSchema.parse(product({id:'noel-extra-'+series.toLowerCase(),slug:'noel-extra-'+series.toLowerCase(),brasileiraoSeries:series}));
+ const pub=publicCatalog({collections:[{id:BRASILEIRAO_ID,published:true}],products:[p],stores:[],plans:[],settings:{}}).products[0];
+ assert.equal(pub.brasileiraoSeries,series);assert.equal(pub.priceCents,1990);assert.equal(pub.filePath,undefined);assert.equal(pub.hasFile,true);
+ assert.equal(filterBrasileirao(brasileiraoLineup([pub]),'',series).length,1);
+ assert.equal(brasileiraoTeam(product({category:'Natal · Série '+series})).series,series);
+ }
+ });

@@ -21,7 +21,8 @@ export default function BrasileiraoLanding({lang='pt',products}){
  const featured=lineup.filter(t=>['noel-mengao','noel-palmeiras','noel-bahia'].includes(t.product.slug));
  const highlights=featured.length?featured:lineup.slice(0,3),hero=highlights[spot%highlights.length];
  const count=s=>lineup.filter(t=>t.series===s).length;
- const tabs=['','A','B',...(count('extras')?['extras']:[])];
+ const activeSeries=['A','B','C','D'].filter(s=>count(s));
+ const tabs=['','A','B',...['C','D'].filter(s=>count(s)),...(count('extras')?['extras']:[])];
  const label=s=>s==='extras'?t.extras:s?`${t.series} ${s}`:t.all;
  const href=p=>`/${lang}/produto/${p.slug}`;
  const price=p=>!isAvailable(p)?t.soon:p.access==='paid'?formatMoney(p.priceCents,'BRL',lang==='pt'?'pt-BR':lang):t.free;
@@ -32,7 +33,7 @@ export default function BrasileiraoLanding({lang='pt',products}){
   </div></section>
   <div className="br-matchbar"><div className="gd-shell"><span>{t.collection}</span><span>{t.download}</span></div></div>
   <div className="gd-shell br-promotion"><NatalPromotion lang={lang} collectionId={BRASILEIRAO_ID}/></div>
-  <section id="lineup" className="gd-shell gd-lineup" aria-labelledby="br-lineup-title"><div className="gd-sectionhead"><h2 id="br-lineup-title">{t.pick}<span>.</span></h2><p>{lineup.length} {t.teams} · {t.series} A / {t.series} B</p></div>
+  <section id="lineup" className="gd-shell gd-lineup" aria-labelledby="br-lineup-title"><div className="gd-sectionhead"><h2 id="br-lineup-title">{t.pick}<span>.</span></h2><p>{lineup.length} {t.teams} · {activeSeries.map(s=>`${t.series} ${s}`).join(' / ')}</p></div>
    <div className="gd-filters"><label className="gd-search"><input type="search" value={query} placeholder={t.search} aria-label={t.search} onChange={e=>setQuery(e.target.value)}/></label><div className="gd-pills" aria-label={t.pick}>{tabs.map(s=><button type="button" key={s} aria-pressed={series===s} onClick={()=>setSeries(s)}>{label(s)} <span>{s==='B'&&!count('B')?t.soon:s?count(s):lineup.length}</span></button>)}</div></div>
    <p id="count" aria-live="polite">{matches.length} {matches.length===1?t.team:t.teams} · {t.file}</p>
    <div id="grid">{matches.map(({product:p,name,city,color,series:s})=><Link key={p.id} href={href(p)} className="gd-card" style={{'--club-color':color}}><div className="gd-pic"><img src={p.image} alt={p.name} loading="lazy" width="600" height="900"/></div><div className="gd-cardbody"><span className="gd-teammeta">{label(s)}{city&&` · ${city}`}</span><strong className="gd-clubname">{name}</strong><span className="gd-cardfoot">{price(p)} <small>{t.details} ↗</small></span></div></Link>)}</div>
