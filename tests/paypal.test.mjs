@@ -51,6 +51,10 @@ test('PayPal verified capture, idempotency, environment isolation and revocation
   await t.test('international store uses USD and no CPF; server rejects tampered total',async()=>{
    const offers=await shop(a);assert.equal(offers.currency,'USD');assert.equal(offers.paymentProvider,'paypal');assert.equal(offers.products.find(p=>p.id==='saci-test').priceCents,282);assert.equal(offers.collections.find(c=>c.id==='international-test').priceCents,1165);
    assert.equal((await quoteCheckout(a,input())).totalCents,282);
+   const draft=structuredClone(data);draft.collections.find(c=>c.id==='international-test').comingSoon=true;
+   await writeRecord('catalog.json',draft,(await readRecord('catalog.json')).etag);
+   await assert.rejects(()=>checkout(a,input()),/preparação/);assert.equal(createCalls,0);
+   await writeRecord('catalog.json',data,(await readRecord('catalog.json')).etag);
    await assert.rejects(()=>checkout(a,{...input(),expectedTotalCents:1}),/preço mudou/);assert.equal(createCalls,0);
   });
   let order;

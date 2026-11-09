@@ -18,7 +18,7 @@ export default function GamedayLanding({lang,products,collection}){
  const featured=lineup.slice(0,3),hero=featured[spot%featured.length];
  const matches=lineup.filter(team=>team.division.startsWith(conference)&&(team.city+' '+team.team).toLowerCase().includes(query.trim().toLowerCase()));
  const link=p=>'/'+lang+'/produto/'+p.slug;
- const price=p=>lang==='pt'?formatMoney(p.priceCents,'BRL','pt-BR'):formatMoney(p.priceUsdCents,'USD','en-US');
+ const price=p=>p.collectionComingSoon?(lang==='pt'?'Em breve':'Coming soon'):lang==='pt'?formatMoney(p.priceCents,'BRL','pt-BR'):formatMoney(p.priceUsdCents,'USD','en-US');
  const packAvailable=collection?.priceCents>0&&collection?.priceUsdCents>0&&!collection.free&&!collection.comingSoon&&lineup.length===32&&products.length===32&&products.every(p=>p.access==='paid'&&p.hasFile&&!p.exclusive);
  const individualTotal=products.reduce((total,p)=>total+(lang==='pt'?p.priceCents:p.priceUsdCents),0);
  const savings=packAvailable?individualTotal-(lang==='pt'?collection.priceCents:collection.priceUsdCents):0;

@@ -8,6 +8,8 @@ import {randomUUID} from 'node:crypto';
 import {checkout,quoteCheckout,quoteCart,shop,paymentDetails,purchaseLicenses,purchaseAccess,receiveWebhook,applyPayment,refreshOrder,recordDownload,salesReport} from '../server/commerce.mjs';
 import {readRecord,writeRecord} from '../server/store.mjs';
 import {invoiceUrl} from '../server/asaas.mjs';
+import {publicCatalog} from '../server/schema.mjs';
+import {isAvailable} from '../lib/product-order.mjs';
 import {clubProducts} from '../server/club.mjs';
 import {makeSession} from '../server/auth.mjs';
 import handler from '../server/handler.mjs';
@@ -48,16 +50,23 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
    for(const cpfCnpj of ['12345678901','12345678000199','11111111111'])await assert.rejects(()=>checkout({...a,cpfCnpj},input()),e=>e.status===400&&e.code==='BILLING_DOCUMENT_INVALID'&&e.uncertain===false);
    assert.equal(customers.size,0);assert.equal(posts,0);assert.equal(await readRecord('commerce.json'),null);
   });
-  await t.test('published singles remain purchasable while their collection is in preparation',async()=>{
+  await t.test('preparing collection blocks singles, bundles, old carts and checkout without charging',async()=>{
    const draft=structuredClone(data);draft.collections.find(c=>c.id==='folclore-test').comingSoon=true;
-   draft.products.find(p=>p.id==='curupira').priceCents=1790;
-   draft.products.find(p=>p.id==='mula').published=false;
    await writeRecord('catalog.json',draft,(await readRecord('catalog.json')).etag);
-   const offers=await shop(b);assert.equal(offers.products.find(p=>p.id==='curupira').priceCents,1790);assert.ok(!offers.products.some(p=>p.id==='mula'));assert.ok(!offers.collections.some(c=>c.id==='folclore-test'));
-   assert.equal(quoteCart(draft,[{kind:'product',id:'curupira'}]).totalCents,1790);assert.throws(()=>quoteCart(draft,[{kind:'collection',id:'folclore-test'}]));
-   assert.equal(clubProducts(draft).find(p=>p.id==='curupira').canPurchase,true);assert.equal(clubProducts(draft,new Set(['curupira'])).find(p=>p.id==='curupira').canPurchase,false);
-   draft.products.find(p=>p.id==='curupira').filePath='';assert.throws(()=>quoteCart(draft,[{kind:'product',id:'curupira'}]));assert.ok(!clubProducts(draft).some(p=>p.id==='curupira'));
+   const offers=await shop(b);assert.ok(!offers.products.some(p=>p.collection==='folclore-test'));assert.ok(!offers.collections.some(c=>c.id==='folclore-test'));
+   for(const items of [[{kind:'product',id:'curupira'}],[{kind:'collection',id:'folclore-test'}]]){
+    assert.throws(()=>quoteCart(draft,items),/preparação/);
+    await assert.rejects(()=>quoteCheckout(b,{items}),/preparação/);
+    await assert.rejects(()=>checkout(b,input(items)),/preparação/);
+   }
+   assert.equal(posts,0);assert.equal(customers.size,0);
+   assert.ok(!clubProducts(draft).some(p=>p.id==='curupira'));
+   const owned=clubProducts(draft,new Set(['curupira'])).find(p=>p.id==='curupira');assert.equal(owned.canPurchase,false);assert.ok(owned.downloadUrl);assert.equal(owned.canLicense,true);
+   const pub=publicCatalog(draft).products.find(p=>p.id==='curupira');assert.equal(pub.collectionComingSoon,true);assert.equal(isAvailable(pub),false);assert.equal(pub.access,'paid');assert.equal(pub.priceCents,1490);
+   assert.equal(draft.products.find(p=>p.id==='curupira').access,'paid');
    await writeRecord('catalog.json',data,(await readRecord('catalog.json')).etag);
+   assert.equal((await shop(b)).products.find(p=>p.id==='curupira').priceCents,1490);
+   assert.equal(isAvailable(publicCatalog(data).products.find(p=>p.id==='curupira')),true);
   });
   await t.test('server prices and no duplicate bundle billing',()=>{
    const q=quoteCart(data,[{kind:'product',id:'saci'},{kind:'product',id:'saci'},{kind:'collection',id:'folclore-test'}]);assert.equal(q.totalCents,4990);assert.equal(q.items.length,1);assert.equal(q.productIds.length,5);
@@ -72,6 +81,13 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
    assert.equal(await purchaseAccess(a,'saci'),false);assert.equal((await call('download?id=saci')).status,403);
    assert.equal((await call('admin/sales')).status,401);assert.equal((await call('admin/asaas-status')).status,401);assert.equal((await shop(b)).orders.length,0);
    assert.equal((await paymentDetails(a,first.id)).pix.payload,'000201-test-pix');await assert.rejects(()=>paymentDetails(b,first.id),/não encontrado/);assert.equal((await purchaseLicenses(a)).length,0);
+  });
+  await t.test('preparing collection blocks retries of existing pending checkout',async()=>{
+   const draft=structuredClone(data);draft.collections.find(c=>c.id==='folclore-test').comingSoon=true;
+   await writeRecord('catalog.json',draft,(await readRecord('catalog.json')).etag);
+   const existing=(await readRecord('commerce.json')).data.orders.find(o=>o.id===first.id);
+   await assert.rejects(()=>checkout(a,{...input(),requestId:existing.requestId}),/preparação/);assert.equal(posts,1);
+   await writeRecord('catalog.json',data,(await readRecord('catalog.json')).etag);
   });
   await t.test('authenticated webhook, verified amount, duplicate delivery and paid access',async()=>{
    const remotePayment=remote.get('pay_1');remotePayment.status='CONFIRMED';
@@ -91,6 +107,13 @@ test('cart, Asaas reconciliation, protected downloads and sales',async t=>{
    const otherCookie=`tiolira_club=${await makeSession(b.version,{memberId:b.id})}`;
    assert.equal((await call(download,{headers:{cookie:otherCookie}})).status,404);
    assert.equal((await call('club/licenses/download?code=unknown')).status,404);
+  });
+  await t.test('pausing sales preserves completed purchases and licenses',async()=>{
+   const draft=structuredClone(data);draft.collections.find(c=>c.id==='folclore-test').comingSoon=true;
+   await writeRecord('catalog.json',draft,(await readRecord('catalog.json')).etag);
+   assert.equal(await purchaseAccess(a,'saci'),true);assert.equal((await purchaseLicenses(a))[0].status,'active');
+   assert.ok((await shop(a)).products.find(p=>p.id==='saci').downloadUrl);
+   await writeRecord('catalog.json',data,(await readRecord('catalog.json')).etag);
   });
   await t.test('bundle overlap requires acknowledgement; bundle records all five pieces and integer revenue',async()=>{
    const body=input([{kind:'collection',id:'folclore-test'},{kind:'product',id:'saci'}]);await assert.rejects(()=>checkout(a,body),/sem abatimento/);

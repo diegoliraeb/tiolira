@@ -27,10 +27,15 @@ const id=z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
 const state=old=>old||{orders:[],downloads:{},recentDownloads:[]};
 const paid=o=>o.status==='paid'&&currentOrderEnvironment(o);
 export const isPaidProduct=p=>p.access==='paid'||Number(p.priceCents)>0;
-export const canPurchaseProduct=(p,data)=>Boolean(p.published&&!p.exclusive&&p.access==='paid'&&hasProductFiles(p)&&p.priceCents>0&&data.collections.some(c=>c.id===p.collection&&c.published&&!c.free));
+export const canPurchaseProduct=(p,data)=>Boolean(p.published&&!p.exclusive&&p.access==='paid'&&hasProductFiles(p)&&p.priceCents>0&&data.collections.some(c=>c.id===p.collection&&c.published&&!c.free&&!c.comingSoon));
+export function assertCollectionsReleased(data,selections){
+ const preparing=new Set(data.collections.filter(c=>c.comingSoon).map(c=>c.id));
+ if(selections.some(item=>preparing.has(item.kind==='collection'?item.id:data.products.find(p=>p.id===item.id)?.collection)))fail('Esta coleção está em preparação. As compras estarão disponíveis após o lançamento.',409);
+}
 export function ownedIds(orders,memberId){const current=orders.filter(currentOrderEnvironment);return new Set(current.filter(o=>o.memberId===memberId&&paid(o)).flatMap(o=>o.productIds.filter(id=>natalProductAccess(o,id,current))));}
 export function quoteCart(data,input,owned=new Set()){
  const selections=cartSchema.parse(input),seen=new Set(),included=new Set(),items=[];
+ assertCollectionsReleased(data,selections);
  // A collection supersedes its individual pieces in the same basket.
  for(const selection of [...selections].sort((a,b)=>Number(b.kind==='collection')-Number(a.kind==='collection'))){
   const key=selection.kind+':'+selection.id;if(seen.has(key))continue;seen.add(key);
@@ -74,6 +79,7 @@ export async function quoteCheckout(member,input){
 async function claimNatalOffer(member,input){
  const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.literal(0),lang:z.enum(['pt','en','es','fr']).default('pt')}).parse(input);
  const {data}=await getCatalog(),granted=await collectionAccess(member,data),currency=internationalBuyer(member)?'USD':'BRL',environment=asaasConfig().environment;
+ assertCollectionsReleased(data,parsed.items);
  let result;
  const updated=await updateRecord(KEY,old=>{
   const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.provider==='promotion'&&o.environment===environment&&o.requestId===parsed.requestId);
@@ -96,6 +102,7 @@ export async function checkout(member,input){
  if(!validBillingDocument(cpfCnpj))throw Object.assign(Error(BILLING_DOCUMENT_ERROR),{status:400,code:'BILLING_DOCUMENT_INVALID',uncertain:false});
  const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive().optional(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es','fr']).default('pt')}).parse(input);
  const {data}=await getCatalog(),environment=asaasConfig().environment,coupons=await cartCoupons(),granted=await collectionAccess(member,data);
+ assertCollectionsReleased(data,parsed.items);
  const orderId=randomUUID();let chosenId;
  await updateRecord(KEY,old=>{
   const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.provider!=='paypal'&&o.environment===environment&&o.requestId===parsed.requestId);

@@ -4,7 +4,7 @@ import {checkoutFingerprint} from './checkout-fingerprint.mjs';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {readRecord,updateRecord,getCatalog} from './store.mjs';
-import {quoteCart,ownedIds,safeOrder,purchaseLicenseTerms} from './commerce.mjs';
+import {assertCollectionsReleased,quoteCart,ownedIds,safeOrder,purchaseLicenseTerms} from './commerce.mjs';
 import {cartCoupons,couponCodeSchema,discountQuote} from './cart-coupons.mjs';
 import {paypal,paypalConfig,paypalReady,paypalReturnUrl,verifyPaypalWebhook} from './paypal.mjs';
 import {marketCatalog,paypalApprovalUrl} from '../lib/international-pricing.mjs';
@@ -16,6 +16,7 @@ export function marketCoupons(coupons,currency){return currency==='USD'?coupons.
 export async function checkoutPaypal(member,input){
  if(!paypalReady())fail('Pagamentos internacionais estarão disponíveis em breve.',503);
  const parsed=inputSchema.parse(input),{data}=await getCatalog(),coupons=await cartCoupons(),config=paypalConfig(),granted=await collectionAccess(member,data);
+ assertCollectionsReleased(data,parsed.items);
  const id=randomUUID();let chosen;
  await updateRecord(KEY,old=>{
   const s=old||{orders:[],downloads:{},recentDownloads:[]};
