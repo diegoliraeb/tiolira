@@ -10,6 +10,7 @@ export async function cartCoupons(){const r=await readRecord(KEY);return {coupon
 export async function saveCartCoupon(input){
  const current=await cartCoupons();if(current.revision!==input.revision)throw new Conflict();
  const coupon=cartCouponSchema.parse(input.item);
+ if(coupon.code.startsWith('TLIG-'))throw Object.assign(Error('Este prefixo é reservado aos cupons pessoais da promoção Instagram.'),{status:409});
  if(isCourtesyCode(coupon.code))throw Object.assign(Error('Este código é reservado à campanha Brasileirão.'),{status:409});
  if(current.coupons.some(c=>c.id!==coupon.id&&c.code===coupon.code))throw Object.assign(new Error('Já existe um cupom com esse código.'),{status:409});
  const coupons=[...current.coupons.filter(c=>c.id!==coupon.id),coupon];
@@ -17,6 +18,7 @@ export async function saveCartCoupon(input){
 }
 export function discountQuote(quote,code,coupons,now=Date.now(),natalContext,courtesyContext){
  code=couponCodeSchema.parse(code||'');
+ if(code.startsWith('TLIG-'))throw Object.assign(Error('Use seu cupom pessoal na seção Promoção de Natal da área do parceiro.'),{status:400});
  if(isCourtesyCode(code))return courtesyQuote(quote,courtesyContext);
  quote=applyFamilyDiscount(quote);
  quote=applyNatalPromotion(quote,natalContext,now);

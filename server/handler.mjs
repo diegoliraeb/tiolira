@@ -1,4 +1,5 @@
 import {setCollectionPreparation} from './collection-status.mjs';
+import {instagramPromotion, partnerEmailVerification} from './instagram-promotion-runtime.mjs';
 import {configureDeliveryTracking,receiveEmailDelivery} from './email-delivery-events.mjs';
 import {adminBrasileiraoCourtesy,prepareBrasileiraoCourtesy,releaseBrasileiraoCourtesy,runBrasileiraoCourtesyEmails} from './brasileirao-courtesy.mjs';
 import {readJsonBody,requestBodyLimit} from './request-security.mjs';
@@ -81,6 +82,8 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
   if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
+  if(method==='GET'&&route==='club/instagram-promotion')return json(res,200,await instagramPromotion.status(await requireClub(req)));
+  if(method==='GET'&&route==='admin/instagram-promotion'){await requireAdmin(req);return json(res,200,await instagramPromotion.admin());}
   if(method==='GET'&&route==='admin/brasileirao-update'){await requireAdmin(req);return json(res,200,await adminBrasileiraoCourtesy());}
   if(method==='GET'&&route==='admin/cart-coupons'){await requireAdmin(req);return json(res,200,await cartCoupons());}
   if(method==='GET'&&route==='admin/coupons'){await requireAdmin(req);const record=await readRecord('partner-coupons.json');return json(res,200,{coupons:record?.data?.coupons||[],revision:record?.etag||null});}
@@ -100,6 +103,16 @@ export default async function handler(req,res){
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req,route);
+  if(method==='POST'&&['club/verify-email/request','club/verify-email/confirm'].includes(route)){
+   const member=await requireClub(req);await rateLimit(req,route,route.endsWith('/request')?5:15,15*60_000,member.id);
+   return json(res,200,await (route.endsWith('/request')?partnerEmailVerification.request(member):partnerEmailVerification.confirm(member,input)));
+  }
+  if(method==='POST'&&['club/instagram-promotion/link','club/instagram-promotion/check','club/instagram-promotion/claim','club/instagram-promotion/redeem'].includes(route)){
+   const member=await requireClub(req);await rateLimit(req,route,10,10*60_000,member.id);
+   const action=route.split('/').at(-1);
+   return json(res,200,await (action==='link'?instagramPromotion.startLink(member,input):action==='check'?instagramPromotion.check(member):action==='claim'?instagramPromotion.claim(member):instagramPromotion.redeem(member,input)));
+  }
+  if(method==='PUT'&&route==='admin/instagram-promotion'){await requireAdmin(req);await rateLimit(req,'configure-instagram-promotion',10,60_000);return json(res,200,await instagramPromotion.configure(input));}
   if(method==='POST'&&route==='analytics/event'){if(!configured())return json(res,200,{ok:true});await rateLimit(req,'site-activity',120,60_000);return json(res,200,await recordActivity(req,input));}
   if(method==='POST'&&route==='admin/cart-reminders/test'){await requireAdmin(req);await rateLimit(req,'test-cart-reminder',5,3600_000);return json(res,200,await sendTestCartReminder(input));}
   if(method==='POST'&&route==='admin/cart-reminders/send'){await requireAdmin(req);await rateLimit(req,'manual-cart-reminder',20,60_000);return json(res,200,await sendCartReminder(input.id));}

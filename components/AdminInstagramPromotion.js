@@ -1,0 +1,18 @@
+'use client';
+import {useEffect, useState} from 'react';
+import '../app/instagram-promotion.css';
+const localDate = value => {const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0,16);};
+export default function AdminInstagramPromotion({preview}) {
+  const [data, setData] = useState(null), [draft, setDraft] = useState(null), [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
+  const apply = result => {setData(result); setDraft({...result.config, startsAt: localDate(result.config.startsAt), endsAt: localDate(result.config.endsAt)});};
+  useEffect(() => {if (!preview) fetch('/api/admin/instagram-promotion').then(async r => {const d = await r.json(); if (!r.ok) throw Error(d.error); apply(d);}).catch(e => setMessage(e.message));}, [preview]);
+  if (preview) return <p className="notice">A configuração da promoção está disponível na administração conectada.</p>;
+  async function save(event) {
+    event.preventDefault(); setBusy(true); setMessage('');
+    try {
+      const response = await fetch('/api/admin/instagram-promotion', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...draft, startsAt:new Date(draft.startsAt).toISOString(), endsAt:new Date(new Date(draft.endsAt).getTime()+59_999).toISOString()})});
+      const result = await response.json(); if (!response.ok) throw Error(result.error); apply(result); setMessage(result.config.active ? 'Campanha ativada.' : 'Rascunho salvo. A emissão de cupons está desativada.');
+    } catch (error) {setMessage(error.message);} finally {setBusy(false);}
+  }
+  return <section className="admin-panel"><h2>Promoção Instagram · Noéis</h2><p>Um modelo digital do Brasileirão ou da Champions por conta e Instagram. O parceiro confirma o e-mail, comprova o Instagram por Direct, segue os dois perfis e comenta dois @ diferentes no post escolhido.</p>{message && <p className="status-message" role="status">{message}</p>}{draft && <><p><strong>{data.issued}</strong> cupons emitidos · {data.connected ? 'Conexões configuradas' : 'Conexões do Instagram indisponíveis'}</p><form className="form-grid" onSubmit={save}><label>Perfil que publicou o post<select value={draft.accountId} onChange={e => setDraft({...draft, accountId:e.target.value})}>{data.accounts.map(a => <option key={a.id} value={a.id}>@{a.username}</option>)}</select></label><label>Link do post da promoção<input type="url" placeholder="https://www.instagram.com/p/.../" value={draft.postUrl} onChange={e => setDraft({...draft, postUrl:e.target.value})}/><small>O post será conferido na conta selecionada antes de salvar.</small></label><label>Início (horário deste computador)<input required type="datetime-local" value={draft.startsAt} onChange={e => setDraft({...draft, startsAt:e.target.value})}/></label><label>Último horário para emitir e resgatar<input required type="datetime-local" value={draft.endsAt} onChange={e => setDraft({...draft, endsAt:e.target.value})}/></label><label className="check full"><input type="checkbox" checked={draft.active} onChange={e => setDraft({...draft, active:e.target.checked})}/>Campanha ativa: permitir emissão e resgate</label><p className="full">O histórico de contas, Instagrams e cupons permanece ao pausar a campanha ou alterar o post. Um cupom emitido não dá direito a outro modelo depois de utilizado. Curtida não é exigida. A conferência das menções não comprova amizade nem a existência das duas contas mencionadas.</p><button className="button primary" disabled={busy}>{busy ? 'Salvando…' : 'Salvar campanha'}</button></form></>}</section>;
+}

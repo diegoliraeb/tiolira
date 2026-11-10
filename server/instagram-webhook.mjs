@@ -48,7 +48,7 @@ export async function readInstagramFollowProfile(senderId, accessToken, fetcher 
   };
 }
 
-export function createInstagramWebhook({appSecret, verifyToken, accounts, receive, reportError = () => {}}) {
+export function createInstagramWebhook({appSecret, verifyToken, accounts, receive, receivePayload, reportError = () => {}}) {
   const ready = () => Boolean(appSecret && verifyToken && accounts?.size);
   return {
     async GET(request) {
@@ -82,6 +82,7 @@ export function createInstagramWebhook({appSecret, verifyToken, accounts, receiv
       try {
         // Await persistence so Meta can retry failed delivery; do not acknowledge lost events.
         for (const event of events) await receive(event, accounts.get(event.accountId));
+        if (receivePayload) await receivePayload(payload);
       } catch {
         reportError('instagram_webhook_processing_failed');
         return reply('Temporary failure', 503);

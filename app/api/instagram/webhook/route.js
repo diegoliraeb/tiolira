@@ -1,5 +1,6 @@
 import {createInstagramWebhook, readInstagramFollowProfile} from '../../../../server/instagram-webhook.mjs';
 import {readRecord, updateRecord} from '../../../../server/store.mjs';
+import {instagramPromotion} from '../../../../server/instagram-promotion-runtime.mjs';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -13,6 +14,7 @@ function handlers() {
     appSecret: process.env.META_APP_SECRET,
     verifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN,
     accounts,
+    receivePayload: payload => instagramPromotion.receive(payload),
     reportError: code => console.error(code),
     async receive(event, token) {
       const key = `instagram-tests/${event.accountId}/${event.senderId}.json`;

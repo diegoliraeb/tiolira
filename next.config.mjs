@@ -3,6 +3,7 @@ const config = {
  images:{dangerouslyAllowSVG:false,dangerouslyAllowLocalIP:false},
  outputFileTracingIncludes: {'/api/*':['./public/geography/*.json','./public/assets/tl-monogram-3d-icon.png']},
  async redirects() { return [
+ {source:'/promocao',destination:'/pt/promocao',permanent:false},
  {source:'/3d',destination:'/pt',permanent:true},
  {source:'/3d/produto/:slug',destination:'/pt/produto/:slug',permanent:true},
  {source:'/3d/calculadora',destination:'/pt/calculadora',permanent:true},
