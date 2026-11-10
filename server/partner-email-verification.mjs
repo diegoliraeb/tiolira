@@ -17,16 +17,16 @@ export function createEmailVerification({updateRecord, send, now = Date.now}) {
       const code = String(randomInt(100_000_000)).padStart(8, '0');
       const salt = randomBytes(16).toString('hex'), createdAt = now();
       const pending = {salt, hash: digest(`${salt}:${code}`), email: normalizedEmail(member.email), createdAt, expiresAt: createdAt + 15 * 60_000, attempts: 0};
-      let needed;
+      let needed, name='';
       await updateRecord('club-members.json', state => {
-        const current = memberIn(state, member); needed = !emailIsVerified(current);
+        const current = memberIn(state, member); name=current.name || ''; needed = !emailIsVerified(current);
         if (!needed) return state;
         if (current.emailVerificationPending?.createdAt > now() - 60_000) fail('Aguarde um minuto antes de pedir outro código.', 429);
         current.emailVerificationPending = pending;
         return state;
       });
       if (!needed) return {verified: true};
-      try {await send({email: pending.email, code});}
+      try {await send({email: pending.email, code, name});}
       catch {
         await updateRecord('club-members.json', state => {
           const current = state?.members?.find(m => m.id === member.id);

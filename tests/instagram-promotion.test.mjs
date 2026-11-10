@@ -14,6 +14,7 @@ import {redeemInstagramOrder} from '../server/instagram-promotion-order.mjs';
 import {memberHasAccess, purchaseLicenses} from '../server/commerce.mjs';
 import handler from '../server/handler.mjs';
 import {makeSession, clubCookieName} from '../server/auth.mjs';
+import {partnerVerificationEmail} from '../server/partner-verification-email.mjs';
 import seed from '../data/catalog.json' with {type:'json'};
 
 const envKeys = ['DATABASE_URL','POSTGRES_URL','BLOB_READ_WRITE_TOKEN','LOCAL_DATA_DIR','VERCEL','ADMIN_SESSION_SECRET','ASAAS_ENV'];
@@ -23,9 +24,10 @@ test('Instagram promotion: ownership, verification, uniqueness and atomic redemp
   process.env.ADMIN_SESSION_SECRET = 'instagram-test-session-secret-at-least-32-characters';
   const root = await mkdtemp(join(tmpdir(), 'tl-instagram-'));
   let fixtureIndex = 0;
-  async function fixture({verified = true, active = true} = {}) {
+  async function fixture({verified = true, active = true, autoDirect = false, sendFails = false} = {}) {
     process.env.LOCAL_DATA_DIR = join(root, String(++fixtureIndex));
     let time = Date.parse('2026-11-15T12:00:00Z'), follows = true, commentFound = true, username = 'participante';
+    const sent=[];
     const member = {id: randomUUID(), version: randomUUID(), email: 'member@example.invalid', name: 'Parceiro Teste', countryCode:'BR'};
     if (verified) member.emailVerification = {email:member.email, verifiedAt:new Date(time).toISOString()};
     await writeRecord('club-members.json', {members:[member]}, null);
@@ -36,17 +38,17 @@ test('Instagram promotion: ownership, verification, uniqueness and atomic redemp
     await writeRecord('catalog.json', catalog, null);
     const service = createInstagramPromotion({readRecord, updateRecord, getCatalog, now:() => time,
       getMember:async id => (await readRecord('club-members.json')).data.members.find(m => m.id === id),
-      readProfile:async () => ({username,follows,errorCode:null}),
-      api:{ready:() => true, resolvePost:async () => '123456', findComment:async () => commentFound ? {id:'555'} : null},
+      readProfile:async accountId => {assert.equal(accountId,accounts[1].id);return {username,follows,errorCode:null};},
+      api:{ready:() => true, resolvePost:async () => '123456', findComment:async () => commentFound ? {id:'555'} : null, findLinkComment:async()=>autoDirect?{id:'555',from:{id:'9911',username},timestamp:new Date(time).toISOString()}:null, sendPrivateReply:async(id,text)=>{sent.push({id,text});if(sendFails)throw Error('timeout');return {messageId:'sent1'};}},
       redeemOrder:redeemInstagramOrder});
     await service.configure({...(await service.admin()).config,postUrl:'https://www.instagram.com/p/promotion/',active});
     const payload = (message, index, sender = `991${index}`, stamp = time) => ({object:'instagram',entry:[{id:accounts[index].id,messaging:[{sender:{id:sender},recipient:{id:accounts[index].id},timestamp:stamp,message:{mid:`m-${randomUUID()}`,text:message}}]}]});
     async function link(who = member, handle = 'participante', senderBase = '991') {
       const code = await service.startLink(who, {username:handle});
-      for (let i=0;i<2;i++) await service.receive(payload(code.message,i,`${senderBase}${i}`));
+      await service.receive(payload(code.message || sent.at(-1).text.match(/CUPOM [A-F0-9]{24}/)[0],1,`${senderBase}1`));
       return code;
     }
-    return {member,service,catalog,link,payload,setTime:value=>time=value,now:()=>time,setFollows:value=>follows=value,setComment:value=>commentFound=value,setUsername:value=>username=value};
+    return {member,service,catalog,link,payload,sent,setTime:value=>time=value,now:()=>time,setFollows:value=>follows=value,setComment:value=>commentFound=value,setUsername:value=>username=value};
   }
   try {
     await t.test('email is bound to account and current address, expires and limits guessing',async()=>{
@@ -70,9 +72,9 @@ test('Instagram promotion: ownership, verification, uniqueness and atomic redemp
       const f=await fixture({verified:false});const email=createEmailVerification({updateRecord,now:f.now,send:async()=>{throw Error('outage')}});
       await assert.rejects(email.request(f.member),{status:503});assert.ok(!(await readRecord('club-members.json')).data.members[0].emailVerificationPending);
     });
-    await t.test('a forged @ or one Direct alone cannot bind the Instagram',async()=>{
+    await t.test('a forged @ or a Direct to tiolira cannot bind; one verified Direct to tiolira3d is sufficient',async()=>{
       const f=await fixture();const code=await f.service.startLink(f.member,{username:'participante'});
-      f.setUsername('outra_pessoa');await f.service.receive(f.payload(code.message,0));assert.equal((await f.service.status(f.member)).instagram,null);
+      f.setUsername('outra_pessoa');await f.service.receive(f.payload(code.message,1));assert.equal((await f.service.status(f.member)).instagram,null);
       f.setUsername('participante');await f.service.receive(f.payload(code.message,0));assert.equal((await f.service.status(f.member)).instagram,null);
       await assert.rejects(f.service.claim(f.member),{status:409});
       await f.service.receive(f.payload(code.message,1));assert.equal((await f.service.status(f.member)).instagram.username,'participante');
@@ -111,7 +113,7 @@ test('Instagram promotion: ownership, verification, uniqueness and atomic redemp
       assert.equal(new Set(results.map(x=>x.coupon.code)).size,1);assert.equal((await readRecord(PROMOTION_KEY)).data.claims.length,1);
       f.setUsername('novo_instagram');await f.link(f.member,'novo_instagram','772');
       assert.equal((await f.service.claim(f.member)).coupon.code,results[0].coupon.code);
-      const identities=(await readRecord(PROMOTION_KEY)).data.identityOwners;assert.equal(identities[`${accounts[0].id}:9910`],f.member.id);
+      const identities=(await readRecord(PROMOTION_KEY)).data.identityOwners;assert.equal(identities[`${accounts[1].id}:9911`],f.member.id);
     });
     await t.test('same Instagram cannot link to a second email, including after a rename',async()=>{
       const f=await fixture();await f.link();await f.service.claim(f.member);
@@ -148,13 +150,31 @@ test('Instagram promotion: ownership, verification, uniqueness and atomic redemp
     });
     await t.test('only a signed webhook can process the personal code',async()=>{
       const f=await fixture(),code=await f.service.startLink(f.member,{username:'participante'});
-      const body=JSON.stringify(f.payload(code.message,0)),secret='test-app-secret';
+      const body=JSON.stringify(f.payload(code.message,1)),secret='test-app-secret';
       const hook=createInstagramWebhook({appSecret:secret,verifyToken:'verify',accounts:new Map(accounts.map(a=>[a.id,'token'])),receive:async()=>{},receivePayload:p=>f.service.receive(p)});
       assert.equal((await hook.POST(new Request('https://example.invalid/hook',{method:'POST',body}))).status,403);
       assert.equal((await f.service.status(f.member)).pending.received.length,0);
       const signature='sha256='+createHmac('sha256',secret).update(body).digest('hex');
       assert.equal((await hook.POST(new Request('https://example.invalid/hook',{method:'POST',body,headers:{'x-hub-signature-256':signature}}))).status,200);
-      assert.deepEqual((await f.service.status(f.member)).pending.received,['tiolira']);
+      assert.equal((await f.service.status(f.member)).instagram.username,'participante');
+    });
+    await t.test('private reply is sent once under concurrency and requires a reply from the actual commenter',async()=>{
+      const f=await fixture({autoDirect:true});
+      const responses=await Promise.all(Array.from({length:4},()=>f.service.startLink(f.member,{username:'participante'})));
+      assert.equal(f.sent.length,1);assert.ok(responses.every(r=>!r.message));
+      assert.equal((await f.service.status(f.member)).instagram,null);
+      const code=f.sent[0].text.match(/CUPOM [A-F0-9]{24}/)[0];
+      await f.service.receive(f.payload(code,1,'2222'));assert.equal((await f.service.status(f.member)).instagram,null);
+      await f.service.receive(f.payload(code,0,'9911'));assert.equal((await f.service.status(f.member)).instagram,null);
+      await f.service.receive(f.payload(code,1,'9911'));assert.equal((await f.service.status(f.member)).instagram.username,'participante');
+      const {checks}=await f.service.check(f.member);assert.deepEqual(checks.follows,[{username:'tiolira3d',status:'complete'}]);
+      await f.service.claim(f.member);assert.equal((await readRecord(PROMOTION_KEY)).data.claims.length,1);
+    });
+    await t.test('uncertain private reply delivery falls back to one Direct without resending',async()=>{
+      const f=await fixture({autoDirect:true,sendFails:true});
+      let result=await f.service.startLink(f.member,{username:'participante'});assert.equal(result.delivery,'manual');assert.match(result.message,/^CUPOM /);
+      result=await f.service.startLink(f.member,{username:'participante'});assert.equal(f.sent.length,1);
+      await f.service.receive(f.payload(result.message,1));assert.ok((await f.service.status(f.member)).instagram);
     });
     await t.test('HTTP routes enforce sessions, origin and private response boundaries',async()=>{
       const f=await fixture();const cookie=`${clubCookieName}=${await makeSession(f.member.version,{memberId:f.member.id})}`;
@@ -191,4 +211,21 @@ test('API ignores a deleted cached comment and verifies live media comments with
     return String(url).includes('/222/comments')?Response.json({data:[{id:'555',from:{id:'123',username:'eu'},text:'@one @two',timestamp:'2026-11-15T00:00:00Z'}]}):Response.json({error:{code:100}},{status:400});
   }});
   assert.equal((await api.findComment(config,binding,['444'])).id,'555');assert.equal(calls.length,2);
+});
+
+
+test('branded verification email keeps the code readable and escapes recipient details',()=>{
+  const mail=partnerVerificationEmail({code:'00112233',name:'<img>'});
+  assert.ok(mail.html.includes('&lt;img&gt;'));assert.ok(!mail.html.includes('<img>'));
+  assert.ok(mail.html.includes('00112233'));assert.ok(mail.text.includes('00112233'));
+  assert.ok(mail.html.includes('tl-monogram-3d-icon.png'));assert.ok(mail.html.includes('15 minutos'));
+  assert.throws(()=>partnerVerificationEmail({code:'<script>'}));
+  assert.throws(()=>partnerVerificationEmail({code:'12345678',origin:'javascript:alert(1)'}));
+});
+
+test('private reply API uses the comment ID and only the tiolira3d token',async()=>{
+  let sent;
+  const api=instagramPromotionApi({env:{[accounts[1].env]:'test-token'},fetcher:async(url,options)=>{sent={url:String(url),...options};return Response.json({message_id:'message1'});}});
+  assert.equal(api.ready(),true);await api.sendPrivateReply('123','Confirme');
+  assert.ok(sent.url.includes(accounts[1].id));assert.equal(sent.headers.Authorization,'Bearer test-token');assert.deepEqual(JSON.parse(sent.body),{recipient:{comment_id:'123'},message:{text:'Confirme'}});
 });

@@ -6,8 +6,10 @@ export const PROMOTION_ACCOUNTS = [
   {id: '17841400549300615', username: 'tiolira', env: 'META_TIOLIRA_ACCESS_TOKEN'},
   {id: '17841433509773548', username: 'tiolira3d', env: 'META_TIOLIRA3D_ACCESS_TOKEN'},
 ];
+export const PROMOTION_VERIFICATION_ACCOUNT = PROMOTION_ACCOUNTS[1];
+export const PROMOTION_REQUIRED_ACCOUNTS = [PROMOTION_VERIFICATION_ACCOUNT];
 export const PROMOTION_COLLECTIONS = ['noeis-brasileirao', '35b06e0a-ada0-4df9-93e5-4ce39766915a'];
-export const defaultPromotion = () => ({id: PROMOTION_ID, active: false, version: 'draft', startsAt: '2026-11-10T03:00:00.000Z', endsAt: '2026-12-01T02:59:59.999Z', postUrl: '', mediaId: '', accountId: PROMOTION_ACCOUNTS[0].id});
+export const defaultPromotion = () => ({id: PROMOTION_ID, active: false, version: 'draft', startsAt: '2026-11-10T03:00:00.000Z', endsAt: '2026-12-01T02:59:59.999Z', postUrl: '', mediaId: '', accountId: PROMOTION_VERIFICATION_ACCOUNT.id});
 export const instagramHandle = value => {const url = instagramUrl(value); return url ? new URL(url).pathname.split('/')[1] : '';};
 export function instagramPostUrl(value) {
   try {

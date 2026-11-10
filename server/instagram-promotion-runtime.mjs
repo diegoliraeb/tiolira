@@ -1,3 +1,4 @@
+import {partnerVerificationEmail} from './partner-verification-email.mjs';
 import {readRecord, updateRecord, getCatalog} from './store.mjs';
 import {createEmailVerification} from './partner-email-verification.mjs';
 import {createInstagramPromotion} from './instagram-promotion.mjs';
@@ -9,13 +10,12 @@ import {redeemInstagramOrder} from './instagram-promotion-order.mjs';
 const fail = (message, status = 503) => {throw Object.assign(Error(message), {status});};
 export const partnerEmailVerification = createEmailVerification({
   updateRecord,
-  async send({email, code}) {
+  async send({email, code, name}) {
     const {RESEND_API_KEY, EMAIL_FROM} = process.env;
     if (!RESEND_API_KEY || !EMAIL_FROM) fail('A confirmação por e-mail está temporariamente indisponível.');
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST', headers: {Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json'},
-      body: JSON.stringify({from: EMAIL_FROM, to: [email], subject: 'Confirme seu e-mail — Tio Lira',
-        text: `Seu código de confirmação é ${code}.\n\nDigite os 8 números na área do parceiro. O código vale por 15 minutos. Não compartilhe este código. Se não solicitou a confirmação, ignore esta mensagem.`}),
+      body: JSON.stringify({from: EMAIL_FROM, to: [email], ...partnerVerificationEmail({code,name,origin:process.env.SITE_URL || 'https://www.tiolira.com.br'})}),
       signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) fail('Falha no envio.');

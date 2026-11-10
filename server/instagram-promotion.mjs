@@ -1,12 +1,12 @@
 import {createHash, randomBytes, randomUUID} from 'node:crypto';
 import {hasProductFiles} from '../lib/print-profiles.mjs';
 import {emailIsVerified, normalizedEmail} from './partner-email-verification.mjs';
-import {PROMOTION_KEY, PROMOTION_ID, PROMOTION_ACCOUNTS, PROMOTION_COLLECTIONS, defaultPromotion, instagramHandle, instagramPostUrl, promotionOpen, promotionLinkEvents, distinctFriendMentions} from './instagram-promotion-rules.mjs';
+import {PROMOTION_KEY, PROMOTION_ID, PROMOTION_ACCOUNTS, PROMOTION_REQUIRED_ACCOUNTS, PROMOTION_VERIFICATION_ACCOUNT, PROMOTION_COLLECTIONS, defaultPromotion, instagramHandle, instagramPostUrl, promotionOpen, promotionLinkEvents, distinctFriendMentions} from './instagram-promotion-rules.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 const fail = (message, status = 400) => {throw Object.assign(Error(message), {status});};
 const state = old => old || {config: defaultPromotion(), challenges: {}, bindings: {}, identityOwners: {}, claims: [], comments: {}};
-const identityKeys = binding => PROMOTION_ACCOUNTS.map(a => `${a.id}:${binding.accounts[a.id]?.senderId}`);
+const identityKeys = binding => PROMOTION_ACCOUNTS.filter(a => binding.accounts[a.id]?.senderId).map(a => `${a.id}:${binding.accounts[a.id].senderId}`);
 const publicClaim = claim => claim ? {id: claim.id, code: claim.code, username: claim.username, issuedAt: claim.issuedAt, expiresAt: claim.expiresAt} : null;
 const privateClaim = (s, member) => s.claims.find(c => c.memberId === member.id);
 const assertOpen = (s, now) => {if (!promotionOpen(s.config, now)) fail('A promoção ainda não está disponível ou já encerrou.', 409);};
@@ -32,10 +32,10 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
       campaign: {...s.config, collectionIds: PROMOTION_COLLECTIONS, open: promotionOpen(s.config, now())},
       email: member.email, emailVerified: emailIsVerified(member),
       instagram: binding ? {username: binding.username, verifiedAt: binding.verifiedAt} : null,
-      pending: pending ? {username: pending.username, expiresAt: new Date(pending.expiresAt).toISOString(), received: PROMOTION_ACCOUNTS.filter(a => pending.accounts[a.id]).map(a => a.username), error: pending.error || null} : null,
+      pending: pending ? {username: pending.username, expiresAt: new Date(pending.expiresAt).toISOString(), delivery: pending.delivery || 'manual', received: PROMOTION_REQUIRED_ACCOUNTS.filter(a => pending.accounts[a.id]).map(a => a.username), error: pending.error || null} : null,
       coupon: publicClaim(claim), products,
       redemption: order ? {orderId: order.id, productId: order.productIds?.[0], productName: order.items?.[0]?.name, status: order.status} : null,
-      accounts: PROMOTION_ACCOUNTS.map(({id, username}) => ({id, username})),
+      accounts: PROMOTION_REQUIRED_ACCOUNTS.map(({id, username}) => ({id, username})),
     };
   }
   return {
@@ -47,9 +47,9 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
     async check(member) {
       member = await currentMember(member);
       const s = await read(), binding = s.bindings[member.id];
-      const checks = {email:emailIsVerified(member), instagram:Boolean(binding), follows:PROMOTION_ACCOUNTS.map(a => ({username:a.username, status:'pending'})), comment:'pending', checkedAt:new Date(now()).toISOString()};
+      const checks = {email:emailIsVerified(member), instagram:Boolean(binding), follows:PROMOTION_REQUIRED_ACCOUNTS.map(a => ({username:a.username, status:'pending'})), comment:'pending', checkedAt:new Date(now()).toISOString()};
       if (!checks.email || !binding) return {checks};
-      const profiles = await Promise.allSettled(PROMOTION_ACCOUNTS.map(a => readProfile(a.id, binding.accounts[a.id].senderId)));
+      const profiles = await Promise.allSettled(PROMOTION_REQUIRED_ACCOUNTS.map(a => readProfile(a.id, binding.accounts[a.id].senderId)));
       for (let i=0;i<profiles.length;i++) {
         const result=profiles[i], p=result.status==='fulfilled'?result.value:null;
         checks.follows[i].status=!p || p.errorCode || !p.username || p.follows == null ? 'unavailable' : instagramHandle(p.username)!==binding.username ? 'relink' : p.follows===true ? 'complete' : 'missing';
@@ -62,13 +62,14 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
       }
       return {checks};
     },
-    async admin() {const s = await read(); return {config: s.config, accounts: PROMOTION_ACCOUNTS.map(({id, username}) => ({id, username})), issued: s.claims.length, connected: api.ready()};},
+    async admin() {const s = await read(); return {config: s.config, accounts: PROMOTION_REQUIRED_ACCOUNTS.map(({id, username}) => ({id, username})), issued: s.claims.length, connected: api.ready()};},
     async configure(input) {
       if (typeof input?.active !== 'boolean' || !PROMOTION_ACCOUNTS.some(a => a.id === input.accountId)) fail('Configuração inválida.');
       const start = Date.parse(input.startsAt), end = Date.parse(input.endsAt);
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) fail('Confira as datas da campanha.');
       const postUrl = input.postUrl ? instagramPostUrl(input.postUrl) : '';
       if (input.postUrl && !postUrl) fail('Informe o link de uma publicação ou reel do Instagram.');
+      if (postUrl && input.accountId !== PROMOTION_VERIFICATION_ACCOUNT.id) fail('Publique o post da promoção em @tiolira3d para confirmar o Instagram pelo Direct.');
       if (input.active && (!postUrl || !api.ready() || end < now())) fail('Configure um post válido, as conexões do Instagram e uma data futura antes de ativar.');
       const before = await read();
       if (before.config.version !== input.version) fail('A campanha mudou. Recarregue antes de salvar.', 409);
@@ -86,19 +87,44 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
       const username = instagramHandle(input?.username);
       if (!username || PROMOTION_ACCOUNTS.some(a => a.username === username)) fail('Informe o Instagram pessoal que participará da promoção.');
       if (!api.ready()) fail('A conexão com o Instagram está temporariamente indisponível.', 503);
-      const code = randomBytes(12).toString('hex').toUpperCase(), hash = digest(code), createdAt = now();
+      const before=await read(), accountId=PROMOTION_VERIFICATION_ACCOUNT.id;
+      const candidate=before.config.mediaId && before.config.accountId===accountId ? await api.findLinkComment(before.config,username) : null;
+      const code=randomBytes(12).toString('hex').toUpperCase(), hash=digest(code), createdAt=now();
+      const eligible=candidate && now()-Date.parse(candidate.timestamp)<7*24*60*60_000;
+      let reused, sendPrivate=false;
       await updateRecord(PROMOTION_KEY, old => {
-        const s = state(old);
-        // Each new request supersedes the previous challenge, never the identity history or claims.
-        for (const [key, c] of Object.entries(s.challenges)) if (c.memberId === member.id || c.expiresAt <= now()) delete s.challenges[key];
-        s.challenges[hash] = {memberId: member.id, version: member.version, emailHash: digest(normalizedEmail(member.email)), username, createdAt, expiresAt: createdAt + 30 * 60_000, accounts: {}};
+        const s=state(old);
+        const previous=Object.values(s.challenges).find(c=>c.memberId===member.id && c.username===username && c.version===member.version && c.emailHash===digest(normalizedEmail(member.email)) && c.expiresAt>now() && ['sending','private_reply'].includes(c.delivery));
+        if(previous){reused=previous;return s;}
+        if(s.config.version!==before.config.version)fail('A campanha mudou. Tente confirmar novamente.',409);
+        const identity=candidate && `${accountId}:${candidate.from.id}`;
+        if(identity && s.identityOwners[identity] && s.identityOwners[identity]!==member.id)fail('Este Instagram já está vinculado a outro cadastro.',409);
+        for(const [key,c] of Object.entries(s.challenges))if(c.memberId===member.id || c.expiresAt<=now())delete s.challenges[key];
+        s.privateReplies ||= {};
+        sendPrivate=Boolean(eligible && !s.privateReplies[candidate.id]);
+        if(sendPrivate)s.privateReplies[candidate.id]={status:'reserved',challengeHash:hash,createdAt};
+        s.challenges[hash]={memberId:member.id,version:member.version,emailHash:digest(normalizedEmail(member.email)),username,createdAt,expiresAt:createdAt+30*60_000,accounts:{},delivery:sendPrivate?'sending':'manual',expectedSenderId:candidate?String(candidate.from.id):null};
         return s;
       });
-      return {message: `CUPOM ${code}`, expiresAt: new Date(createdAt + 30 * 60_000).toISOString()};
+      if(reused)return {delivery:reused.delivery,expiresAt:new Date(reused.expiresAt).toISOString()};
+      if(sendPrivate){
+        try {
+          await api.sendPrivateReply(candidate.id,`Você solicitou a confirmação do seu Instagram no site Tio Lira? Para vincular este Instagram ao cadastro que fez a solicitação, responda esta mensagem copiando a linha abaixo:\n\nCUPOM ${code}\n\nO código vale por 30 minutos. Confirme somente se você iniciou o pedido em tiolira.com.br. Caso contrário, ignore esta mensagem.`);
+        } catch {
+          // The delivery may have succeeded despite a timeout. Never send a second private reply.
+          await updateRecord(PROMOTION_KEY,old=>{const s=state(old);if(s.challenges[hash])s.challenges[hash].delivery='manual';if(s.privateReplies[candidate.id]?.challengeHash===hash)s.privateReplies[candidate.id].status='uncertain';return s;});
+          return {delivery:'manual',message:`CUPOM ${code}`,expiresAt:new Date(createdAt+30*60_000).toISOString()};
+        }
+        await updateRecord(PROMOTION_KEY,old=>{const s=state(old);if(s.challenges[hash])s.challenges[hash].delivery='private_reply';if(s.privateReplies[candidate.id]?.challengeHash===hash)s.privateReplies[candidate.id].status='sent';return s;});
+        return {delivery:'private_reply',expiresAt:new Date(createdAt+30*60_000).toISOString()};
+      }
+      return {delivery:'manual',message:`CUPOM ${code}`,expiresAt:new Date(createdAt+30*60_000).toISOString()};
     },
     async receive(payload) {
       for (const event of promotionLinkEvents(payload)) {
+        if(event.accountId!==PROMOTION_VERIFICATION_ACCOUNT.id)continue;
         const hash = digest(event.code), initial = (await read()).challenges[hash];
+        if (initial?.expectedSenderId && initial.expectedSenderId!==event.senderId) continue;
         if (!initial || initial.expiresAt <= now() || event.timestamp < initial.createdAt - 5000 || event.timestamp > now() + 60_000) continue;
         const member = await getMember(initial.memberId);
         if (!member || member.version !== initial.version || !emailIsVerified(member) || digest(normalizedEmail(member.email)) !== initial.emailHash) continue;
@@ -111,7 +137,7 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
           const identity = `${event.accountId}:${event.senderId}`, owner = s.identityOwners[identity];
           if (owner && owner !== member.id) {challenge.error = 'Este Instagram já está vinculado a outro cadastro.'; return s;}
           challenge.accounts[event.accountId] = {senderId: event.senderId}; delete challenge.error;
-          if (PROMOTION_ACCOUNTS.every(a => challenge.accounts[a.id])) {
+          if (PROMOTION_REQUIRED_ACCOUNTS.every(a => challenge.accounts[a.id])) {
             const keys = identityKeys(challenge);
             if (keys.some(key => s.identityOwners[key] && s.identityOwners[key] !== member.id)) {challenge.error = 'Este Instagram já está vinculado a outro cadastro.'; return s;}
             const binding = {id: randomUUID(), username: challenge.username, accounts: challenge.accounts, verifiedAt: new Date(now()).toISOString()};
@@ -149,11 +175,11 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
       if (existing) return {coupon: publicClaim(existing)};
       assertOpen(before, now());
       const binding = before.bindings[member.id];
-      if (!binding || !PROMOTION_ACCOUNTS.every(a => binding.accounts[a.id]?.senderId)) fail('Comprove seu Instagram enviando o código aos dois perfis.', 409);
-      const profiles = await Promise.all(PROMOTION_ACCOUNTS.map(a => readProfile(a.id, binding.accounts[a.id].senderId)));
+      if (!binding || !PROMOTION_REQUIRED_ACCOUNTS.every(a => binding.accounts[a.id]?.senderId)) fail('Confirme seu Instagram no Direct de @tiolira3d.', 409);
+      const profiles = await Promise.all(PROMOTION_REQUIRED_ACCOUNTS.map(a => readProfile(a.id, binding.accounts[a.id].senderId)));
       if (profiles.some(p => p.errorCode || p.follows === null || !p.username)) fail('Não foi possível consultar seus seguidores agora. Tente novamente em instantes.', 503);
       if (profiles.some(p => instagramHandle(p.username) !== binding.username)) fail('Seu @ mudou. Vincule novamente o Instagram antes de continuar.', 409);
-      if (profiles.some(p => p.follows !== true)) fail('Siga @tiolira e @tiolira3d para participar.', 409);
+      if (profiles.some(p => p.follows !== true)) fail('Siga @tiolira3d para participar.', 409);
       const cached = before.comments[`${before.config.mediaId}:${binding.accounts[before.config.accountId].senderId}`] || [];
       const comment = await api.findComment(before.config, binding, cached);
       if (!comment) fail('Comente no post da promoção com dois @ diferentes. Não conte seu próprio perfil, @tiolira ou @tiolira3d.', 409);

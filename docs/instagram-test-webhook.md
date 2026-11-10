@@ -1,47 +1,37 @@
 # Promoção Instagram — um download de Noel
 
-Campanha `instagram-noeis-2026-11`. O participante escolhe **um único modelo do Brasileirão ou da Champions**, nas coleções `noeis-brasileirao` e `35b06e0a-ada0-4df9-93e5-4ce39766915a`.
+Campanha `instagram-noeis-2026-11`. Um único modelo disponível do Brasileirão OU da Champions. Página pública `/pt/promocao`, atalho `/promocao`; administração em Promoção Instagram.
 
-## Ativação
+## Regras atuais
 
-A campanha começa em rascunho, sem post e sem emitir cupons. Em **Admin → Promoção Instagram**, selecione o perfil proprietário do post, informe o link publicado, confira o período e ative. O servidor resolve o post pela API oficial antes de aceitar a ativação. O prazo padrão termina em 30/11/2026 às 23:59:59 de Maceió.
+Email confirmado, Instagram comprovado por **uma conversa com @tiolira3d**, seguir @tiolira3d, comentar dois @ distintos no post da campanha. Seguir @tiolira e curtir o post são convites; não bloqueiam o cupom. Não contar o próprio perfil nem os perfis da marca nas menções.
 
-A página pública é `/pt/promocao`, com atalho `/promocao`. O login retorna à mesma página; a lista de progresso consulta cada requisito sem emitir cupom. A emissão faz uma nova consulta. A página `/pt/privacidade-instagram` descreve os dados e o canal de solicitação de exclusão.
+A campanha começa em rascunho. O administrador informa um post de **@tiolira3d**, confere datas e ativa. Padrão até 30/11/2026 23:59:59 de Maceió. O banner usa Flamengo (Noel Mengão), São Paulo, Barcelona e Arsenal do catálogo.
 
-## Participação
+## Confirmação simplificada
 
-1. Entrar na área do parceiro e abrir **Promoção Instagram**.
-2. Confirmar o email com o código recebido (15 minutos; cinco tentativas).
-3. Informar o @ e enviar o código individual `CUPOM …` pelo Direct aos dois perfis. Apenas informar um nome não comprova posse. O código vence em 30 minutos.
-4. Seguir @tiolira e @tiolira3d e comentar dois @ distintos no post definido. Curtida não é exigida.
-5. Conferir as regras, obter o cupom pessoal e escolher um modelo para download.
-
-O servidor consulta os seguidores e o comentário antes de emitir. A Meta fornece autor, texto e post; a aplicação conta os @. Não se comprova amizade nem existência das contas mencionadas apenas pelo texto. Autor, perfil vinculado e post precisam coincidir. O próprio participante e os dois perfis da marca não contam como convidados.
+1. A pessoa confirma seu email pelo código de oito dígitos (15 minutos, cinco tentativas). A mensagem HTML usa a identidade Tio Lira e inclui texto alternativo.
+2. Informa o @ no site. Se houver comentário elegível nesse post de @tiolira3d e dentro de sete dias, o servidor envia uma resposta privada com código individual. A pessoa **responde** ao Direct; somente receber a mensagem não comprova posse nem libera consulta de perfil.
+3. Sem comentário elegível ou se a resposta privada já foi usada/ficou incerta, o site fornece uma mensagem para a pessoa iniciar a conversa com @tiolira3d. Nunca inicia conversa arbitrária apenas pelo @.
+4. O webhook assinado recebe a resposta, confere o autor e vincula o ID estável ao cadastro. O código vence em 30 minutos. Uma reserva atômica evita respostas privadas duplicadas para o mesmo comentário, inclusive em concorrência/timeout.
+5. A lista de progresso mostra cada requisito. A emissão relê seguidores e comentário na Meta; informação indisponível não aprova.
 
 ## Unicidade e resgate
 
-O registro privado `instagram-promotion.json` mantém vínculos por IDs estáveis da Meta (diferentes em cada conta profissional), histórico de proprietários e cupons por campanha, conta, email normalizado e Instagram. Alterações do @ não apagam o histórico. A mesma identidade não pode ser reutilizada por outro cadastro. A emissão usa atualização atômica e retorna o mesmo cupom em tentativas repetidas.
+`instagram-promotion.json` mantém desafios com hash, vínculos e histórico de IDs, reservas de respostas privadas e cupons. Alterar @ ou email não apaga benefícios já emitidos. A mesma identidade não pode ser vinculada a outro cadastro. IDs antigos de ambos os perfis permanecem no histórico; novos vínculos usam @tiolira3d.
 
-O resgate grava consumo do cupom, pedido gratuito, licença e acesso ao arquivo na mesma atualização atômica de `commerce.json`. É permitido um modelo total, não um por coleção. O cupom pessoal não funciona no carrinho comum. Modelos indisponíveis ou já adquiridos são rejeitados.
+O cupom é pessoal e não funciona no carrinho comum. Consumo, pedido gratuito, licença e acesso ao arquivo são gravados atomicamente em `commerce.json`. Uma única escolha total; tentativas repetidas retornam o mesmo pedido. Modelos indisponíveis ou já adquiridos não podem ser resgatados.
 
-## Configuração privada
+## Ambiente
 
-Além do banco existente, configure apenas no servidor (nunca `NEXT_PUBLIC_`):
+Banco existente e credenciais privadas de servidor: `RESEND_API_KEY`, `EMAIL_FROM`, `SITE_URL`, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `META_TIOLIRA_ACCESS_TOKEN`, `META_TIOLIRA3D_ACCESS_TOKEN`. Nunca usar prefixo NEXT_PUBLIC_.
 
-- `RESEND_API_KEY`, `EMAIL_FROM`, `SITE_URL` para confirmação de email.
-- `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`.
-- `META_TIOLIRA_ACCESS_TOKEN`, `META_TIOLIRA3D_ACCESS_TOKEN`.
+Callback `https://www.tiolira.com.br/api/instagram/webhook`. messages/comments assinados no app e nas duas contas. App Meta publicado em 10/11/2026. Tokens atuais expiram em janeiro de 2027. @tiolira permanece conectado para o piloto e futuras funcionalidades; a promoção exige só @tiolira3d.
 
-Callback: `https://www.tiolira.com.br/api/instagram/webhook`. Ative `messages` e `comments` no objeto Instagram do app e em `subscribed_apps` de ambos os perfis. O POST exige HMAC-SHA256 válido; falhas transitórias retornam erro para nova entrega. Não são enviadas respostas automáticas pelo Direct.
+Privacidade e canal de exclusão em `/pt/privacidade-instagram`, cadastrados na Meta. O texto do comentário e os nomes dos amigos não são persistidos pelo módulo da promoção; só IDs para reconsulta. Não se comprova amizade ou existência de contas mencionadas apenas pelo texto. Busca complementar limitada a 500 comentários; em caso de limite, falha sem emitir cupom.
 
-Tokens atuais expiram em janeiro de 2027; renovar antes de reutilizar a integração. O app ainda está em desenvolvimento: conferir acesso de produção e permissões/revisão da Meta antes de divulgar para participantes externos.
-
-Comentários recebidos pelo webhook mantêm apenas IDs para consulta posterior. A emissão relê o comentário na Meta, incluindo exclusão/ocultação, com busca complementar limitada a 500 comentários. Se não conseguir confirmar, não libera cupom. Uma campanha grande precisa acompanhar esse limite e o recebimento de eventos.
-
-O piloto `TESTE CUPOM` continua disponível, sem emitir benefícios, em registros privados `instagram-tests/…`. Seguidores desconhecidos ou erros nunca contam como aprovação.
-
-## Validação
+## Verificação
 
 `node --test tests/instagram-promotion.test.mjs tests/instagram-webhook.test.mjs tests/cart-coupons.test.mjs tests/partner-navigation.test.mjs`
 
-Cobertura: email, posse por dois Directs, identidade/conta/email repetidos, concorrência, comentário e seguidores, assinatura do webhook, autenticação, CSRF e resgate atômico. Fluxo visual exercitado localmente com Meta e email simulados. Consulta real da relação de seguidores validada com @tiolirapescador; validação completa do comentário da campanha depende do post ainda não publicado.
+O teste real de seguidores já confirmou @tiolirapescador nos dois perfis. Antes de abrir a campanha, publicar/vincular o post e validar o novo fluxo completo com comentário e confirmação de Direct em conta externa.
