@@ -1,0 +1,18 @@
+.home-promotion-banner{position:fixed;right:24px;bottom:max(24px,env(safe-area-inset-bottom));z-index:40;width:420px;max-width:calc(100vw - 32px);padding:22px;border:1px solid #d8c9aa;border-radius:22px;background:#fff9ed;color:#303b29;box-shadow:0 16px 60px #25311b33;font-family:'DM Sans',Arial,sans-serif;box-sizing:border-box}
+.home-promotion-banner *{box-sizing:border-box}
+.home-promotion-close{position:absolute;top:4px;right:4px;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:transparent;color:#303b29;font:28px/1 Arial,sans-serif;cursor:pointer}
+.home-promotion-close:hover{background:#e9dfca}
+.home-promotion-banner :focus-visible{outline:3px solid #bc623d;outline-offset:3px}
+.home-promotion-content{display:grid;grid-template-columns:128px minmax(0,1fr);gap:18px;align-items:center}
+.home-promotion-content>img{display:block;width:128px;height:144px;object-fit:cover;border-radius:14px}
+.home-promotion-banner .home-promotion-eyebrow{margin:0 20px 8px 0;font-size:9px;font-weight:700;letter-spacing:.12em;line-height:1.5;color:#916443}
+.home-promotion-banner h2{margin:0;font-family:Manrope,Arial,sans-serif;font-size:25px;line-height:1.12;font-weight:600;letter-spacing:-.055em}
+.home-promotion-banner h2 em{color:#ac4f30;font-style:normal}
+.home-promotion-banner .home-promotion-description{margin:10px 0 0;font-size:12px;line-height:1.5;color:#5e6556}
+.home-promotion-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid #e5dcc9}
+.home-promotion-footer>span{font-size:12px;font-weight:700;white-space:nowrap}
+.home-promotion-footer small{display:block;margin-top:4px;font-size:10px;font-weight:400;color:#6b715f}
+.home-promotion-footer>a{display:flex;align-items:center;justify-content:center;gap:20px;min-height:44px;padding:12px 18px;border-radius:30px;background:#34492f;color:#fff9ed;text-decoration:none;font-size:13px;font-weight:600;line-height:1.2}
+.home-promotion-footer>a:hover{background:#24391f}
+@media(max-width:600px){.home-promotion-banner{right:12px;bottom:max(12px,env(safe-area-inset-bottom));width:360px;max-width:calc(100vw - 24px);padding:17px;border-radius:18px}.home-promotion-content{grid-template-columns:98px minmax(0,1fr);gap:14px}.home-promotion-content>img{width:98px;height:120px;border-radius:11px}.home-promotion-banner h2{font-size:22px}.home-promotion-banner .home-promotion-eyebrow{font-size:8px;letter-spacing:.08em;margin-right:22px}.home-promotion-banner .home-promotion-description{font-size:11px;margin-top:8px}.home-promotion-footer{margin-top:14px;padding-top:12px}.home-promotion-footer>a{gap:12px;padding:12px 16px}}
+@media(max-height:500px){.home-promotion-content>img{height:88px}.home-promotion-banner{padding:14px}.home-promotion-banner h2{font-size:20px}.home-promotion-banner .home-promotion-description{display:none}.home-promotion-footer{margin-top:10px;padding-top:10px}}
