@@ -53,7 +53,7 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
       member=await currentMember(member);assertEmail(member);
       await updateRecord(PROMOTION_KEY,old=>{
         const s=state(old),current=s.directTickets?.[hash];
-        if(!current || current.expiresAt<=now())fail('Este link expirou. Toque novamente em Participar da promoção no Direct.',409);
+        if(!current || current.expiresAt<=now())fail('Este link expirou. Envie PARTICIPAR ou toque em Participar da promoção no Direct.',409);
         if(current.memberId && current.memberId!==member.id)fail('Este link já foi usado em outro cadastro.',409);
         const identity=`${PROMOTION_VERIFICATION_ACCOUNT.id}:${ticket.senderId}`;
         if(s.identityOwners[identity] && s.identityOwners[identity]!==member.id)fail('Este Instagram já está vinculado a outro cadastro.',409);

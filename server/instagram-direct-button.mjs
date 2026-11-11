@@ -8,8 +8,9 @@ export function directButtonEvents(payload) {
   if (payload?.object !== 'instagram' || !Array.isArray(payload.entry)) return [];
   return payload.entry.flatMap(entry => entry?.id !== PROMOTION_VERIFICATION_ACCOUNT.id || !Array.isArray(entry.messaging) ? [] : entry.messaging.flatMap(e => {
     const value = e?.postback?.payload || e?.message?.quick_reply?.payload;
+    const keyword = typeof e?.message?.text === 'string' && e.message.text.trim().toUpperCase() === 'PARTICIPAR';
     const mid = e?.postback?.mid || e?.message?.mid;
-    if (value !== DIRECT_PAYLOAD || e?.message?.is_echo || e?.message?.is_deleted ||
+    if ((!keyword && value !== DIRECT_PAYLOAD) || e?.message?.is_echo || e?.message?.is_deleted ||
       e?.recipient?.id !== entry.id || typeof e?.sender?.id !== 'string' || !/^\d{1,30}$/.test(e.sender.id) || e.sender.id === entry.id ||
       typeof mid !== 'string' || !mid || mid.length > 512 || !Number.isSafeInteger(e.timestamp) || e.timestamp <= 0) return [];
     return [{senderId:e.sender.id, mid, timestamp:e.timestamp}];
@@ -54,7 +55,7 @@ export function createDirectButton({read, updateRecord, api, readProfile, now}) 
     async ticket(value, memberId) {
       if(typeof value!=='string' || !/^[a-f0-9]{64}$/.test(value)) fail('Abra o link recebido no Direct de @tiolira3d.',400);
       const hash=directDigest(value), ticket=(await read()).directTickets?.[hash];
-      if(!ticket || ticket.expiresAt<=now()) fail('Este link expirou. Toque novamente em Participar da promoção no Direct.');
+      if(!ticket || ticket.expiresAt<=now()) fail('Este link expirou. Envie PARTICIPAR ou toque em Participar da promoção no Direct.');
       if(ticket.memberId && ticket.memberId!==memberId) fail('Este link já foi usado em outro cadastro.');
       return {hash,ticket};
     },

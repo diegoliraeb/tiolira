@@ -76,6 +76,18 @@ test('Instagram promotion: ownership, verification, uniqueness and atomic redemp
       await assert.rejects(f.service.completeDirect(other,{ticket:next}),/outro cadastro/);
       f.setTime(f.now()+31*60_000);await assert.rejects(f.service.completeDirect(f.member,{ticket:next}),/expirou/);
     });
+    await t.test('PARTICIPAR creates a private ticket that confirms ownership and cannot issue a second coupon',async()=>{
+      const f=await fixture();
+      const payload=f.payload('  participar  ',1);
+      await f.service.receive(payload);await f.service.receive(payload);
+      assert.equal(f.directSent.length,1);
+      const ticket=f.directSent[0].url.split('/').at(-1);
+      await f.service.completeDirect(f.member,{ticket});
+      const first=await f.service.claim(f.member);
+      f.setTime(f.now()+61_000);await f.service.receive(f.payload('PARTICIPAR',1));
+      await f.service.completeDirect(f.member,{ticket:f.directSent[1].url.split('/').at(-1)});
+      assert.deepEqual(await f.service.claim(f.member),first);
+    });
     await t.test('Direct confirmation requires current verified email and rejects fabricated tickets',async()=>{
       const f=await fixture({verified:false});
       const payload={object:'instagram',entry:[{id:accounts[1].id,messaging:[{sender:{id:'9911'},recipient:{id:accounts[1].id},timestamp:f.now(),postback:{mid:'click-3',payload:DIRECT_PAYLOAD}}]}]};

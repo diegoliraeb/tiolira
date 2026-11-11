@@ -38,10 +38,30 @@ test('Meta configuration preserves subscription fields and verifies both button 
   assert.equal(requests.length,5);
 });
 test('Direct links use a fragment and navigation stays on promotion',async()=>{
-  const ticket='a'.repeat(64);let message;
-  const api=instagramDirectApi({env:{[account.env]:'fake'},fetcher:async(url,options)=>{message=JSON.parse(options.body);return Response.json({message_id:'sent'});}});
+  const ticket='a'.repeat(64);const messages=[];
+  const api=instagramDirectApi({env:{[account.env]:'fake'},fetcher:async(url,options)=>{messages.push(JSON.parse(options.body));return Response.json({message_id:'sent'});}});
   await api.sendDirectLink('1234',`https://www.tiolira.com.br/pt/clube#promocao/instagram/${ticket}`);
+  assert.equal(messages.length,2);
+  assert.equal(messages[0].recipient.id,'1234');
+  assert.ok(messages[0].message.text.includes(`https://www.tiolira.com.br/pt/clube#promocao/instagram/${ticket}`));
+  const message=messages[1];
   assert.equal(message.recipient.id,'1234');
   const url=new URL(message.message.attachment.payload.buttons[0].url);assert.equal(url.search,'');assert.equal(partnerRoute(url.hash).section,'promocao');
   assert.equal(partnerRoute('#promocao/instagram/not-a-ticket').section,'inicio');
 });
+
+ test('PARTICIPAR text works without a button; unrelated text, echoes and deleted messages do not',()=>{
+  const wrap=(text,extra={})=>({object:'instagram',entry:[{id:account.id,messaging:[{sender:{id:'1234'},recipient:{id:account.id},timestamp:123456,message:{mid:'text-mid',text,...extra}}]}]});
+  for(const text of ['PARTICIPAR','participar','  Participar\n'])assert.equal(directButtonEvents(wrap(text)).length,1);
+  for(const text of ['Oi','Não quero participar','PARTICIPAR agora','TESTE CUPOM',''])assert.equal(directButtonEvents(wrap(text)).length,0);
+  assert.equal(directButtonEvents(wrap('PARTICIPAR',{is_echo:true})).length,0);
+  assert.equal(directButtonEvents(wrap('PARTICIPAR',{is_deleted:true})).length,0);
+ });
+ test('a hidden or failed mobile template cannot invalidate an already delivered text link',async()=>{
+   let calls=0;
+   const api=instagramDirectApi({env:{[account.env]:'fake'},fetcher:async()=>++calls===1?Response.json({message_id:'text-sent'}):Response.json({error:{code:100}},{status:400})});
+   assert.deepEqual(await api.sendDirectLink('1234','https://www.tiolira.com.br/pt/clube#test'),{sent:true,buttonSent:false});
+   assert.equal(calls,2);
+   const unavailable=instagramDirectApi({env:{[account.env]:'fake'},fetcher:async()=>Response.json({error:{code:10}},{status:400})});
+   await assert.rejects(unavailable.sendDirectLink('1234','https://www.tiolira.com.br/pt/clube#test'));
+ });

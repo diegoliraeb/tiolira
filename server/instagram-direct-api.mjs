@@ -48,12 +48,22 @@ export function instagramDirectApi({fetcher=fetch,env=process.env}={}) {
       if(!JSON.stringify(value.ice_breakers||[]).includes(DIRECT_PAYLOAD) || !JSON.stringify(value.persistent_menu||[]).includes(DIRECT_PAYLOAD))fail('A Meta ainda não confirmou o botão. Tente configurar novamente.');
       return {configured:true};
     },
-    sendDirectLink(senderId,url) {
-      return send(senderId,{attachment:{type:'template',payload:{template_type:'button',text:'Confirme seu Instagram no Clube Tio Lira pelo botão abaixo. Entre na sua conta e confirme seu e-mail, se necessário. O link é pessoal, vale por 30 minutos e não deve ser compartilhado.',buttons:[{type:'web_url',title:'Confirmar no site',url}]}}});
+    async sendDirectLink(senderId,url) {
+      // A real text message keeps the URL clickable on Instagram Web, where
+      // template buttons may be hidden. Both messages use the same one-use ticket.
+      await send(senderId,{text:`Confirme seu Instagram no Clube Tio Lira pelo link abaixo:\n\n${url}\n\nEntre na sua conta e confirme seu e-mail, se necessário. O link é pessoal, vale por 30 minutos e não deve ser compartilhado.`});
+      try {
+        await send(senderId,{attachment:{type:'template',payload:{template_type:'button',text:'No aplicativo do Instagram, você também pode usar este botão para abrir o mesmo link de confirmação.',buttons:[{type:'web_url',title:'Confirmar no site',url}]}}});
+        return {sent:true,buttonSent:true};
+      } catch {
+        // Text delivery already succeeded. A mobile-button failure must not mark
+        // the usable link as failed or cause duplicate confirmation messages.
+        return {sent:true,buttonSent:false};
+      }
     },
     sendDirectTest() {
       // Explicitly authorized test account @tiolirapescador; never accept an arbitrary recipient.
-      return send('1112002325053280',{attachment:{type:'template',payload:{template_type:'button',text:'Participar da promoção · Tio Lira. Toque abaixo para testar a confirmação do seu Instagram, sem digitar código.',buttons:[{type:'postback',title:'Participar',payload:DIRECT_PAYLOAD}]}}});
+      return send('1112002325053280',{attachment:{type:'template',payload:{template_type:'button',text:'Participar da promoção · Tio Lira. Toque no botão ou envie PARTICIPAR para receber seu link de confirmação.',buttons:[{type:'postback',title:'Participar',payload:DIRECT_PAYLOAD}]}}});
     },
   };
 }
