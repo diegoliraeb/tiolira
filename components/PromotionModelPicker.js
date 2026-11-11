@@ -13,7 +13,7 @@ export default function PromotionModelPicker({products, productId, onSelect, bus
                 <label htmlFor={`${progressId}-model-search`}>Buscar modelo</label>
                 <div className="ig-model-search">
                   <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
-                  <input id={`${progressId}-model-search`} type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Digite o nome do time…" aria-controls={`${progressId}-model-results`} autoComplete="off"/>
+                  <input id={`${progressId}-model-search`} type="search" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => {if (e.key === 'Enter') e.preventDefault();}} placeholder="Digite o nome do time…" aria-controls={`${progressId}-model-results`} autoComplete="off"/>
                 </div>
                 <div className="ig-model-results-heading"><p role="status">{matchingProducts.length === 1 ? '1 modelo encontrado' : `${matchingProducts.length} modelos encontrados`}</p><span>Toque em um Noel para escolher</span></div>
                 {matchingProducts.length ? <div className="ig-model-results" id={`${progressId}-model-results`} role="group" aria-label="Modelos disponíveis para resgate">
