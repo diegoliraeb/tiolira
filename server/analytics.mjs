@@ -1,3 +1,4 @@
+import {promotionAnalyticsReport} from './promotion-analytics.mjs';
 import {cartState} from './cart-state.mjs';
 export {cartState} from './cart-state.mjs';
 import {reminderReport} from './cart-reminders.mjs';
@@ -71,7 +72,8 @@ export async function analyticsReport(daysInput=30,now=Date.now()){
  const ranking=catalog.products.map(p=>({id:p.id,name:p.name,slug:p.slug,image:p.image,views:products[p.id]||0,clicks:clicks[p.id]||0,sales:sales[p.id]||0,downloads:commerce?.data?.downloads?.[p.id]||0}));
  const members=membersRecord?.data?.members||[],feedback=feedbackRecord?.data;
  const reminders=await reminderReport(Object.values(cartRecord?.data?.carts||{}),allOrders,now);
- return {reminders,days,start,end,startedAt:meta?.data?.startedAt||null,generatedAt:new Date(now).toISOString(),limited:records.some(r=>r?.data?.limited),series,sources,devices,languages,pages,ranking,
+ const promotion=await promotionAnalyticsReport({start,end,pages},now);
+ return {promotion,reminders,days,start,end,startedAt:meta?.data?.startedAt||null,generatedAt:new Date(now).toISOString(),limited:records.some(r=>r?.data?.limited),series,sources,devices,languages,pages,ranking,
  summary:{views:series.reduce((s,d)=>s+d.views,0),sessions:series.reduce((s,d)=>s+d.sessions,0),orders:orders.length,paid:paid.length,pending:pending.length,conversion:orders.length?paid.length/orders.length*100:0,revenueBRL:paid.filter(o=>o.currency!=='USD').reduce((s,o)=>s+o.totalCents,0),revenueUSD:paid.filter(o=>o.currency==='USD').reduce((s,o)=>s+o.totalCents,0),abandoned:abandoned.length,activeCarts:carts.filter(c=>c.status==='active').length,abandonedBRL:abandoned.filter(c=>c.currency!=='USD').reduce((s,c)=>s+c.totalCents,0),abandonedUSD:abandoned.filter(c=>c.currency==='USD').reduce((s,c)=>s+c.totalCents,0),members:members.length,newMembers:members.filter(m=>inRange(m.createdAt)).length,downloadsTotal:Object.values(commerce?.data?.downloads||{}).reduce((s,v)=>s+v,0),reviewsPending:feedback?.reviews.filter(r=>r.status==='pending').length||0,requestsPending:feedback?.threads.filter(t=>t.status==='received').length||0},
  abandoned:abandoned.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(({sequence,memberId,...c})=>({...c,reminder:reminders.carts[c.cartId+':'+memberId]})),
  pendingOrders:pending.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(o=>({id:o.id,memberName:o.memberName,memberEmail:o.memberEmail,createdAt:o.createdAt,totalCents:o.totalCents,currency:o.currency||'BRL',status:o.status,items:o.items.map(i=>i.name)}))};

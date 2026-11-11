@@ -1,3 +1,4 @@
+import {recordPromotionDownload} from './promotion-downloads.mjs';
 import {isCourtesyCode} from './brasileirao-courtesy.mjs';
 import {collectionAccess} from './collection-access.mjs';
 import {memberNatalState,natalReservation} from './natal-promotion.mjs';
@@ -198,7 +199,7 @@ export async function receiveWebhook(input,{emailRequired=false}={}){
 export async function recordDownload(member,product){
  const event={productId:product.id,productName:product.name,memberId:member.id,memberName:member.name,at:new Date().toISOString()};
  await updateRecord(KEY,old=>{
-  const s=state(old);s.downloadPartners=downloadPartners(s);
+  const s=state(old);recordPromotionDownload(s,event);s.downloadPartners=downloadPartners(s);
   addPartnerDownload(s.downloadPartners,event);
   s.downloads[product.id]=(s.downloads[product.id]||0)+1;
   s.recentDownloads=[event,...s.recentDownloads].slice(0,500);return s;

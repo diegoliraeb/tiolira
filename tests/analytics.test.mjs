@@ -16,7 +16,7 @@ test('coarse traffic sources, allowed pages and Maceio day boundaries',()=>{
  assert.equal(trafficSource('https://unknown.example/path?email=x'),'other');
  assert.equal(trafficSource('','google'),'google');assert.equal(trafficSource(''),'direct');
  assert.equal(trafficSource('https://www.tiolira.com.br/admin'),'internal');
- assert.equal(activityPage('/pt/clube').kind,'clube');assert.equal(activityPage('/fr/produto/saci').lang,'fr');
+ assert.equal(activityPage('/pt/promocao').kind,'promocao');assert.equal(activityPage('/pt/clube').kind,'clube');assert.equal(activityPage('/fr/produto/saci').lang,'fr');
  for(const path of ['/admin','/api/club/me','/pt/clube?token=secret','/pt/clube#reset=secret','https://evil.invalid/pt','/pt/unknown'])assert.equal(activityPage(path),null);
  assert.equal(activityDate(Date.parse('2026-10-15T02:59:00Z')),'2026-10-14');
  assert.equal(activityDate(Date.parse('2026-10-15T03:00:00Z')),'2026-10-15');

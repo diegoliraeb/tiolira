@@ -40,6 +40,10 @@ export default function PartnerInstagramPromotion({member, lang, onRedeem}) {
     else if(directTicket && data && !data.emailVerified)setOpenStep('email');
   },[directTicket,data?.emailVerified]);
   const [openStep, setOpenStep] = useState(null);
+  useEffect(()=>{
+    if(!openStep)return;
+    fetch('/api/club/instagram-promotion/activity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({step:openStep}),keepalive:true}).catch(()=>{});
+  },[openStep]);
   const progressId = useId();
   const toggleStep = step => setOpenStep(current => current === step ? null : step);
   const [busy, setBusy] = useState(false), [emailCode, setEmailCode] = useState(''), [username, setUsername] = useState('');

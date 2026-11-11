@@ -15,7 +15,7 @@ const privateClaim = (s, member) => s.claims.find(c => c.memberId === member.id)
 const assertOpen = (s, now) => {if (!promotionOpen(s.config, now)) fail('A promoção ainda não está disponível ou já encerrou.', 409);};
 const assertEmail = member => {if (!emailIsVerified(member)) fail('Confirme seu e-mail antes de participar.', 403);};
 
-export function createInstagramPromotion({readRecord, updateRecord, getMember, getCatalog, readProfile, api, redeemOrder, now = Date.now}) {
+export function createInstagramPromotion({readRecord, updateRecord, getMember, getCatalog, readProfile, api, redeemOrder, onCheck = async () => {}, now = Date.now}) {
   const read = async () => state((await readRecord(PROMOTION_KEY))?.data);
   const direct=createDirectButton({read,updateRecord:(key,fn)=>updateRecord(key,old=>fn(state(old))),api,readProfile,now});
   async function currentMember(member) {
@@ -76,7 +76,8 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
       member = await currentMember(member);
       const s = await read(), binding = s.bindings[member.id];
       const checks = {email:emailIsVerified(member), instagram:Boolean(binding), follows:PROMOTION_REQUIRED_ACCOUNTS.map(a => ({username:a.username, status:'pending'})), comment:'pending', checkedAt:new Date(now()).toISOString()};
-      if (!checks.email || !binding) return {checks};
+      const finish=async()=>{try{await onCheck(member,checks,{configVersion:s.config.version,bindingId:binding?.id});}catch{console.warn('Promotion check analytics unavailable');}return {checks};};
+      if (!checks.email || !binding) return finish();
       const profiles = await Promise.allSettled(PROMOTION_REQUIRED_ACCOUNTS.map(a => readProfile(a.id, binding.accounts[a.id].senderId)));
       for (let i=0;i<profiles.length;i++) {
         const result=profiles[i], p=result.status==='fulfilled'?result.value:null;
@@ -90,7 +91,7 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
           checks.comment=await api.findComment(s.config,binding,cached)?'complete':'missing';
         } catch { checks.comment='unavailable'; }
       }
-      return {checks};
+      return finish();
     },
     async admin() {const s = await read(); return {config: s.config, accounts: PROMOTION_ACCOUNTS.map(({id, username}) => ({id, username})), issued: s.claims.length, connected: api.ready(), directButton:s.directButton||null, directLastInteraction:s.directLastInteraction||null};},
     async configure(input) {

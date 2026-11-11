@@ -1,3 +1,4 @@
+import {safelyRecordPromotion,trackPromotionAction} from './promotion-analytics.mjs';
 import {setCollectionPreparation} from './collection-status.mjs';
 import {instagramPromotion, partnerEmailVerification} from './instagram-promotion-runtime.mjs';
 import {configureDeliveryTracking,receiveEmailDelivery} from './email-delivery-events.mjs';
@@ -82,7 +83,7 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
   if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
-  if(method==='GET'&&route==='club/instagram-promotion')return json(res,200,await instagramPromotion.status(await requireClub(req)));
+  if(method==='GET'&&route==='club/instagram-promotion'){const member=await requireClub(req);return json(res,200,await trackPromotionAction(member,'visit',()=>instagramPromotion.status(member)));}
   if(method==='GET'&&route==='admin/instagram-promotion'){await requireAdmin(req);return json(res,200,await instagramPromotion.admin());}
   if(method==='GET'&&route==='admin/brasileirao-update'){await requireAdmin(req);return json(res,200,await adminBrasileiraoCourtesy());}
   if(method==='GET'&&route==='admin/cart-coupons'){await requireAdmin(req);return json(res,200,await cartCoupons());}
@@ -105,12 +106,17 @@ export default async function handler(req,res){
   const input=await body(req,route);
   if(method==='POST'&&['club/verify-email/request','club/verify-email/confirm'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,route,route.endsWith('/request')?5:15,15*60_000,member.id);
-   return json(res,200,await (route.endsWith('/request')?partnerEmailVerification.request(member):partnerEmailVerification.confirm(member,input)));
+   return json(res,200,await trackPromotionAction(member,route.endsWith('/request')?'email_request':'email_confirm',()=>route.endsWith('/request')?partnerEmailVerification.request(member):partnerEmailVerification.confirm(member,input),{onlyExisting:true}));
+  }
+  if(method==='POST'&&route==='club/instagram-promotion/activity'){
+   const member=await requireClub(req);await rateLimit(req,'promotion-activity',40,60_000,member.id);
+   if(!['email','instagram','follow','comment','coupon'].includes(input.step))fail('Etapa inválida.');
+   await safelyRecordPromotion(member,'step',{step:input.step});return json(res,200,{ok:true});
   }
   if(method==='POST'&&['club/instagram-promotion/link','club/instagram-promotion/direct','club/instagram-promotion/check','club/instagram-promotion/claim','club/instagram-promotion/redeem'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,route,10,10*60_000,member.id);
    const action=route.split('/').at(-1);
-   return json(res,200,await (action==='direct'?instagramPromotion.completeDirect(member,input):action==='link'?instagramPromotion.startLink(member,input):action==='check'?instagramPromotion.check(member):action==='claim'?instagramPromotion.claim(member):instagramPromotion.redeem(member,input)));
+   return json(res,200,await trackPromotionAction(member,action,()=>action==='direct'?instagramPromotion.completeDirect(member,input):action==='link'?instagramPromotion.startLink(member,input):action==='check'?instagramPromotion.check(member):action==='claim'?instagramPromotion.claim(member):instagramPromotion.redeem(member,input)));
   }
   if(method==='POST'&&['admin/instagram-promotion/direct/configure','admin/instagram-promotion/direct/test'].includes(route)){await requireAdmin(req);await rateLimit(req,route,5,60_000);return json(res,200,await (route.endsWith('/configure')?instagramPromotion.configureDirectButton():instagramPromotion.testDirectButton()));}
   if(method==='PUT'&&route==='admin/instagram-promotion'){await requireAdmin(req);await rateLimit(req,'configure-instagram-promotion',10,60_000);return json(res,200,await instagramPromotion.configure(input));}

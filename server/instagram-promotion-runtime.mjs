@@ -1,3 +1,4 @@
+import {safelyRecordPromotion} from './promotion-analytics.mjs';
 import {partnerVerificationEmail} from './partner-verification-email.mjs';
 import {readRecord, updateRecord, getCatalog} from './store.mjs';
 import {createEmailVerification} from './partner-email-verification.mjs';
@@ -23,6 +24,7 @@ export const partnerEmailVerification = createEmailVerification({
 });
 export const instagramPromotion = createInstagramPromotion({
   readRecord, updateRecord, getCatalog,
+  onCheck:(member,checks,context)=>safelyRecordPromotion(member,'check',{checks,context}),
   getMember: async id => (await readRecord('club-members.json'))?.data?.members?.find(m => m.id === id),
   api: instagramPromotionApi(),
   async readProfile(accountId, senderId) {

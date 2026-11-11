@@ -1,3 +1,4 @@
+import {recordPromotionActivity,PROMOTION_ANALYTICS_KEY} from '../server/promotion-analytics.mjs';
 import {DIRECT_PAYLOAD} from '../server/instagram-direct-button.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,7 +42,7 @@ test('Instagram promotion: ownership, verification, uniqueness and atomic redemp
       getMember:async id => (await readRecord('club-members.json')).data.members.find(m => m.id === id),
       readProfile:async accountId => {assert.equal(accountId,accounts[1].id);return {username,follows,errorCode:null};},
       api:{sendDirectLink:async(senderId,url)=>{directSent.push({senderId,url});},ready:() => true, resolvePost:async () => '123456', findComment:async () => commentFound ? {id:'555'} : null, findLinkComment:async()=>autoDirect?{id:'555',from:{id:'9911',username},timestamp:new Date(time).toISOString()}:null, sendPrivateReply:async(id,text)=>{sent.push({id,text});if(sendFails)throw Error('timeout');return {messageId:'sent1'};}},
-      redeemOrder:redeemInstagramOrder});
+      redeemOrder:redeemInstagramOrder,onCheck:(member,checks,context)=>recordPromotionActivity(member,'check',{checks,context},time)});
     await service.configure({...(await service.admin()).config,postUrl:'https://www.instagram.com/p/promotion/',active});
     const payload = (message, index, sender = `991${index}`, stamp = time) => ({object:'instagram',entry:[{id:accounts[index].id,messaging:[{sender:{id:sender},recipient:{id:accounts[index].id},timestamp:stamp,message:{mid:`m-${randomUUID()}`,text:message}}]}]});
     async function link(who = member, handle = 'participante', senderBase = '991') {
@@ -65,6 +66,8 @@ test('Instagram promotion: ownership, verification, uniqueness and atomic redemp
       await f.service.receive(payload);assert.equal(f.directSent.length,1);
       const completed=await f.service.completeDirect(f.member,{ticket});
       assert.equal(completed.checks.instagram,true);assert.equal(completed.checks.follows[0].status,'complete');
+      const recorded=(await readRecord(PROMOTION_ANALYTICS_KEY)).data.participants[f.member.id].lastChecks;
+      assert.equal(recorded.follows,'complete');assert.equal(recorded.comment,'complete');assert.equal(recorded.bindingId,(await readRecord(PROMOTION_KEY)).data.bindings[f.member.id].id);
       await f.service.completeDirect(f.member,{ticket});
       assert.equal((await readRecord(PROMOTION_KEY)).data.claims.length,0);
       const other={...f.member,id:randomUUID(),email:'other@example.invalid',emailVerification:{email:'other@example.invalid',verifiedAt:new Date(f.now()).toISOString()}};
