@@ -1,5 +1,6 @@
 import {createDirectButton} from './instagram-direct-button.mjs';
 import {createHash, randomBytes, randomUUID} from 'node:crypto';
+import {BRASILEIRAO_ID, brasileiraoTeam} from '../lib/brasileirao.mjs';
 import {hasProductFiles} from '../lib/print-profiles.mjs';
 import {emailIsVerified, normalizedEmail} from './partner-email-verification.mjs';
 import {PROMOTION_KEY, PROMOTION_ID, PROMOTION_ACCOUNTS, PROMOTION_REQUIRED_ACCOUNTS, PROMOTION_VERIFICATION_ACCOUNT, PROMOTION_COLLECTIONS, defaultPromotion, instagramHandle, instagramPostUrl, promotionOpen, promotionLinkEvents, distinctFriendMentions} from './instagram-promotion-rules.mjs';
@@ -30,7 +31,7 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
     const {data} = await getCatalog();
     const products = claim && !order ? data.products.filter(p => PROMOTION_COLLECTIONS.includes(p.collection) && p.published && !p.exclusive && p.access === 'paid' &&
       data.collections.some(c => c.id === p.collection && c.published && !c.comingSoon) &&
-      hasProductFiles(p)).map(p => ({id: p.id, name: p.name, image: p.image, collection: p.collection})) : [];
+      hasProductFiles(p)).map(p => ({id: p.id, name: p.name, image: p.image, collection: p.collection, series: p.collection === BRASILEIRAO_ID ? brasileiraoTeam(p).series : ''})) : [];
     return {
       campaign: {...s.config, collectionIds: PROMOTION_COLLECTIONS, open: promotionOpen(s.config, now())},
       directButtonEnabled:Boolean(s.directButton?.configuredAt),

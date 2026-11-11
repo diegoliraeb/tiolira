@@ -6,18 +6,26 @@ const normalizeSearch = value => value.normalize('NFD').replace(/[\u0300-\u036f]
 export default function PromotionModelPicker({products, productId, onSelect, busy = false}) {
   const [query, setQuery] = useState('');
   const [collection, setCollection] = useState('');
+  const [series, setSeries] = useState('');
   const progressId = useId();
   const selected = products.find(p => p.id === productId);
   const searchTerms = normalizeSearch(query).split(/\s+/).filter(Boolean);
-  const matchingProducts = products.filter(p => (!collection || p.collection === collection) && searchTerms.every(term => normalizeSearch(p.name).includes(term)));
+  const matchingProducts = products.filter(p => (!collection || p.collection === collection) && (collection !== 'noeis-brasileirao' || !series || p.series === series) && searchTerms.every(term => normalizeSearch(p.name).includes(term)));
   return <div className="ig-model-picker">
                 <fieldset className="ig-model-collections">
                   <legend>Escolha a coleção</legend>
                   <div>{[{id:'',name:'Todos'},{id:'noeis-brasileirao',name:'Brasileirão'},{id:'35b06e0a-ada0-4df9-93e5-4ce39766915a',name:'Champions'}].map(option => <label key={option.id} className={collection === option.id ? 'is-active' : ''}>
-                    <input type="radio" name={`${progressId}-collection`} value={option.id} checked={collection === option.id} disabled={busy} onChange={() => {setCollection(option.id); setQuery('');}}/>
+                    <input type="radio" name={`${progressId}-collection`} value={option.id} checked={collection === option.id} disabled={busy} onChange={() => {setCollection(option.id); setSeries(''); setQuery('');}}/>
                     <span>{option.name}</span>
                   </label>)}</div>
                 </fieldset>
+                {collection === 'noeis-brasileirao' && <fieldset className="ig-model-collections ig-model-series">
+                  <legend>Filtrar por série</legend>
+                  <div>{['','A','B','C','D'].map(value => <label key={value} className={series === value ? 'is-active' : ''}>
+                    <input type="radio" name={`${progressId}-series`} value={value} checked={series === value} disabled={busy} onChange={() => setSeries(value)}/>
+                    <span>{value ? `Série ${value}` : 'Todas'}</span>
+                  </label>)}</div>
+                </fieldset>}
                 <label htmlFor={`${progressId}-model-search`}>Buscar modelo</label>
                 <div className="ig-model-search">
                   <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
