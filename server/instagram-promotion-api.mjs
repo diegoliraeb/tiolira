@@ -1,3 +1,4 @@
+import {instagramDirectApi} from './instagram-direct-api.mjs';
 import {PROMOTION_ACCOUNTS, PROMOTION_VERIFICATION_ACCOUNT, instagramHandle, instagramPostUrl, validPromotionComment} from './instagram-promotion-rules.mjs';
 
 const fail = (message, status = 503) => {throw Object.assign(Error(message), {status});};
@@ -15,6 +16,7 @@ export function instagramPromotionApi({fetcher = fetch, env = process.env} = {})
     return data;
   }
   return {
+    ...instagramDirectApi({fetcher,env}),
     ready: () => Boolean(env[PROMOTION_VERIFICATION_ACCOUNT.env]),
     async findLinkComment(config, username) {
       let after;

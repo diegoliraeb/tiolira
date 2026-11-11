@@ -107,11 +107,12 @@ export default async function handler(req,res){
    const member=await requireClub(req);await rateLimit(req,route,route.endsWith('/request')?5:15,15*60_000,member.id);
    return json(res,200,await (route.endsWith('/request')?partnerEmailVerification.request(member):partnerEmailVerification.confirm(member,input)));
   }
-  if(method==='POST'&&['club/instagram-promotion/link','club/instagram-promotion/check','club/instagram-promotion/claim','club/instagram-promotion/redeem'].includes(route)){
+  if(method==='POST'&&['club/instagram-promotion/link','club/instagram-promotion/direct','club/instagram-promotion/check','club/instagram-promotion/claim','club/instagram-promotion/redeem'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,route,10,10*60_000,member.id);
    const action=route.split('/').at(-1);
-   return json(res,200,await (action==='link'?instagramPromotion.startLink(member,input):action==='check'?instagramPromotion.check(member):action==='claim'?instagramPromotion.claim(member):instagramPromotion.redeem(member,input)));
+   return json(res,200,await (action==='direct'?instagramPromotion.completeDirect(member,input):action==='link'?instagramPromotion.startLink(member,input):action==='check'?instagramPromotion.check(member):action==='claim'?instagramPromotion.claim(member):instagramPromotion.redeem(member,input)));
   }
+  if(method==='POST'&&['admin/instagram-promotion/direct/configure','admin/instagram-promotion/direct/test'].includes(route)){await requireAdmin(req);await rateLimit(req,route,5,60_000);return json(res,200,await (route.endsWith('/configure')?instagramPromotion.configureDirectButton():instagramPromotion.testDirectButton()));}
   if(method==='PUT'&&route==='admin/instagram-promotion'){await requireAdmin(req);await rateLimit(req,'configure-instagram-promotion',10,60_000);return json(res,200,await instagramPromotion.configure(input));}
   if(method==='POST'&&route==='analytics/event'){if(!configured())return json(res,200,{ok:true});await rateLimit(req,'site-activity',120,60_000);return json(res,200,await recordActivity(req,input));}
   if(method==='POST'&&route==='admin/cart-reminders/test'){await requireAdmin(req);await rateLimit(req,'test-cart-reminder',5,3600_000);return json(res,200,await sendTestCartReminder(input));}

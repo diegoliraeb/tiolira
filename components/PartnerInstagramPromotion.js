@@ -1,5 +1,5 @@
 'use client';
-import {useCallback, useEffect, useId, useState} from 'react';
+import {useCallback, useEffect, useId, useRef, useState} from 'react';
 import '../app/instagram-promotion.css';
 
 function PromotionStep({id, number, title, status, complete, open, onToggle, children}) {
@@ -16,6 +16,16 @@ function PromotionStep({id, number, title, status, complete, open, onToggle, chi
 export default function PartnerInstagramPromotion({member, lang, onRedeem}) {
   const [data, setData] = useState(null), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [checks, setChecks] = useState(null);
+  const [directTicket,setDirectTicket]=useState('');
+  const directAttempt=useRef(false);
+  useEffect(()=>{
+    const match=/^#promocao\/instagram\/([a-f0-9]{64})$/.exec(window.location.hash);
+    if(match){setDirectTicket(match[1]);window.history.replaceState(null,'','#promocao');setOpenStep('instagram');}
+  },[]);
+  useEffect(()=>{
+    if(directTicket && data?.emailVerified && !directAttempt.current){directAttempt.current=true;action('instagram-promotion/direct',{ticket:directTicket},'Instagram confirmado. Sua relação de seguidor também foi consultada.');}
+    else if(directTicket && data && !data.emailVerified)setOpenStep('email');
+  },[directTicket,data?.emailVerified]);
   const [openStep, setOpenStep] = useState(null);
   const progressId = useId();
   const toggleStep = step => setOpenStep(current => current === step ? null : step);
@@ -38,6 +48,7 @@ export default function PartnerInstagramPromotion({member, lang, onRedeem}) {
       const response = await fetch(`/api/club/${path}`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(input || {})});
       const result = await response.json(); if (!response.ok) throw Error(result.error || 'Não foi possível continuar.');
       if (result.checks) setChecks(result.checks);
+      if (path.endsWith('/direct')) {setDirectTicket('');setOpenStep('instagram');}
       if (path.endsWith('/link')) setChecks(null);
       if (result.message) setMessageCode(result.message); else if(result.delivery) setMessageCode('');
       await refresh(); if (success) setNotice(success);
@@ -66,9 +77,9 @@ export default function PartnerInstagramPromotion({member, lang, onRedeem}) {
           {data.emailVerified && <button type="button" className="text-link" onClick={()=>setOpenStep('instagram')}>Ir para meu Instagram →</button>}
         </PromotionStep>
         <PromotionStep id={`${progressId}-instagram`} number="2" title="Instagram" status={data.instagram?'@'+data.instagram.username:data.pending?'Aguardando sua resposta no Direct':'Vincule seu @ à sua conta'} complete={Boolean(data.instagram)} open={openStep==='instagram'} onToggle={()=>toggleStep('instagram')}>
-          {data.coupon ? <p className="ig-verified">✓ @{data.coupon.username} confirmado na emissão do cupom.</p> : <>{data.instagram && <p className="ig-verified">✓ @{data.instagram.username} vinculado à sua conta</p>}<p>Informe seu @. Se você já comentou no post da promoção, @tiolira3d enviará uma mensagem de confirmação. Responda ao Direct para concluir.</p><form onSubmit={e => {e.preventDefault(); action('instagram-promotion/link', {username: username || data.instagram?.username || member.instagram});}}><label>Seu @ do Instagram<input required autoCapitalize="none" spellCheck={false} maxLength={100} placeholder="@seuusuario" value={username} onChange={e => setUsername(e.target.value)}/></label><button className="button outline" disabled={busy || !data.emailVerified || Boolean(data.coupon)}>{data.instagram ? 'Vincular outro Instagram' : 'Confirmar meu Instagram'}</button></form>{!data.emailVerified && <p><button type="button" className="text-link" onClick={()=>setOpenStep('email')}>Confirmar meu e-mail primeiro →</button></p>}
+          {data.coupon ? <p className="ig-verified">✓ @{data.coupon.username} confirmado na emissão do cupom.</p> : <>{data.instagram && <p className="ig-verified">✓ @{data.instagram.username} vinculado à sua conta</p>}{directTicket && <div className="ig-direct"><p>Confirme o Instagram recebido pelo Direct nesta conta: <strong>{data.email}</strong>.</p>{!data.emailVerified ? <button className="button outline" onClick={()=>setOpenStep('email')}>Confirmar meu e-mail primeiro</button> : <button className="button primary" disabled={busy} onClick={()=>action('instagram-promotion/direct',{ticket:directTicket},'Instagram confirmado.')}>{busy?'Confirmando…':'Confirmar meu Instagram'}</button>}</div>}{data.directButtonEnabled ? <div className="ig-direct"><p>No Instagram do celular, abra o Direct de @tiolira3d e toque em <strong>Participar da promoção</strong>, nas opções da conversa. Depois, toque em <strong>Confirmar no site</strong> na resposta recebida.</p><p>Seu Instagram será identificado automaticamente. Use sua própria conta do Clube e não compartilhe o link recebido.</p><a className="button primary" href="https://ig.me/m/tiolira3d" target="_blank" rel="noreferrer">Participar pelo Direct ↗</a></div> : <><p>Informe seu @. Se você já comentou no post da promoção, @tiolira3d enviará uma mensagem de confirmação. Responda ao Direct para concluir.</p><form onSubmit={e => {e.preventDefault(); action('instagram-promotion/link', {username: username || data.instagram?.username || member.instagram});}}><label>Seu @ do Instagram<input required autoCapitalize="none" spellCheck={false} maxLength={100} placeholder="@seuusuario" value={username} onChange={e => setUsername(e.target.value)}/></label><button className="button outline" disabled={busy || !data.emailVerified || Boolean(data.coupon)}>{data.instagram ? 'Vincular outro Instagram' : 'Confirmar meu Instagram'}</button></form>{!data.emailVerified && <p><button type="button" className="text-link" onClick={()=>setOpenStep('email')}>Confirmar meu e-mail primeiro →</button></p>}
         {data.pending && <div className="ig-direct"><p>{data.pending.delivery==='manual'?'Envie a mensagem abaixo para @tiolira3d usando':'Confira o Direct de @tiolira3d (inclusive Solicitações) e responda à mensagem usando'} <strong>@{data.pending.username}</strong> até {date(data.pending.expiresAt)}.</p>{messageCode ? <><code>{messageCode}</code><button className="text-link" onClick={() => copy(messageCode)}>Copiar mensagem</button></> : <p>{data.pending.delivery==='manual'?'Clique em Confirmar meu Instagram para obter a mensagem de confirmação.':'A confirmação termina quando você responder ao Direct. Se não fez esta solicitação, não responda.'}</p>}<ul>{data.accounts.map(a => <li key={a.id}><a href={`https://ig.me/m/${a.username}`} target="_blank" rel="noreferrer">Abrir Direct de @{a.username} ↗</a><span>{data.pending.received.includes(a.username) ? '✓ Recebida' : 'Aguardando sua confirmação'}</span></li>)}</ul>{data.pending.error && <p role="alert">{data.pending.error}</p>}<button className="button outline" disabled={busy} onClick={() => refresh().catch(e => setError(e.message))}>Já respondi; atualizar</button></div>}
-      </>}
+      </>}</>}
         </PromotionStep>
         <PromotionStep id={`${progressId}-follow`} number="3" title="Siga os perfis" status={followComplete?'Confirmado':checkLabel(checks?.follows[0]?.status || 'pending')} complete={followComplete} open={openStep==='follow'} onToggle={()=>toggleStep('follow')}>
           <p>Acompanhe @tiolira e @tiolira3d no Instagram.</p><div className="ig-step-actions"><a className="button outline" href="https://www.instagram.com/tiolira/" target="_blank" rel="noreferrer">Abrir @tiolira ↗</a><a className="button outline" href="https://www.instagram.com/tiolira3d/" target="_blank" rel="noreferrer">Abrir @tiolira3d ↗</a></div>

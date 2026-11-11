@@ -1,3 +1,4 @@
+import {createDirectButton} from './instagram-direct-button.mjs';
 import {createHash, randomBytes, randomUUID} from 'node:crypto';
 import {hasProductFiles} from '../lib/print-profiles.mjs';
 import {emailIsVerified, normalizedEmail} from './partner-email-verification.mjs';
@@ -14,6 +15,7 @@ const assertEmail = member => {if (!emailIsVerified(member)) fail('Confirme seu 
 
 export function createInstagramPromotion({readRecord, updateRecord, getMember, getCatalog, readProfile, api, redeemOrder, now = Date.now}) {
   const read = async () => state((await readRecord(PROMOTION_KEY))?.data);
+  const direct=createDirectButton({read,updateRecord:(key,fn)=>updateRecord(key,old=>fn(state(old))),api,readProfile,now});
   async function currentMember(member) {
     const fresh = await getMember(member.id);
     if (!fresh || fresh.version !== member.version || normalizedEmail(fresh.email) !== normalizedEmail(member.email)) fail('Entre novamente na sua conta.', 401);
@@ -30,6 +32,7 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
       hasProductFiles(p)).map(p => ({id: p.id, name: p.name, image: p.image, collection: p.collection})) : [];
     return {
       campaign: {...s.config, collectionIds: PROMOTION_COLLECTIONS, open: promotionOpen(s.config, now())},
+      directButtonEnabled:Boolean(s.directButton?.configuredAt),
       email: member.email, emailVerified: emailIsVerified(member),
       instagram: binding ? {username: binding.username, verifiedAt: binding.verifiedAt} : null,
       pending: pending ? {username: pending.username, expiresAt: new Date(pending.expiresAt).toISOString(), delivery: pending.delivery || 'manual', received: PROMOTION_REQUIRED_ACCOUNTS.filter(a => pending.accounts[a.id]).map(a => a.username), error: pending.error || null} : null,
@@ -40,6 +43,29 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
   }
   return {
     status,
+    async configureDirectButton(){await direct.configure();return this.admin();},
+    async testDirectButton(){return api.sendDirectTest();},
+    async completeDirect(member,input){
+      member=await currentMember(member);assertEmail(member);
+      const {hash,ticket}=await direct.ticket(input?.ticket,member.id);
+      const profile=await readProfile(PROMOTION_VERIFICATION_ACCOUNT.id,ticket.senderId);
+      if(profile.errorCode || !instagramHandle(profile.username))fail('Não foi possível consultar o Instagram agora.',503);
+      member=await currentMember(member);assertEmail(member);
+      await updateRecord(PROMOTION_KEY,old=>{
+        const s=state(old),current=s.directTickets?.[hash];
+        if(!current || current.expiresAt<=now())fail('Este link expirou. Toque novamente em Participar da promoção no Direct.',409);
+        if(current.memberId && current.memberId!==member.id)fail('Este link já foi usado em outro cadastro.',409);
+        const identity=`${PROMOTION_VERIFICATION_ACCOUNT.id}:${ticket.senderId}`;
+        if(s.identityOwners[identity] && s.identityOwners[identity]!==member.id)fail('Este Instagram já está vinculado a outro cadastro.',409);
+        if(current.memberId)return s;
+        s.identityOwners[identity]=member.id;
+        s.bindings[member.id]={id:randomUUID(),username:instagramHandle(profile.username),accounts:{[PROMOTION_VERIFICATION_ACCOUNT.id]:{senderId:ticket.senderId}},verifiedAt:new Date(now()).toISOString()};
+        current.memberId=member.id;
+        for(const [key,c]of Object.entries(s.challenges))if(c.memberId===member.id)delete s.challenges[key];
+        return s;
+      });
+      return this.check(member);
+    },
     async publicCampaign() {
       const {config} = await read();
       return {active:config.active, open:promotionOpen(config, now()), startsAt:config.startsAt, endsAt:config.endsAt, postUrl:config.postUrl};
@@ -62,7 +88,7 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
       }
       return {checks};
     },
-    async admin() {const s = await read(); return {config: s.config, accounts: PROMOTION_REQUIRED_ACCOUNTS.map(({id, username}) => ({id, username})), issued: s.claims.length, connected: api.ready()};},
+    async admin() {const s = await read(); return {config: s.config, accounts: PROMOTION_REQUIRED_ACCOUNTS.map(({id, username}) => ({id, username})), issued: s.claims.length, connected: api.ready(), directButton:s.directButton||null, directLastInteraction:s.directLastInteraction||null};},
     async configure(input) {
       if (typeof input?.active !== 'boolean' || !PROMOTION_ACCOUNTS.some(a => a.id === input.accountId)) fail('Configuração inválida.');
       const start = Date.parse(input.startsAt), end = Date.parse(input.endsAt);
@@ -121,6 +147,7 @@ export function createInstagramPromotion({readRecord, updateRecord, getMember, g
       return {delivery:'manual',message:`CUPOM ${code}`,expiresAt:new Date(createdAt+30*60_000).toISOString()};
     },
     async receive(payload) {
+      await direct.receive(payload);
       for (const event of promotionLinkEvents(payload)) {
         if(event.accountId!==PROMOTION_VERIFICATION_ACCOUNT.id)continue;
         const hash = digest(event.code), initial = (await read()).challenges[hash];
