@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {sitemapEntries,productMetadata,productSchema,collectionMetadata,collectionBundleSchema,collectionSlug,jsonLd,SITE_ORIGIN,SITE_SHARE_IMAGE,SITE_SLOGAN,homeMetadata,homeSchema,pageMetadata,seoCopy} from '../lib/seo.mjs';
+import {sitemapEntries,productMetadata,productSchema,collectionMetadata,collectionBundleSchema,collectionSlug,jsonLd,SITE_ORIGIN,SITE_SHARE_IMAGE,SITE_SLOGAN,homeMetadata,homeSchema,pageMetadata,seoCopy,promotionMetadata,PROMOTION_SHARE_IMAGE} from '../lib/seo.mjs';
 const family={id:'de1d16c4-5306-4f91-8696-fa0d512a5dbf',name:'Esculturas Sagrada Família',description:'Esculturas autorais.',image:'/assets/collections/sagrada-familia-v3.webp',published:true};
 const piece={id:'test-nazare',slug:'sagrada-familia-caminho-de-nazare',name:'Escultura Sagrada Família - Caminho de Nazaré',description:'Maria e José caminham com Jesus.',image:'/api/media?path=images%2Ftest.png',gallery:[],hasFile:true,access:'paid',priceCents:1290,collection:family.id,published:true,translations:{en:{name:'Holy Family — Path of Nazareth',description:'Mary and Joseph walk with Jesus.'}}};
 test('sitemap covers every public product and language while excluding private, draft and empty content',()=>{
  const catalog={collections:[family,{id:'empty',published:true},{id:'hidden',published:false}],products:[piece,{...piece,id:'draft',slug:'draft',published:false},{...piece,id:'hidden-piece',slug:'hidden-piece',collection:'hidden'}]};
- const entries=sitemapEntries(catalog);assert.equal(entries.length,20);assert.equal(new Set(entries.map(e=>e.url)).size,20);
+ const entries=sitemapEntries(catalog);assert.equal(entries.length,24);assert.equal(new Set(entries.map(e=>e.url)).size,24);
  for(const lang of ['pt','en','es','fr']){const entry=entries.find(e=>e.url===`${SITE_ORIGIN}/${lang}/produto/${piece.slug}`);assert.ok(entry);assert.equal(Object.keys(entry.alternates.languages).length,5);assert.equal(entry.alternates.languages['x-default'],`${SITE_ORIGIN}/pt/produto/${piece.slug}`);assert.deepEqual(entry.images,[`${SITE_ORIGIN}/api/media?path=images%2Ftest.png`]);assert.equal(entry.lastModified,undefined);}
  assert.ok(entries.every(e=>!/(draft|hidden|empty|clube|admin|download|lembretes)/.test(e.url)));
 });
@@ -60,4 +60,20 @@ test('institutional structured data and sitemap use the same published sharing a
  assert.equal(graph.find(x=>x['@type']==='Organization').slogan,SITE_SLOGAN);
  assert.equal(graph.find(x=>x['@type']==='WebPage').primaryImageOfPage.url,SITE_ORIGIN+SITE_SHARE_IMAGE);
  assert.deepEqual(sitemapEntries({collections:[],products:[]}).find(x=>x.url===SITE_ORIGIN+'/pt').images,[SITE_ORIGIN+SITE_SHARE_IMAGE]);
+});
+
+test('promotion has a dedicated share card and canonical sitemap entry',()=>{
+ const metadata=promotionMetadata('pt');
+ assert.equal(metadata.alternates.canonical,SITE_ORIGIN+'/pt/promocao');
+ assert.equal(metadata.openGraph.url,metadata.alternates.canonical);
+ assert.equal(metadata.openGraph.images[0].url,SITE_ORIGIN+PROMOTION_SHARE_IMAGE);
+ assert.equal(metadata.openGraph.images[0].width,1200);
+ assert.equal(metadata.openGraph.images[0].height,630);
+ assert.equal(metadata.openGraph.images[0].type,'image/jpeg');
+ assert.equal(metadata.twitter.card,'summary_large_image');
+ assert.equal(metadata.twitter.images[0].url,metadata.openGraph.images[0].url);
+ assert.match(metadata.description,/modelo digital/);
+ assert.match(metadata.description,/30\/11\/2026/);
+ assert.ok(metadata.description.length<=160);
+ assert.deepEqual(sitemapEntries({collections:[],products:[]}).find(x=>x.url===metadata.alternates.canonical).images,[SITE_ORIGIN+PROMOTION_SHARE_IMAGE]);
 });
