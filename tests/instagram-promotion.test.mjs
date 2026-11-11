@@ -221,6 +221,18 @@ test('Instagram promotion: ownership, verification, uniqueness and atomic redemp
       result=await f.service.startLink(f.member,{username:'participante'});assert.equal(f.sent.length,1);
       await f.service.receive(f.payload(result.message,1));assert.ok((await f.service.status(f.member)).instagram);
     });
+    await t.test('tiolira post can be configured and checked using only the tiolira3d Direct identity',async()=>{
+      const f=await fixture();await f.link();
+      await f.service.configure({...(await f.service.admin()).config,accountId:accounts[0].id});
+      assert.equal((await f.service.admin()).accounts.length,2);
+      await f.service.receive({object:'instagram',entry:[{id:accounts[0].id,changes:[{field:'comments',value:{id:'555',media:{id:'123456'},from:{id:'8888',username:'participante'},text:'@amigo @outro'}}]}]});
+      const stored=(await readRecord(PROMOTION_KEY)).data;
+      assert.deepEqual(stored.comments['123456:@participante'],['555']);
+      assert.equal((await f.service.check(f.member)).checks.comment,'complete');
+      f.setUsername('renomeado');assert.equal((await f.service.check(f.member)).checks.comment,'unavailable');
+      await assert.rejects(f.service.claim(f.member),/mudou/);
+      f.setUsername('participante');assert.ok((await f.service.claim(f.member)).coupon);
+    });
     await t.test('HTTP routes enforce sessions, origin and private response boundaries',async()=>{
       const f=await fixture();const cookie=`${clubCookieName}=${await makeSession(f.member.version,{memberId:f.member.id})}`;
       async function call(route,method='GET',auth='',origin='http://localhost'){
@@ -279,3 +291,17 @@ test('private reply API uses the comment ID and only the tiolira3d token',async(
   assert.equal(api.ready(),true);await api.sendPrivateReply('123','Confirme');
   assert.ok(sent.url.includes(accounts[1].id));assert.equal(sent.headers.Authorization,'Bearer test-token');assert.deepEqual(JSON.parse(sent.body),{recipient:{comment_id:'123'},message:{text:'Confirme'}});
 });
+
+ test('cross-account comment verification uses official usernames without mixing scoped IDs',async()=>{
+  const config={accountId:accounts[0].id,mediaId:'222',startsAt:'2026-11-10T00:00:00Z',endsAt:'2026-11-30T23:59:59Z'};
+  const binding={username:'participante',accounts:{[accounts[1].id]:{senderId:'9911'}}};
+  const valid={id:'555',from:{id:'8888',username:'participante'},text:'@amigo @outro',timestamp:'2026-11-15T00:00:00Z'};
+  assert.equal(validPromotionComment(valid,binding,config),true);
+  for(const change of [{from:{id:'9911',username:'intruso'}},{from:{username:'participante'}},{hidden:true},{text:'@amigo @amigo'}])assert.equal(validPromotionComment({...valid,...change},binding,config),false);
+  assert.equal(validPromotionComment(valid,{username:'participante',accounts:{}},config),false);
+  const api=instagramPromotionApi({env:{[accounts[0].env]:'tiolira-token',[accounts[1].env]:'3d-token'},fetcher:async(url,options)=>{
+    assert.equal(options.headers.Authorization,'Bearer tiolira-token');
+    return Response.json({data:[{...valid,from:{id:'9911',username:'intruso'}},valid]});
+  }});
+  assert.equal((await api.findComment(config,binding)).id,'555');
+ });

@@ -27,8 +27,13 @@ export function distinctFriendMentions(text, participant) {
 }
 export function validPromotionComment(comment, binding, config) {
   const stamp = Date.parse(comment?.timestamp);
-  return Boolean(comment?.id && !comment.hidden && !comment.is_hidden &&
-    String(comment.from?.id || '') === binding.accounts[config.accountId]?.senderId &&
+  const scopedSender = binding.accounts[config.accountId]?.senderId;
+  // Sender IDs are scoped to each professional account. A Direct to tiolira3d
+  // does not provide the ID used on tiolira's post. For that account, compare
+  // the official comment username with the freshly rechecked Direct identity.
+  const authorMatches = scopedSender ? String(comment?.from?.id || '') === scopedSender :
+    config.accountId === PROMOTION_ACCOUNTS[0].id && Boolean(binding.accounts[PROMOTION_VERIFICATION_ACCOUNT.id]?.senderId) && /^\d{1,30}$/.test(String(comment?.from?.id || ''));
+  return Boolean(comment?.id && !comment.hidden && !comment.is_hidden && authorMatches &&
     instagramHandle(comment.from?.username) === binding.username &&
     Number.isFinite(stamp) && stamp >= Date.parse(config.startsAt) && stamp <= Date.parse(config.endsAt) &&
     distinctFriendMentions(comment.text, binding.username).length >= 2);
