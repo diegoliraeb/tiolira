@@ -3,6 +3,7 @@ import {PROMOTION_KEY,PROMOTION_ID} from './instagram-promotion-rules.mjs';
 import {emailIsVerified} from './partner-email-verification.mjs';
 import {currentOrderEnvironment} from './payment-environment.mjs';
 import {promotionDownloadRows,promotionDate} from './promotion-downloads.mjs';
+import {BANNER_ANALYTICS_KEY,buildBannerReport} from './promotion-banner-analytics.mjs';
 import {promotionStages,promotionPendingLabels,promotionActionLabels} from '../lib/promotion-progress.mjs';
 
 export const PROMOTION_ANALYTICS_KEY='analytics/instagram-promotion.json';
@@ -49,7 +50,8 @@ export async function trackPromotionAction(member,action,run,details) {
   catch(error){await safelyRecordPromotion(member,action,{...details,outcome:'error'});throw error;}
 }
 
-export function buildPromotionReport({promotion={},tracking={},members=[],commerce={},optOut={},start,end,pages={}},now=Date.now()) {
+export function buildPromotionReport({promotion={},tracking={},members=[],commerce={},optOut={},bannerTracking={},start,end,pages={}},now=Date.now()) {
+  const banner=buildBannerReport(bannerTracking,commerce,start,end);
   const memberMap=new Map(members.map(m=>[m.id,m]));
   const orders=(commerce.orders||[]).filter(o=>o.instagramPromotion?.campaignId===PROMOTION_ID && currentOrderEnvironment(o) && o.status==='paid');
   const downloads=promotionDownloadRows(commerce);
@@ -63,7 +65,8 @@ export function buildPromotionReport({promotion={},tracking={},members=[],commer
     const member=memberMap.get(memberId),activity=tracking.participants?.[memberId]||{},binding=promotion.bindings?.[memberId],claim=claims.get(memberId),order=byOrder.get(memberId),challenge=pending.get(memberId);
     const download=downloads.find(d=>d.orderId===order?.id);
     const firstAt=earliest([activity.firstAt,binding?.verifiedAt,claim?.issuedAt,order?.createdAt,challenge?.createdAt?new Date(challenge.createdAt).toISOString():null]);
-    const lastAt=latest([activity.lastAt,binding?.verifiedAt,claim?.issuedAt,order?.createdAt,download?.lastAt,challenge?.createdAt?new Date(challenge.createdAt).toISOString():null,member&&activity.firstAt?member.emailVerification?.verifiedAt:null]);
+    const bannerMember=banner.members[memberId];
+    const lastAt=latest([activity.lastAt,binding?.verifiedAt,claim?.issuedAt,order?.createdAt,download?.lastAt,bannerMember?.firstInPeriodAt,challenge?.createdAt?new Date(challenge.createdAt).toISOString():null,member&&activity.firstAt?member.emailVerification?.verifiedAt:null]);
     const currentCheck=activity.lastChecks?.bindingId===binding?.id && activity.lastChecks?.configVersion===promotion.config?.version ? activity.lastChecks : null;
     const complete={visited:true,email:Boolean(claim)||emailIsVerified(member),instagram:Boolean(binding||claim),follow:Boolean(claim)||currentCheck?.follows==='complete',comment:Boolean(claim)||currentCheck?.comment==='complete',coupon:Boolean(claim),redeemed:Boolean(order),download:Boolean(download?.count)};
     const pendingStage=promotionStages.slice(1).find(([key])=>!complete[key])?.[0]||'complete';
@@ -74,16 +77,18 @@ export function buildPromotionReport({promotion={},tracking={},members=[],commer
       pendingStage,pendingLabel:promotionPendingLabels[pendingStage],complete,checksAt:currentCheck?.at||null,followStatus:claim?'complete':currentCheck?.follows||'unknown',commentStatus:claim?'complete':currentCheck?.comment||'unknown',
       emailAt:emailIsVerified(member)?member.emailVerification.verifiedAt:null,instagramAt:binding?.verifiedAt||null,couponAt:claim?.issuedAt||null,couponExpiresAt:claim?.expiresAt||null,redeemedAt:order?.createdAt||null,productName:order?.items?.[0]?.name||'',
       downloads:downloadsInPeriod,downloadsTotal:download?.count||0,downloadFirstAt:download?.firstAt||null,downloadLastAt:download?.lastAt||null,
+      bannerFirstAt:bannerMember?.firstAt||null,bannerInPeriod:Boolean(bannerMember?.firstInPeriodAt),bannerConverted:Boolean(bannerMember?.downloaded),
       openedSteps:activity.openedSteps||{},history:activity.events||[],lastAction:activity.lastAction||null,historical:!activity.firstAt});
   }
   all.sort((a,b)=>(b.lastAt||'').localeCompare(a.lastAt||''));
   const stages=promotionStages.map(([id,label])=>({id,label,count:all.filter(p=>p.complete[id]).length}));
-  return {start,end,generatedAt:new Date(now).toISOString(),trackingStartedAt:tracking.startedAt||null,downloadTrackingStartedAt:commerce.promotionDownloadsStartedAt||null,
+  const {members:bannerMembers,...bannerSummary}=banner;
+  return {banner:bannerSummary,start,end,generatedAt:new Date(now).toISOString(),trackingStartedAt:tracking.startedAt||null,downloadTrackingStartedAt:commerce.promotionDownloadsStartedAt||null,
     historicalDownloadsLimited:downloads.some(d=>d.legacyLimited),stages,participants:all,
     summary:{participants:all.length,pageViews:Object.entries(pages).filter(([path])=>/^\/(pt|en|es|fr)\/promocao$/.test(path)).reduce((n,[,v])=>n+v,0),coupons:all.filter(p=>p.complete.coupon).length,redeemed:all.filter(p=>p.complete.redeemed).length,downloaders:all.filter(p=>p.downloads>0).length,downloads:all.reduce((n,p)=>n+p.downloads,0),incomplete:all.filter(p=>p.pendingStage!=='complete').length,firstStep:all.filter(p=>['email','instagram'].includes(p.pendingStage)).length},
   };
 }
 export async function promotionAnalyticsReport({start,end,pages},now=Date.now()) {
-  const [promotion,tracking,members,commerce,reminders]=await Promise.all([readRecord(PROMOTION_KEY),readRecord(PROMOTION_ANALYTICS_KEY),readRecord('club-members.json'),readRecord('commerce.json'),readRecord('analytics/cart-reminders.json')]);
-  return buildPromotionReport({promotion:promotion?.data,tracking:tracking?.data,members:members?.data?.members,commerce:commerce?.data,optOut:reminders?.data?.optOut,start,end,pages},now);
+  const [promotion,tracking,members,commerce,reminders,banner]=await Promise.all([readRecord(PROMOTION_KEY),readRecord(PROMOTION_ANALYTICS_KEY),readRecord('club-members.json'),readRecord('commerce.json'),readRecord('analytics/cart-reminders.json'),readRecord(BANNER_ANALYTICS_KEY)]);
+  return buildPromotionReport({promotion:promotion?.data,tracking:tracking?.data,members:members?.data?.members,commerce:commerce?.data,optOut:reminders?.data?.optOut,bannerTracking:banner?.data,start,end,pages},now);
 }

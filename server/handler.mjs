@@ -1,4 +1,5 @@
 import {safelyRecordPromotion,trackPromotionAction} from './promotion-analytics.mjs';
+import {recordBannerClick,safelyAttributeBanner} from './promotion-banner-analytics.mjs';
 import {setCollectionPreparation} from './collection-status.mjs';
 import {instagramPromotion, partnerEmailVerification} from './instagram-promotion-runtime.mjs';
 import {configureDeliveryTracking,receiveEmailDelivery} from './email-delivery-events.mjs';
@@ -43,6 +44,14 @@ export default async function handler(req,res){
   const url=new URL(req.url,'https://'+(req.headers.host||'localhost'));
   const route=String((Array.isArray(req.query?.route)?req.query.route.join('/'):req.query?.route)||url.searchParams.get('route')||url.pathname.replace(/^\/api\/?/,'')).replace(/^\/+|\/+$/g,'');
   const method=req.method;
+  if(method==='GET'&&route==='analytics/promotion-banner'){
+   const lang=['pt','en','es','fr'].includes(url.searchParams.get('lang'))?url.searchParams.get('lang'):'pt';
+   try{if(configured()){
+    await rateLimit(req,'promotion-banner',60,60_000);
+    const cookie=await recordBannerClick(req);if(cookie)res.setHeader('Set-Cookie',cookie);
+   }}catch{console.warn('Promotion banner click unavailable');}
+   res.setHeader('X-Robots-Tag','noindex, nofollow');res.setHeader('Location',`/${lang}/promocao`);res.statusCode=302;return res.end();
+  }
   if(!['media','store-logo','feedback/photo'].includes(route))res.setHeader('X-Robots-Tag','noindex, nofollow');
   if(['POST','PUT','DELETE'].includes(method)&&route.startsWith('admin/')&&!['admin/login','admin/setup','admin/logout'].includes(route))await requireAdmin(req);
   if(method==='POST'&&route==='webhooks/paypal'){let raw=typeof req.body==='string'?req.body:null;if(raw===null&&req.body!==undefined)fail('Webhook exige corpo original.',400);if(raw===null){const chunks=[];let size=0;for await(const part of req){size+=Buffer.byteLength(part);if(size>1_000_000)fail('Evento muito grande.',413);chunks.push(Buffer.from(part));}raw=Buffer.concat(chunks).toString('utf8');}await receivePaypalWebhook(req.headers,raw);return json(res,200,{received:true});}
@@ -83,7 +92,7 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
   if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
-  if(method==='GET'&&route==='club/instagram-promotion'){const member=await requireClub(req);return json(res,200,await trackPromotionAction(member,'visit',()=>instagramPromotion.status(member)));}
+  if(method==='GET'&&route==='club/instagram-promotion'){const member=await requireClub(req);await safelyAttributeBanner(req,member);return json(res,200,await trackPromotionAction(member,'visit',()=>instagramPromotion.status(member)));}
   if(method==='GET'&&route==='admin/instagram-promotion'){await requireAdmin(req);return json(res,200,await instagramPromotion.admin());}
   if(method==='GET'&&route==='admin/brasileirao-update'){await requireAdmin(req);return json(res,200,await adminBrasileiraoCourtesy());}
   if(method==='GET'&&route==='admin/cart-coupons'){await requireAdmin(req);return json(res,200,await cartCoupons());}
@@ -100,7 +109,7 @@ export default async function handler(req,res){
    res.setHeader('Content-Type','image/webp');res.setHeader('Cache-Control',approved?'public, max-age=60':'private, no-store');return res.end(Buffer.from(record.data.base64,'base64'));
   }
   if(['GET','HEAD'].includes(method)&&route==='media')return await serveCatalogImage(url.searchParams.get('path'),res,undefined,{head:method==='HEAD'});
-  if(method==='GET'&&route==='download'){const member=await requireClub(req);await rateLimit(req,'file-download',120,600_000,member.id);const {data}=await getCatalog();return await serveProductDownload({member,data,productId:url.searchParams.get('id'),profileId:url.searchParams.get('profile'),res});}
+  if(method==='GET'&&route==='download'){const member=await requireClub(req);await rateLimit(req,'file-download',120,600_000,member.id);await safelyAttributeBanner(req,member);const {data}=await getCatalog();return await serveProductDownload({member,data,productId:url.searchParams.get('id'),profileId:url.searchParams.get('profile'),res});}
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req,route);
@@ -115,6 +124,7 @@ export default async function handler(req,res){
   }
   if(method==='POST'&&['club/instagram-promotion/link','club/instagram-promotion/direct','club/instagram-promotion/check','club/instagram-promotion/claim','club/instagram-promotion/redeem'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,route,10,10*60_000,member.id);
+   await safelyAttributeBanner(req,member);
    const action=route.split('/').at(-1);
    return json(res,200,await trackPromotionAction(member,action,()=>action==='direct'?instagramPromotion.completeDirect(member,input):action==='link'?instagramPromotion.startLink(member,input):action==='check'?instagramPromotion.check(member):action==='claim'?instagramPromotion.claim(member):instagramPromotion.redeem(member,input)));
   }

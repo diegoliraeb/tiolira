@@ -1,7 +1,6 @@
 'use client';
 
 import {useEffect, useState} from 'react';
-import Link from 'next/link';
 import '../app/home-promotion-banner.css';
 
 export default function HomePromotionBanner({lang, endsAt}) {
@@ -39,7 +38,7 @@ export default function HomePromotionBanner({lang, endsAt}) {
     </div>
     <div className="home-promotion-footer">
       <span>Até {deadline}<small>Confira as regras</small></span>
-      <Link href={`/${lang}/promocao`}>Quero participar <span aria-hidden="true">↗</span></Link>
+      <a href={`/api/analytics/promotion-banner?lang=${lang}`}>Quero participar <span aria-hidden="true">↗</span></a>
     </div>
   </aside>;
 }
