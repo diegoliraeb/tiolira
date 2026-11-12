@@ -1,6 +1,6 @@
 import {recordPromotionDownload} from './promotion-downloads.mjs';
 import {isCourtesyCode} from './brasileirao-courtesy.mjs';
-import {collectionAccess} from './collection-access.mjs';
+import {complimentaryAccess as collectionAccess} from './print-rewards-access.mjs';
 import {memberNatalState,natalReservation} from './natal-promotion.mjs';
 import {natalProductAccess} from '../lib/natal-promotion.mjs';
 import {countProductSales,soldQuantity} from './product-sales.mjs';

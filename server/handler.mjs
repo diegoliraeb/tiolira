@@ -1,3 +1,4 @@
+import {printRewardsDashboard,claimPrintReward,uploadPrintRewardPhoto,submitPrintReward,adminPrintRewards,configurePrintRewards,reviewPrintReward,printRewardPhoto} from './print-rewards.mjs';
 import {safelyRecordPromotion,trackPromotionAction} from './promotion-analytics.mjs';
 import {recordBannerClick,safelyAttributeBanner} from './promotion-banner-analytics.mjs';
 import {setCollectionPreparation} from './collection-status.mjs';
@@ -76,6 +77,13 @@ export default async function handler(req,res){
    const bytes=await feedbackPhoto(url.searchParams.get('id'),{memberId,admin});res.setHeader('Content-Type','image/webp');return res.end(bytes);
   }
   if(method==='GET'&&route==='club/cost-sheets')return json(res,200,await costSheets(await requireClub(req)));
+  if(method==='GET'&&route==='club/print-rewards')return json(res,200,await printRewardsDashboard(await requireClub(req)));
+  if(method==='GET'&&route==='admin/print-rewards'){await requireAdmin(req);return json(res,200,await adminPrintRewards());}
+  if(method==='GET'&&route==='club/print-rewards/photo'){
+   let memberId,admin=false;try{memberId=(await requireClub(req)).id;}catch{}try{await requireAdmin(req);admin=true;}catch{}
+   const photo=await printRewardPhoto({claimId:url.searchParams.get('claimId'),angle:url.searchParams.get('angle')},{memberId,admin});
+   res.setHeader('Content-Type','image/webp');if(url.searchParams.get('download')==='1')res.setHeader('Content-Disposition',`attachment; filename="${photo.filename}"`);return res.end(photo.bytes);
+  }
   if(method==='GET'&&route==='club/shop'){return json(res,200,await shop(await requireClub(req)));}
   if(method==='GET'&&route==='admin/downloads'){await requireAdmin(req);return json(res,200,await downloadPartnersReport(url.searchParams.get('productId')));}
   if(method==='GET'&&route==='admin/files/verify'){
@@ -113,6 +121,12 @@ export default async function handler(req,res){
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req,route);
+  if(method==='POST'&&route==='club/print-rewards/claim'){const member=await requireClub(req);await rateLimit(req,'print-reward-claim',10,60_000,member.id);return json(res,200,await claimPrintReward(member,input));}
+  if(method==='POST'&&route==='club/print-rewards/photo'){const member=await requireClub(req);await rateLimit(req,'print-reward-photo',30,600_000,member.id);return json(res,200,await uploadPrintRewardPhoto(member,input));}
+  if(method==='POST'&&route==='club/print-rewards/submit'){const member=await requireClub(req);await rateLimit(req,'print-reward-submit',10,60_000,member.id);return json(res,200,await submitPrintReward(member,input));}
+  if(method==='PUT'&&route==='admin/print-rewards')return json(res,200,await configurePrintRewards(await requireAdmin(req),input));
+  if(method==='POST'&&route==='admin/print-rewards/review')return json(res,200,await reviewPrintReward(await requireAdmin(req),input));
+
   if(method==='POST'&&['club/verify-email/request','club/verify-email/confirm'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,route,route.endsWith('/request')?5:15,15*60_000,member.id);
    return json(res,200,await trackPromotionAction(member,route.endsWith('/request')?'email_request':'email_confirm',()=>route.endsWith('/request')?partnerEmailVerification.request(member):partnerEmailVerification.confirm(member,input),{onlyExisting:true}));

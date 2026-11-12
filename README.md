@@ -226,3 +226,18 @@ A coleção `noeis-brasileirao` abre uma vitrine dedicada em `/pt/colecao/noeis-
 No editor de obras dessa coleção, **Série do Brasileirão** permite selecionar A, B ou Especiais. O campo opcional `brasileiraoSeries` prevalece sobre a categoria e a classificação inicial. Importações também podem usar `Série A` ou `Série B` na categoria. Obras sem classificação conhecida entram em Especiais. A Série B aparece como “Em breve” enquanto não houver obras publicadas nela. A página mantém os links dos produtos e a promoção existente da coleção, sem cálculo paralelo de carrinho.
 
 A busca por cidade da vitrine cobre os 61 clubes cadastrados em 09/11/2026. O campo opcional `brasileiraoCity` no editor permite vincular cidades a novos times e corrigir o vínculo padrão; vazio usa a cidade do mapeamento por slug/ID. A cidade usada na busca é a mesma exibida no cartão, independentemente da série. Acentos, caixa e espaços repetidos são normalizados.
+
+
+## Imprima, fotografe e ganhe
+
+A administração tem a seção **Fotos e peças grátis**, para selecionar as coleções participantes, ativar/pausar novos resgates e revisar os envios. A promoção começa pausada, sem coleções pré-selecionadas. Não dispara e-mails e não cria cobranças.
+
+Cada parceiro autenticado recebe uma primeira escolha de modelo pago disponível nas coleções participantes. O resgate libera o arquivo e uma licença de venda de impressões físicas. O parceiro deve imprimir e montar a peça, colocá-la sobre a impressora e enviar cinco fotos diferentes: frente, costas, esquerda, direita e superior. Os cinco campos e as confirmações de autoria/uso e de impressão real são obrigatórios. O servidor valida o formato das imagens, dimensões e repetição exata; a conferência dos ângulos, montagem, impressora e qualidade é humana.
+
+Somente **Aprovar e liberar próxima peça** permite um novo resgate. Solicitar ajustes mantém o ciclo bloqueado e envia a observação para a área do parceiro, permitindo trocar as fotos e reenviar. Aprovações e resgates repetidos não duplicam benefícios, inclusive com solicitações concorrentes. Uma peça já possuída não pode ser resgatada novamente. O processo se repete enquanto houver modelos elegíveis; só há uma peça pendente por conta.
+
+Os parceiros encontram **Imprima e ganhe** em `/{idioma}/clube#fotos`; as coleções participantes recebem indicação dentro da área autenticada. As fotos ficam privadas, acessíveis ao autor e ao administrador, que pode filtrar por coleção, peça, parceiro e situação e baixar cada imagem em WebP. Pausar a campanha ou desmarcar coleções impede novas escolhas, preservando arquivos já concedidos e a possibilidade de enviar/revisar fotos pendentes. As fotos não entram automaticamente na galeria pública.
+
+A configuração, o histórico e as liberações ficam em `print-rewards.json`, com concorrência protegida pelo adaptador existente. Imagens validadas ficam em registros separados `print-reward-photos/<id>.json`; não exige nova migração ou credencial. O navegador ajusta fotos JPG/PNG/WebP de até 20 MB para no máximo 2400 px; cada envio ao servidor aceita até 2 MB, com no mínimo 600 px por lado. Metadados são removidos na conversão. Licenças e acesso se integram aos downloads e ao carrinho sem mudar os preços públicos.
+
+Validação: `node --test tests/print-rewards.test.mjs` cobre autenticação, isolamento entre parceiros, autorização de fotos, configuração de coleções, concorrência, reenvios, cinco fotos distintas, aprovação manual e continuidade após pausa.
