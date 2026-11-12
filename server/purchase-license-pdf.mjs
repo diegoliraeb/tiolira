@@ -19,9 +19,9 @@ export async function purchaseLicensePdf(license){
  function field(label,value){text(label,{size:9,font:bold,color:muted,gap:1});text(value,{size:12,gap:14});}
  newPage();text('Licença de venda',{size:27,font:bold,color:green,gap:0});text('PEÇAS FÍSICAS IMPRESSAS EM 3D',{size:10,font:bold,color:muted,gap:24});
  field('OBRA LICENCIADA',license.productName);field('PARCEIRO TITULAR',license.partnerName);field('CÓDIGO DA LICENÇA',license.code);
- field('EMITIDA EM',new Date(license.issuedAt).toLocaleDateString('pt-BR',{timeZone:'America/Maceio'}));field(license.source==='courtesy'?'LIBERAÇÃO GRATUITA':'PEDIDO',license.source==='courtesy'?license.grantId:license.orderId);
+ field('EMITIDA EM',new Date(license.issuedAt).toLocaleDateString('pt-BR',{timeZone:'America/Maceio'}));field(['courtesy','print-reward'].includes(license.source)?'LIBERAÇÃO GRATUITA':'PEDIDO',['courtesy','print-reward'].includes(license.source)?license.grantId:license.orderId);
  text('Autorização de uso',{size:15,font:bold,color:green,gap:8});text(license.terms,{size:11,gap:18});
  if(license.productTerms)text(license.productTerms,{size:11,gap:18});
- text(license.source==='courtesy'?'Emitida por liberação gratuita do Tio Lira. Válida enquanto a liberação estiver ativa. Consulte Minhas licenças na Área do Parceiro.':'Emitida automaticamente após a confirmação do pagamento. A validade desta licença acompanha a situação da compra. Consulte o registro atualizado em Meus pedidos e Minhas licenças, na área do parceiro em tiolira.com.br.',{size:10,color:muted});
+ text(license.source==='print-reward'?'Emitida pela promoção Imprima, fotografe e ganhe. Consulte Minhas licenças na Área do Parceiro.':license.source==='courtesy'?'Emitida por liberação gratuita do Tio Lira. Válida enquanto a liberação estiver ativa. Consulte Minhas licenças na Área do Parceiro.':'Emitida automaticamente após a confirmação do pagamento. A validade desta licença acompanha a situação da compra. Consulte o registro atualizado em Meus pedidos e Minhas licenças, na área do parceiro em tiolira.com.br.',{size:10,color:muted});
  return doc.save();
 }

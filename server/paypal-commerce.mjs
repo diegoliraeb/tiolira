@@ -1,4 +1,4 @@
-import {collectionAccess} from './collection-access.mjs';
+import {complimentaryAccess as collectionAccess} from './print-rewards-access.mjs';
 import {memberNatalState,natalReservation} from './natal-promotion.mjs';
 import {checkoutFingerprint} from './checkout-fingerprint.mjs';
 import {randomUUID} from 'node:crypto';
