@@ -23,8 +23,8 @@ test('print rewards: five distinct photos, manual review, repeatable grants and 
  const member={id:randomUUID(),name:'Parceiro A',email:'a@example.invalid',version:'v1',countryCode:'BR',cpfCnpj:'52998224725'},other={...member,id:randomUUID(),name:'Parceiro B'},admin={email:'admin@example.invalid',version:'admin-v1'};
  const cookie=`tiolira_club=${await makeSession(member.version,{memberId:member.id})}`,otherCookie=`tiolira_club=${await makeSession(other.version,{memberId:other.id})}`,adminCookie=`tiolira_admin=${await makeSession(admin.version)}`;
  const base={...seed.products[0],collection:'selected',published:true,exclusive:false,access:'paid',url:'',priceCents:1290,filePath:'models/example.3mf',printProfiles:[]};
- const products=['one','two','three','four'].map(id=>({...base,id,slug:id,name:'Peça '+id}));
- const data={...structuredClone(seed),stores:[],collections:[{id:'selected',name:'Selecionada',published:true,free:false,comingSoon:false},{id:'excluded',name:'Fora',published:true,free:false},{id:'free',name:'Grátis',published:true,free:true}],products:[...products,{...base,id:'excluded',collection:'excluded'},{...base,id:'draft',published:false},{...base,id:'exclusive',exclusive:true},{...base,id:'no-file',filePath:''},{...base,id:'free',collection:'free',access:'site',priceCents:0}]};
+ const products=['one','two','three','four'].map(id=>({...base,id,slug:id,name:'Peça '+id,collection:['two','three'].includes(id)?'another-selected':'selected'}));
+ const data={...structuredClone(seed),stores:[],collections:[{id:'another-selected',name:'Outra participante',published:true,free:false,comingSoon:false},{id:'selected',name:'Selecionada',published:true,free:false,comingSoon:false},{id:'excluded',name:'Fora',published:true,free:false},{id:'free',name:'Grátis',published:true,free:true}],products:[...products,{...base,id:'excluded',collection:'excluded'},{...base,id:'draft',published:false},{...base,id:'exclusive',exclusive:true},{...base,id:'no-file',filePath:''},{...base,id:'free',collection:'free',access:'site',priceCents:0}]};
  const call=async(route,{method='GET',session=cookie,body={},origin='http://localhost'}={})=>{let result;const headers={};await handler({method,url:'/api/'+route,body,headers:{host:'localhost',origin,cookie:session},socket:{remoteAddress:'rewards-test'}},{setHeader(k,v){headers[k]=v},set statusCode(s){this.status=s},end(v){result={status:this.status||200,body:Buffer.isBuffer(v)?v:JSON.parse(v),headers}}});return result;};
  const photo=async color=>'data:image/png;base64,'+(await sharp({create:{width:700,height:800,channels:3,background:color}}).png().toBuffer()).toString('base64');
  let current,initialRequest,photos=[];
@@ -39,7 +39,7 @@ test('print rewards: five distinct photos, manual review, repeatable grants and 
    await assert.rejects(()=>claimPrintReward(member,{productId:'one',requestId:randomUUID(),acceptTerms:true}),/pausada/);
    await assert.rejects(()=>configurePrintRewards(admin,{enabled:true,collectionIds:[],version:null}),/pelo menos/);
    await assert.rejects(()=>configurePrintRewards(admin,{enabled:true,collectionIds:['free'],version:null}),/pagas/);
-   const configured=await call('admin/print-rewards',{session:adminCookie,method:'PUT',body:{enabled:true,collectionIds:['selected'],version:null}});assert.equal(configured.status,200);
+   const configured=await call('admin/print-rewards',{session:adminCookie,method:'PUT',body:{enabled:true,collectionIds:['selected','another-selected'],version:null}});assert.equal(configured.status,200);
    await assert.rejects(()=>configurePrintRewards(admin,{enabled:false,collectionIds:[],version:null}),{status:409});
    assert.deepEqual((await printRewardsDashboard(member)).products.map(p=>p.id),['one','two','three','four']);
   });
@@ -81,9 +81,11 @@ test('print rewards: five distinct photos, manual review, repeatable grants and 
    await uploadPrintRewardPhoto(member,{claimId:current.id,version:current.version,angle:'front',photo:await photo('orange')});current=await active();
    await submitPrintReward(member,{claimId:current.id,version:current.version,confirmPrinted:true,acceptPhotoUse:true});current=await active();
    const review={claimId:current.id,version:current.version,decision:'approved'};await Promise.all([reviewPrintReward(admin,review),reviewPrintReward(admin,review)]);
-   assert.equal((await printRewardsDashboard(member)).canClaim,true);
+   const unlocked=await printRewardsDashboard(member);assert.equal(unlocked.canClaim,true);assert.deepEqual(new Set(unlocked.products.map(p=>p.collectionId)),new Set(['selected','another-selected']));
+   await assert.rejects(()=>claimPrintReward(member,{productId:'excluded',requestId:randomUUID(),acceptTerms:true}),/participantes/);
    await assert.rejects(()=>claimPrintReward(member,{productId:'one',requestId:randomUUID(),acceptTerms:true}),/já possui/);
    const results=await Promise.allSettled(['two','three'].map(productId=>claimPrintReward(member,{productId,requestId:randomUUID(),acceptTerms:true})));assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+   assert.equal((await active()).collectionId,'another-selected');
    assert.equal((await printRewardsDashboard(member)).claims.length,2);assert.equal((await printRewardsDashboard(member)).canClaim,false);
    await reviewPrintReward(admin,review);assert.equal((await printRewardsDashboard(member)).canClaim,false);
    assert.equal((await readRecord(PRINT_REWARDS_KEY)).data.claims[0].history.length,2);
@@ -96,7 +98,7 @@ test('print rewards: five distinct photos, manual review, repeatable grants and 
    await submitPrintReward(member,{claimId:current.id,version:current.version,confirmPrinted:true,acceptPhotoUse:true});current=await active();
    await reviewPrintReward(admin,{claimId:current.id,version:current.version,decision:'approved'});
    assert.equal((await printRewardsDashboard(member)).canClaim,false);
-   await configurePrintRewards(admin,{enabled:true,collectionIds:['selected'],version:(await readRecord(PRINT_REWARDS_KEY)).data.config.version});
+   await configurePrintRewards(admin,{enabled:true,collectionIds:['selected','another-selected'],version:(await readRecord(PRINT_REWARDS_KEY)).data.config.version});
    assert.equal((await printRewardsDashboard(member)).canClaim,true);assert.equal((await printRewardsDashboard(other)).claims.length,0);
    assert.equal((await call('admin/print-rewards',{session:adminCookie})).body.counts.photos,10);
    assert.equal((await readRecord('catalog.json')).data.products.find(p=>p.id==='one').priceCents,1290);
