@@ -1,3 +1,4 @@
+import {instagramClub,receiveInstagramFeatures} from '../../../../server/instagram-club-runtime.mjs';
 import {createInstagramWebhook, readInstagramFollowProfile} from '../../../../server/instagram-webhook.mjs';
 import {readRecord, updateRecord} from '../../../../server/store.mjs';
 import {instagramPromotion} from '../../../../server/instagram-promotion-runtime.mjs';
@@ -14,7 +15,7 @@ function handlers() {
     appSecret: process.env.META_APP_SECRET,
     verifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN,
     accounts,
-    receivePayload: payload => instagramPromotion.receive(payload),
+    receivePayload: payload => receiveInstagramFeatures(payload,[p=>instagramPromotion.receive(p),p=>instagramClub.receive(p)]),
     reportError: code => console.error(code),
     async receive(event, token) {
       const key = `instagram-tests/${event.accountId}/${event.senderId}.json`;

@@ -1,3 +1,4 @@
+import {instagramClub} from './instagram-club-runtime.mjs';
 import {printRewardsDashboard,claimPrintReward,uploadPrintRewardPhoto,submitPrintReward,adminPrintRewards,configurePrintRewards,reviewPrintReward,printRewardPhoto} from './print-rewards.mjs';
 import {safelyRecordPromotion,trackPromotionAction} from './promotion-analytics.mjs';
 import {recordBannerClick,safelyAttributeBanner} from './promotion-banner-analytics.mjs';
@@ -101,6 +102,7 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
   if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
   if(method==='GET'&&route==='club/instagram-promotion'){const member=await requireClub(req);await safelyAttributeBanner(req,member);return json(res,200,await trackPromotionAction(member,'visit',()=>instagramPromotion.status(member)));}
+  if(method==='GET'&&route==='admin/instagram-club'){await requireAdmin(req);return json(res,200,await instagramClub.admin());}
   if(method==='GET'&&route==='admin/instagram-promotion'){await requireAdmin(req);return json(res,200,await instagramPromotion.admin());}
   if(method==='GET'&&route==='admin/brasileirao-update'){await requireAdmin(req);return json(res,200,await adminBrasileiraoCourtesy());}
   if(method==='GET'&&route==='admin/cart-coupons'){await requireAdmin(req);return json(res,200,await cartCoupons());}
@@ -143,6 +145,7 @@ export default async function handler(req,res){
    return json(res,200,await trackPromotionAction(member,action,()=>action==='direct'?instagramPromotion.completeDirect(member,input):action==='link'?instagramPromotion.startLink(member,input):action==='check'?instagramPromotion.check(member):action==='claim'?instagramPromotion.claim(member):instagramPromotion.redeem(member,input)));
   }
   if(method==='POST'&&['admin/instagram-promotion/direct/configure','admin/instagram-promotion/direct/test'].includes(route)){await requireAdmin(req);await rateLimit(req,route,5,60_000);return json(res,200,await (route.endsWith('/configure')?instagramPromotion.configureDirectButton():instagramPromotion.testDirectButton()));}
+  if(method==='PUT'&&route==='admin/instagram-club'){await requireAdmin(req);await rateLimit(req,'configure-instagram-club',10,60_000);return json(res,200,await instagramClub.configure(input));}
   if(method==='PUT'&&route==='admin/instagram-promotion'){await requireAdmin(req);await rateLimit(req,'configure-instagram-promotion',10,60_000);return json(res,200,await instagramPromotion.configure(input));}
   if(method==='POST'&&route==='analytics/event'){if(!configured())return json(res,200,{ok:true});await rateLimit(req,'site-activity',120,60_000);return json(res,200,await recordActivity(req,input));}
   if(method==='POST'&&route==='admin/cart-reminders/test'){await requireAdmin(req);await rateLimit(req,'test-cart-reminder',5,3600_000);return json(res,200,await sendTestCartReminder(input));}
