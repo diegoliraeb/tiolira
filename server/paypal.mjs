@@ -7,13 +7,14 @@ export function paypalConfig(){
 export function paypalReady(){const c=paypalConfig();return Boolean(c.clientId&&c.secret&&c.merchantId&&c.webhookId&&siteOrigin());}
 function siteOrigin(){try{const u=new URL(process.env.SITE_URL);if(u.protocol==='https:'&&!u.username&&!u.password)return u.origin;}catch{}return '';}
 export function paypalReturnUrl(order,cancel=false){const origin=siteOrigin();if(!origin)fail('Configure o endereço HTTPS oficial do site.');return `${origin}/${['pt','en','es','fr'].includes(order.lang)?order.lang:'pt'}/clube?pedido=${encodeURIComponent(order.id)}&retorno=paypal${cancel?'&cancelado=1':''}#compras`;}
-export async function paypal(path,{method='GET',body,requestId,rawBody}={}){
+export async function paypal(path,{method='GET',body,requestId,rawBody,allowEmpty=false}={}){
  const c=paypalConfig();if(!c.clientId||!c.secret)fail('PayPal ainda não configurado.');
  let tokenResponse;
  try{tokenResponse=await fetch(c.base+'/v1/oauth2/token',{method:'POST',headers:{Authorization:'Basic '+Buffer.from(c.clientId+':'+c.secret).toString('base64'),'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=client_credentials',signal:AbortSignal.timeout(15000)});}catch{fail('Não foi possível conectar ao PayPal.');}
  const token=await tokenResponse.json().catch(()=>null);if(!tokenResponse.ok||!token?.access_token)fail('Não foi possível autenticar a integração PayPal.');
  let response;
  try{response=await fetch(c.base+path,{method,headers:{Authorization:'Bearer '+token.access_token,'Content-Type':'application/json',Prefer:'return=representation',...(requestId?{'PayPal-Request-Id':requestId}:{})},...(rawBody?{body:rawBody}:body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});}catch{fail('Resposta do PayPal não confirmada. Confira o pedido antes de tentar novamente.',503,true);}
+ if(allowEmpty&&response.status===204)return {ok:true};
  const result=await response.json().catch(()=>null);
  if(!response.ok||!result)fail('O PayPal não concluiu a operação. Confira o pedido ou contate o suporte.',502,response.status>=500||response.status===409||!result);
  return result;
