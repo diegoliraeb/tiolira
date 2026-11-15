@@ -1,3 +1,5 @@
+import {commercialPolicy} from '../lib/maker-license.mjs';
+import {subscriptionDashboard,startSubscription,refreshSubscription,cancelSubscription,subscriptionWebhook,annualLicense,subscriptionReport,configureSubscriptionWebhook} from './maker-subscriptions.mjs';
 import {instagramClub} from './instagram-club-runtime.mjs';
 import {printRewardsDashboard,claimPrintReward,uploadPrintRewardPhoto,submitPrintReward,adminPrintRewards,configurePrintRewards,reviewPrintReward,printRewardPhoto} from './print-rewards.mjs';
 import {safelyRecordPromotion,trackPromotionAction} from './promotion-analytics.mjs';
@@ -60,6 +62,12 @@ export default async function handler(req,res){
   if(method==='POST'&&route==='webhooks/email-delivery'){let raw=typeof req.body==='string'?req.body:null;if(raw===null&&req.body!==undefined)fail('Webhook exige corpo original.',400);if(raw===null){const chunks=[];let size=0;for await(const part of req){size+=Buffer.byteLength(part);if(size>1_000_000)fail('Evento muito grande.',413);chunks.push(Buffer.from(part));}raw=Buffer.concat(chunks).toString('utf8');}await receiveEmailDelivery(req.headers,raw);return json(res,200,{received:true});}
   if(method==='POST'&&route==='webhooks/purchase-email'){assertWebhook(req);await receiveWebhook(await body(req,route),{emailRequired:true});return json(res,200,{received:true});}
   if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req,route));return json(res,200,{received:true});}
+  if(method==='POST'&&route==='webhooks/maker-subscriptions'){assertWebhook(req);await subscriptionWebhook(await body(req,route));return json(res,200,{received:true});}
+  if(method==='GET'&&route==='club/maker-subscription')return json(res,200,await subscriptionDashboard(await requireClub(req)));
+  if(method==='GET'&&route==='admin/maker-subscriptions'){await requireAdmin(req);return json(res,200,await subscriptionReport());}
+  if(method==='GET'&&route==='club/maker-subscription/license'){
+   const member=await requireClub(req);await rateLimit(req,'maker-license-pdf',20,60_000,member.id);const pdf=await purchaseLicensePdf(await annualLicense(member));res.setHeader('Content-Type','application/pdf');res.setHeader('Content-Disposition','attachment; filename="licenca-anual-makerworld.pdf"');return res.end(Buffer.from(pdf));
+  }
   if(method==='GET'&&route==='club/licenses/download'){
    const member=await requireClub(req);await rateLimit(req,'license-pdf',120,600_000,member.id);const license=await downloadablePurchaseLicense(member,url.searchParams.get('code'));
    const pdf=await purchaseLicensePdf(license);
@@ -183,13 +191,19 @@ export default async function handler(req,res){
    await rateLimit(req,'club-reset-password',10,15*60_000);
    await resetPassword(input);res.setHeader('Set-Cookie',clubSessionCookie('',true));return json(res,200,{ok:true});
   }
+  if(method==='POST'&&['club/maker-subscription/start','club/maker-subscription/refresh','club/maker-subscription/cancel'].includes(route)){
+   const member=await requireClub(req);await rateLimit(req,'maker-subscription',10,60_000,member.id);return json(res,200,route.endsWith('/start')?await startSubscription(member,input):route.endsWith('/cancel')?await cancelSubscription(member):await refreshSubscription(member));
+  }
+  if(method==='POST'&&route==='admin/maker-subscriptions/configure'){await requireAdmin(req);return json(res,200,await configureSubscriptionWebhook());}
   if(method==='POST'&&route==='club/licenses'){
    const member=await requireClub(req);
    await rateLimit(req,'license-issue',120,600_000,member.id);
    const owned=await memberHasAccess(member,input.productId)?new Set([input.productId]):new Set();
-   const product=clubProducts((await getCatalog()).data,owned).find(p=>p.id===input.productId&&p.canLicense);
+   const data=(await getCatalog()).data,original=data.products.find(p=>p.id===input.productId);
+   if(original&&commercialPolicy(original,data.collections)==='annual'&&!owned.has(original.id))return json(res,200,{license:await annualLicense(member)});
+   const product=clubProducts(data,owned).find(p=>p.id===input.productId&&p.canLicense);
    if(!product)fail('Licença de venda não disponível para esta peça.',403);
-   if(isPaidProduct(product)){const license=(await memberLicenses(member)).find(l=>l.productId===product.id&&l.status==='active');if(!license)fail('Licença aguardando confirmação do pagamento.',409);return json(res,200,{license});}
+   if(isPaidProduct(product)||owned.has(product.id)){const license=(await memberLicenses(member)).find(l=>l.productId===product.id&&l.status==='active');if(!license)fail('Licença aguardando confirmação do pagamento.',409);return json(res,200,{license});}
    return json(res,200,{license:await issueLicense(member,product)});
   }
   if(method==='PUT'&&route==='club/profile'){

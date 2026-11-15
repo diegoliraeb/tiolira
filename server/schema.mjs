@@ -1,3 +1,4 @@
+import {commercialPolicy} from '../lib/maker-license.mjs';
 import {MAX_PRINT_PROFILES,hasProductFiles,publicPrintProfiles} from '../lib/print-profiles.mjs';
 import {productPrintEstimate} from '../lib/print-estimates.mjs';
 import {instagramUrl,partnerInstagram} from '../lib/instagram.mjs';
@@ -35,9 +36,9 @@ export const settingsSchema=z.object({heroTitle:text(180),heroDescription:text(1
 export const normalize=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 export function publicCatalog(data,now=new Date(),clickCounts={}){
  const collections=data.collections.filter(c=>c.published),collectionIds=new Set(collections.map(c=>c.id));
- const products=sortProducts(data.products.filter(p=>p.published&&collectionIds.has(p.collection)).map(({filePath,fileProfile,printProfiles,...p})=>({...normalizeProductGallery(p),collectionComingSoon:p.access==='paid'&&collections.some(c=>c.id===p.collection&&c.comingSoon),printEstimate:productPrintEstimate({...p,filePath}),hasFile:hasProductFiles({filePath,printProfiles}),printProfiles:publicPrintProfiles({...p,filePath,fileProfile,printProfiles}),clickCount:clickCounts[p.id]||0})));
- const validIds=new Set(products.map(p=>p.id));
- const freeIds=new Set(products.filter(p=>p.collection==='presepio'||(p.allowPhysicalSales===true||collections.some(c=>c.id===p.collection&&c.free))&&['site','maker'].includes(p.access)).map(p=>p.id));
+ const products=sortProducts(data.products.filter(p=>p.published&&collectionIds.has(p.collection)).map(({filePath,fileProfile,printProfiles,...p})=>({...normalizeProductGallery(p),commercialPolicy:commercialPolicy(p,collections),collectionComingSoon:p.access==='paid'&&collections.some(c=>c.id===p.collection&&c.comingSoon),printEstimate:productPrintEstimate({...p,filePath}),hasFile:hasProductFiles({filePath,printProfiles}),printProfiles:publicPrintProfiles({...p,filePath,fileProfile,printProfiles}),clickCount:clickCounts[p.id]||0})));
+ const validIds=new Set(products.filter(p=>p.commercialPolicy!=='noncommercial').map(p=>p.id));
+ const freeIds=new Set(products.filter(p=>commercialPolicy(p,collections)==='free').map(p=>p.id));
  const stores=data.stores.filter(s=>s.status==='approved'&&s.consent).map(({email,licenseProof,licenseUntil,status,consent,partnershipConsent,createdAt,...s})=>({...s,instagram:partnerInstagram(s),offeringsUnspecified:!s.productIds?.length,productIds:(s.productIds||[]).filter(id=>validIds.has(id)&&(freeIds.has(id)||(licenseProof&&licenseUntil>=now.toISOString().slice(0,10))))})).filter(s=>s.offeringsUnspecified||s.productIds.length);
  return {settings:data.settings,collections,products,plans:data.plans,stores};
 }

@@ -1,3 +1,4 @@
+import './maker-license.css';
 import './print-rewards.css';
 import './print-profiles.css';
 import {homeMetadata,seoCopy} from '../lib/seo.mjs';
