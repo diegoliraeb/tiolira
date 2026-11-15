@@ -1,3 +1,5 @@
+import {commercialPolicy,subscriptionView} from '../lib/maker-license.mjs';
+import {memberSubscription} from './maker-subscriptions.mjs';
 import {PRINT_REWARDS_KEY} from './print-rewards-access.mjs';
 import {complimentaryAccess as collectionAccess} from './print-rewards-access.mjs';
 import {hasProductFiles,publicPrintProfiles} from '../lib/print-profiles.mjs';
@@ -19,16 +21,17 @@ export function publicClubMember(member){
  const {id,name,email,city,state,country,createdAt}=member;
  return {id,name,email,city,state,country,createdAt};
 }
-export function clubProducts(data,owned=new Set()){
+export function clubProducts(data,owned=new Set(),annual=false,legacy=new Set()){
  const collections=new Set(data.collections.filter(c=>c.published).map(c=>c.id));
  return data.products.filter(p=>p.published&&collections.has(p.collection)&&['site','maker','paid'].includes(p.access)&&isAvailable(p)&&(!isPaidProduct(p)||owned.has(p.id)||!data.collections.some(c=>c.id===p.collection&&c.comingSoon))).map(({filePath,fileProfile,printProfiles,...p})=>({
   ...p,printEstimate:productPrintEstimate({...p,filePath}),canPurchase:!owned.has(p.id)&&canPurchaseProduct({...p,filePath,printProfiles},data),downloadUrl:isPaidProduct(p)&&!owned.has(p.id)?'':['site','paid'].includes(p.access)&&hasProductFiles({filePath,printProfiles})&&!p.exclusive?`/api/download?id=${encodeURIComponent(p.id)}`:p.url,
   printProfiles:publicPrintProfiles({...p,filePath,fileProfile,printProfiles},['site','paid'].includes(p.access)&&!p.exclusive&&(!isPaidProduct(p)||owned.has(p.id))),
-  canLicense:isPaidProduct(p)?owned.has(p.id):p.collection==='presepio'||p.allowPhysicalSales===true||data.collections.some(c=>c.id===p.collection&&c.free)
+  commercialPolicy:commercialPolicy(p,data.collections),canLicense:commercialPolicy(p,data.collections)==='noncommercial'?false:owned.has(p.id)||legacy.has(p.id)||commercialPolicy(p,data.collections)==='free'||commercialPolicy(p,data.collections)==='annual'&&annual
  }));
 }
 export const licenseTerms='Autorizada a impressão e venda das peças físicas desta obra pelo parceiro identificado. Esta licença é pessoal e intransferível. Não autoriza revender, compartilhar ou redistribuir os arquivos digitais.';
 export async function issueLicense(member,product){
+ if(['noncommercial','annual'].includes(commercialPolicy(product)))throw Object.assign(Error('Licença gratuita indisponível para esta obra.'),{status:403});
  const record=await updateRecord(`club-licenses/${member.id}.json`,old=>{
   const licenses=old?.licenses||[];
   if(licenses.some(item=>item.productId===product.id))return old;
@@ -38,21 +41,22 @@ export async function issueLicense(member,product){
 }
 export const collectionLicenseTerms='Autorizada a impressão e venda das peças físicas disponibilizadas gratuitamente nesta coleção pelo parceiro identificado. Esta licença é pessoal e intransferível. Não autoriza revender, compartilhar ou redistribuir os arquivos digitais.';
 export async function ensureCollectionLicenses(member,data){
- const collections=data.collections.filter(c=>c.published&&c.free).sort((a,b)=>(a.id==='presepio'?-1:0)-(b.id==='presepio'?-1:0));
  const key=`club-licenses/${member.id}.json`,current=(await readRecord(key))?.data||{};
- if(collections.every(c=>current.collectionLicenses?.some(l=>l.collectionId===c.id)))return current;
- return updateRecord(key,old=>{
-  const collectionLicenses=[...(old?.collectionLicenses||[])];
-  for(const collection of collections)if(!collectionLicenses.some(l=>l.collectionId===collection.id))collectionLicenses.push({kind:'collection',code:`TL-COL-${randomUUID().toUpperCase()}`,memberId:member.id,partnerName:member.name,collectionId:collection.id,collectionName:collection.name,issuedAt:new Date().toISOString(),terms:collectionLicenseTerms});
-  return {...old,collectionLicenses};
- });
+ const update=old=>{const next=structuredClone(old||{});next.collectionLicenses||=[];
+ for(const license of next.collectionLicenses)if(!license.productIds){const ids=data.migrations?.makerLegacyProducts?.[license.collectionId];license.productIds=data.products.filter(p=>(ids?ids.includes(p.id):p.collection===license.collectionId&&p.published)&&commercialPolicy(p,data.collections)!=='noncommercial').map(p=>p.id);}
+ for(const c of data.collections.filter(c=>c.published&&c.free)){
+  const ids=data.products.filter(p=>p.collection===c.id&&p.published&&commercialPolicy(p,data.collections)==='free').map(p=>p.id);
+  if(ids.length&&!next.collectionLicenses.some(l=>l.collectionId===c.id))next.collectionLicenses.push({kind:'collection',code:`TL-COL-${randomUUID().toUpperCase()}`,memberId:member.id,partnerName:member.name,collectionId:c.id,collectionName:c.name,issuedAt:new Date().toISOString(),terms:'Autorizada a impressão e venda das peças físicas das obras expressamente incluídas nesta licença. Não inclui obras de licença anual nem Ayrton Senna. Proibida a redistribuição dos arquivos digitais.',productIds:ids});
+ }return next;};
+ const next=update(current);if(JSON.stringify(next)===JSON.stringify(current))return current;return updateRecord(key,update);
 }
 export async function clubDashboard(member,data){
  if(member.profilePending){member=await syncPartnerProfile(member);data=(await getCatalog()).data;}
  const [owned,granted,rewards]=await Promise.all([memberAccessIds(member),collectionAccess(member,data),readRecord(PRINT_REWARDS_KEY)]);
  const rewardCollections=new Set(rewards?.data?.config?.enabled?rewards.data.config.collectionIds:[]);
- const [licenses,coupons,purchases]=await Promise.all([ensureCollectionLicenses(member,data),readRecord('partner-coupons.json'),memberLicenses(member)]);
- return {member:partnerProfile(member,data),collections:data.collections.filter(c=>c.published).map(c=>({...c,printRewardEligible:rewardCollections.has(c.id),...(granted.collectionIds.has(c.id)?{complimentary:true,priceCents:0,priceUsdCents:0}:{})})),network:await ensurePartnerListing(member),downloads:clubProducts(marketCatalog(data,internationalBuyer(member)?'USD':'BRL'),owned).map(p=>granted.productIds.has(p.id)?{...p,complimentary:true,priceCents:0,priceUsdCents:0}:p),licenses:[...(licenses.licenses||[]).filter(l=>!data.products.some(p=>p.id===l.productId&&isPaidProduct(p))),...purchases],collectionLicenses:licenses.collectionLicenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
+ const [licenses,coupons,purchases,subscription]=await Promise.all([ensureCollectionLicenses(member,data),readRecord('partner-coupons.json'),memberLicenses(member),memberSubscription(member)]);
+ const legacy=new Set([...(licenses.licenses||[]).map(l=>l.productId),...(licenses.collectionLicenses||[]).flatMap(l=>l.productIds||[])]);
+ return {member:partnerProfile(member,data),collections:data.collections.filter(c=>c.published).map(c=>({...c,printRewardEligible:rewardCollections.has(c.id),...(granted.collectionIds.has(c.id)?{complimentary:true,priceCents:0,priceUsdCents:0}:{})})),network:await ensurePartnerListing(member),downloads:clubProducts(marketCatalog(data,internationalBuyer(member)?'USD':'BRL'),owned,subscriptionView(subscription).active,legacy).map(p=>granted.productIds.has(p.id)?{...p,complimentary:true,priceCents:0,priceUsdCents:0}:p),licenses:[...(licenses.licenses||[]).filter(l=>!data.products.some(p=>p.id===l.productId&&isPaidProduct(p))),...purchases],collectionLicenses:licenses.collectionLicenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
 }
 export const couponSchema=z.object({
  id:z.string().uuid(),supplier:z.string().trim().min(1).max(150),code:z.string().trim().min(1).max(100),
