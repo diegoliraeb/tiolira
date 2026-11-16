@@ -19,7 +19,7 @@ export function partnerProfile(member,data){
 const profileSchema=applicationSchema.omit({email:true,consent:true,productIds:true,honeypot:true,password:true,directoryConsent:true}).extend({
  cpfCnpj:z.string().max(18).transform(value=>value.replace(/[.\/\-\s]/g,'')).refine(value=>!value||validBillingDocument(value),BILLING_DOCUMENT_ERROR).optional(),
  removeLogo:z.boolean().default(false),
- countryCode:z.string().regex(/^[A-Z]{2}$/),stateId:z.string().min(1).max(30),cityId:z.string().min(1).max(30)
+ countryCode:z.string().regex(/^[A-Z]{2}$/),stateId:z.string().max(30).default(''),cityId:z.string().max(30).default('')
 });
 // A pending profile survives a partial write, so a later save or login can finish syncing it.
 export async function syncPartnerProfile(member){

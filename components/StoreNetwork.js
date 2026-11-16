@@ -66,7 +66,7 @@ export default function StoreNetwork({lang,catalog}){
   if(logo)data.logoData=logo;
   data.consent=f.has('consent');data.directoryConsent=f.get('directoryConsent')==='yes';data.partnershipConsent=f.has('partnershipConsent');
   data.whatsapp=data.whatsapp.replace(/\D/g,'');
-  if(!/^\d{10,15}$/.test(data.whatsapp)){setMessage(t.whatsappHelp);return;}
+  if(!/^\d{7,15}$/.test(data.whatsapp)){setMessage(t.whatsappHelp);return;}
   submitting.current=true;setBusy(true);setMessage('');
   try{
    const r=await fetch('/api/stores/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
