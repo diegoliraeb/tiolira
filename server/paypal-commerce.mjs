@@ -1,3 +1,4 @@
+import {makerPaypalPurchaseEvent} from './maker-purchases.mjs';
 import {makerPaypalEvent} from './maker-paypal.mjs';
 import {complimentaryAccess as collectionAccess} from './print-rewards-access.mjs';
 import {memberNatalState,natalReservation} from './natal-promotion.mjs';
@@ -97,6 +98,7 @@ export async function refreshPaypal(member,id,{eventId}={}){
 export async function receivePaypalWebhook(headers,raw){
  const event=await verifyPaypalWebhook(headers,raw);
  if(typeof event.id!=='string'||event.id.length>300||typeof event.event_type!=='string')fail('Evento inválido.',400);
+ if(await makerPaypalPurchaseEvent(event))return;
  if(await makerPaypalEvent(event))return;
  const resource=event.resource||{},orders=(await readRecord(KEY))?.data.orders||[];
  let orderId=resource.supplementary_data?.related_ids?.order_id;

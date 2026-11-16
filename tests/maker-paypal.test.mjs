@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {writeRecord,readRecord,updateRecord} from '../server/store.mjs';
 import {configureMakerPaypal,annualPaypalUrl} from '../server/maker-paypal.mjs';
-import {startSubscription,refreshSubscription,cancelSubscription,annualLicense,subscriptionDashboard} from '../server/maker-subscriptions.mjs';
+import {startLegacySubscription as startSubscription,refreshSubscription,cancelSubscription,annualLicense,subscriptionDashboard} from '../server/maker-subscriptions.mjs';
 import {receivePaypalWebhook} from '../server/paypal-commerce.mjs';
 import {MAKER_VERSION} from '../lib/maker-license.mjs';
 test('PayPal annual plan, verified payment, shared ownership, cancellation and sticky refunds',async()=>{

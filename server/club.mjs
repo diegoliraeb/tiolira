@@ -1,5 +1,5 @@
-import {commercialPolicy,subscriptionView} from '../lib/maker-license.mjs';
-import {memberSubscription} from './maker-subscriptions.mjs';
+import {commercialPolicy} from '../lib/maker-license.mjs';
+import {subscriptionDashboard} from './maker-subscriptions.mjs';
 import {PRINT_REWARDS_KEY} from './print-rewards-access.mjs';
 import {complimentaryAccess as collectionAccess} from './print-rewards-access.mjs';
 import {hasProductFiles,publicPrintProfiles} from '../lib/print-profiles.mjs';
@@ -54,9 +54,9 @@ export async function clubDashboard(member,data){
  if(member.profilePending){member=await syncPartnerProfile(member);data=(await getCatalog()).data;}
  const [owned,granted,rewards]=await Promise.all([memberAccessIds(member),collectionAccess(member,data),readRecord(PRINT_REWARDS_KEY)]);
  const rewardCollections=new Set(rewards?.data?.config?.enabled?rewards.data.config.collectionIds:[]);
- const [licenses,coupons,purchases,subscription]=await Promise.all([ensureCollectionLicenses(member,data),readRecord('partner-coupons.json'),memberLicenses(member),memberSubscription(member)]);
+ const [licenses,coupons,purchases,subscription]=await Promise.all([ensureCollectionLicenses(member,data),readRecord('partner-coupons.json'),memberLicenses(member),subscriptionDashboard(member)]);
  const legacy=new Set([...(licenses.licenses||[]).map(l=>l.productId),...(licenses.collectionLicenses||[]).flatMap(l=>l.productIds||[])]);
- return {member:partnerProfile(member,data),collections:data.collections.filter(c=>c.published).map(c=>({...c,printRewardEligible:rewardCollections.has(c.id),...(granted.collectionIds.has(c.id)?{complimentary:true,priceCents:0,priceUsdCents:0}:{})})),network:await ensurePartnerListing(member),downloads:clubProducts(marketCatalog(data,internationalBuyer(member)?'USD':'BRL'),owned,subscriptionView(subscription).active,legacy).map(p=>granted.productIds.has(p.id)?{...p,complimentary:true,priceCents:0,priceUsdCents:0}:p),licenses:[...(licenses.licenses||[]).filter(l=>!data.products.some(p=>p.id===l.productId&&isPaidProduct(p))),...purchases],collectionLicenses:licenses.collectionLicenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
+ return {member:partnerProfile(member,data),collections:data.collections.filter(c=>c.published).map(c=>({...c,printRewardEligible:rewardCollections.has(c.id),...(granted.collectionIds.has(c.id)?{complimentary:true,priceCents:0,priceUsdCents:0}:{})})),network:await ensurePartnerListing(member),downloads:clubProducts(marketCatalog(data,internationalBuyer(member)?'USD':'BRL'),owned,subscription.active,legacy).map(p=>granted.productIds.has(p.id)?{...p,complimentary:true,priceCents:0,priceUsdCents:0}:p),licenses:[...(licenses.licenses||[]).filter(l=>!data.products.some(p=>p.id===l.productId&&isPaidProduct(p))),...purchases],collectionLicenses:licenses.collectionLicenses||[],coupons:(coupons?.data?.coupons||[]).filter(c=>c.active&&(!c.expiresAt||Date.parse(c.expiresAt)>Date.now()))};
 }
 export const couponSchema=z.object({
  id:z.string().uuid(),supplier:z.string().trim().min(1).max(150),code:z.string().trim().min(1).max(100),

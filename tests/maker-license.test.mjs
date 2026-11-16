@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {commercialPolicy,yearAfter,subscriptionView,MAKER_VERSION} from '../lib/maker-license.mjs';
 import {readRecord,writeRecord} from '../server/store.mjs';
-import {startSubscription,refreshSubscription,cancelSubscription,annualLicense,subscriptionWebhook,paymentPeriod} from '../server/maker-subscriptions.mjs';
+import {startLegacySubscription as startSubscription,refreshSubscription,cancelSubscription,annualLicense,subscriptionWebhook,paymentPeriod} from '../server/maker-subscriptions.mjs';
 import {clubProducts,ensureCollectionLicenses,issueLicense} from '../server/club.mjs';
 import {migrateMakerCatalog} from '../server/maker-catalog.mjs';
 import handler from '../server/handler.mjs';

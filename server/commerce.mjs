@@ -1,3 +1,4 @@
+import {makerAsaasPurchaseEvent} from './maker-purchases.mjs';
 import {recordPromotionDownload} from './promotion-downloads.mjs';
 import {isCourtesyCode} from './brasileirao-courtesy.mjs';
 import {complimentaryAccess as collectionAccess} from './print-rewards-access.mjs';
@@ -188,6 +189,7 @@ export function assertWebhook(req){
 export async function receiveWebhook(input,{emailRequired=false}={}){
  const notify=id=>sendPurchaseEmail(id).catch(e=>{if(emailRequired)throw e;});
  const event=z.object({id:z.string().min(1).max(300),event:z.string().max(100),payment:z.object({id:z.string().regex(/^pay_[\w-]+$/),externalReference:z.string().optional()}).passthrough()}).parse(input);
+ if(await makerAsaasPurchaseEvent(event))return;
  const orders=state((await readRecord(KEY))?.data).orders,o=orders.find(o=>o.paymentId===event.payment.id||o.id===event.payment.externalReference);
  if(!o||o.provider==='paypal'||o.environment!==asaasConfig().environment)return;
  if(o.events?.includes(event.id)){await notify(o.id);return;}
