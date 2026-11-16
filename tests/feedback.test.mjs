@@ -83,6 +83,17 @@ test('buyer reviews, moderation, photos and private creator contact',async t=>{
   assert.equal((await call(privatePhoto.slice(5),{cookie:cookieA})).status,200);assert.equal((await call(privatePhoto.slice(5),{cookie:cookieAdmin})).status,200);
   assert.ok(!JSON.stringify((await call('reviews?productId='+products[0].id)).body).includes('encaixe'));
  });
+ await t.test('admin sees current buyer contacts; private and public responses do not expose contacts',async()=>{
+  await updateRecord('club-members.json',s=>{s.members[0].email='current@example.invalid';s.members[0].whatsapp='(82) 99999-1234';return s;});
+  const row=(await call('admin/feedback',{cookie:cookieAdmin})).body.threads[0];
+  assert.equal(row.contact.email,'current@example.invalid');assert.equal(row.contact.whatsapp,'(82) 99999-1234');assert.equal(row.contact.whatsappUrl,'https://wa.me/5582999991234');assert.equal(row.contact.emailUrl,'mailto:current%40example.invalid');
+  assert.equal((await call('club/feedback',{cookie:cookieA})).body.threads[0].contact,undefined);
+  for(const value of ['current@example.invalid','99999-1234','wa.me'])assert.ok(!JSON.stringify((await call('reviews?productId='+products[0].id)).body).includes(value));
+  await updateRecord('club-members.json',s=>{s.members[0].countryCode='US';s.members[0].whatsapp='+1 (202) 555-0123';return s;});
+  assert.equal((await call('admin/feedback',{cookie:cookieAdmin})).body.threads[0].contact.whatsappUrl,'https://wa.me/12025550123');
+  await updateRecord('club-members.json',s=>{delete s.members[0].whatsapp;return s;});
+  const missing=(await call('admin/feedback',{cookie:cookieAdmin})).body.threads[0].contact;assert.equal(missing.whatsapp,'');assert.equal(missing.whatsappUrl,'');
+ });
  await t.test('creator replies, statuses and unread markers work without public exposure',async()=>{
   assert.equal((await post('admin/messages',{id:thread.id,version:thread.version,status:'reviewing',text:'Vou analisar esse encaixe.',photo:image},cookieAdmin)).status,200);
   const old=thread;thread=(await call('club/feedback',{cookie:cookieA})).body.threads[0];assert.equal(thread.status,'reviewing');assert.equal(thread.unread,true);assert.equal(thread.messages.at(-1).sender,'creator');

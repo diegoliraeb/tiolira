@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import {z} from 'zod';
 import {getCatalog,readRecord,updateRecord,writeRecord,Conflict} from './store.mjs';
 import {currentOrderEnvironment} from './payment-environment.mjs';
+import {internationalBuyer} from '../lib/international-pricing.mjs';
 
 const KEY='feedback.json';
 const empty=()=>({reviews:[],threads:[]});
@@ -63,7 +64,15 @@ export async function readThread(member,input){
  const threadId=z.string().uuid().parse(input.id),version=z.string().uuid().parse(input.version);
  await updateRecord(KEY,old=>{const t=old?.threads.find(t=>t.id===threadId&&t.memberId===member.id);if(!t)fail('Conversa não encontrada.',404);if(t.version===version)t.memberReadVersion=version;return old;});return {ok:true};
 }
-export async function adminFeedback(){const {state,orders}=await context();return {reviews:state.reviews.slice().reverse().map(r=>({...reviewView(r,true),productName:r.productName,eligible:verified(r,orders)})),threads:state.threads.slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(t=>({...threadView(t),memberName:t.memberName}))};}
+function adminContact(member,order){
+ const email=String(member?.email||order?.memberEmail||'').trim(),whatsapp=String(member?.whatsapp||member?.directoryProfile?.whatsapp||'').trim();
+ let phone=whatsapp.replace(/\D/g,'');if(!internationalBuyer(member)&&/^\d{10,11}$/.test(phone))phone='55'+phone;
+ return {email,whatsapp,emailUrl:z.string().email().safeParse(email).success?`mailto:${encodeURIComponent(email)}`:'',whatsappUrl:/^[1-9]\d{9,14}$/.test(phone)?`https://wa.me/${phone}`:''};
+}
+export async function adminFeedback(){
+ const [{state,orders},membersRecord]=await Promise.all([context(),readRecord('club-members.json')]),members=new Map((membersRecord?.data?.members||[]).map(m=>[m.id,m]));
+ return {reviews:state.reviews.slice().reverse().map(r=>({...reviewView(r,true),productName:r.productName,eligible:verified(r,orders)})),threads:state.threads.slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(t=>{const member=members.get(t.memberId),order=orders.find(o=>o.id===t.orderId&&o.memberId===t.memberId);return {...threadView(t),memberName:member?.name||t.memberName,contact:adminContact(member,order)}})};
+}
 export async function moderateReview(input){
  const parsed=z.object({id:z.string().uuid(),version:z.string().uuid(),status:z.enum(['approved','rejected','pending']),reply:z.string().trim().max(2000).default('')}).parse(input);
  const {orders}=await context();await updateRecord(KEY,old=>{const r=old?.reviews.find(r=>r.id===parsed.id);if(!r)fail('Avaliação não encontrada.',404);if(r.version!==parsed.version)throw new Conflict();if(parsed.status==='approved'&&!verified(r,orders))fail('Esta compra não está mais ativa.',409);r.status=parsed.status;r.reply=parsed.reply;r.updatedAt=new Date().toISOString();r.version=randomUUID();return old;});return {ok:true};
