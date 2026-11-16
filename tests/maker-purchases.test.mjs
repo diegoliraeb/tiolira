@@ -19,7 +19,7 @@ test('PIX/card one-off payments: concurrency, amount/customer validation, PDF, r
  const dir=await mkdtemp(join(tmpdir(),'tl-maker-buy-')),saved={...process.env},originalFetch=globalThis.fetch;
  for(const k of ['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN'])delete process.env[k];
  Object.assign(process.env,{LOCAL_DATA_DIR:dir,ASAAS_ENVIRONMENT:'sandbox',ASAAS_API_KEY:'test-only',ASAAS_WEBHOOK_TOKEN:'test-token-32-characters-long-value',SITE_URL:'https://www.tiolira.com.br',RESEND_API_KEY:'test-only',EMAIL_FROM:'Test <test@example.invalid>'});
- const m={id:'buyer',name:'Test',email:'buyer@example.invalid',countryCode:'BR',cpfCnpj:'52998224725',whatsapp:'5582999999999'},input={consent:true,termsVersion:MAKER_VERSION,billingType:'PIX',lang:'pt',priceCents:1,provider:'paypal'};let posts=0,mails=0,uncertain=false,last;const remote=new Map();
+ const m={id:'buyer',name:'Test',email:'buyer@example.invalid',countryCode:'BR',cpfCnpj:'52998224725',whatsapp:'82999999999'},input={consent:true,termsVersion:MAKER_VERSION,billingType:'PIX',lang:'pt',priceCents:1,provider:'paypal'};let posts=0,mails=0,uncertain=false,last;const remote=new Map();
  globalThis.fetch=async(url,o={})=>{const u=new URL(url),body=o.body?JSON.parse(o.body):null;let d;
  if(u.pathname==='/v3/customers')d={data:[{id:'cus_1',externalReference:'tiolira:buyer',cpfCnpj:m.cpfCnpj}]};
  else if(u.pathname==='/v3/payments'&&o.method==='POST'){posts++;assert.equal(body.value,49.9);assert.ok(['PIX','CREDIT_CARD'].includes(body.billingType));assert.equal(body.subscription,undefined);last={...body,id:'pay_'+posts,status:'PENDING',invoiceUrl:'https://sandbox.asaas.com/i/test'};remote.set(last.id,last);if(uncertain)throw Error('lost response');d=last;}

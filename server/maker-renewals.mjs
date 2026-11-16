@@ -4,6 +4,7 @@ import {makerPurchases,purchasePublic} from './maker-purchases.mjs';
 import {purchaseValidity,reminderWindow} from '../lib/maker-purchases.mjs';
 import {paymentsReady,asaasConfig} from './asaas.mjs';
 import {paypalReady,paypalConfig} from './paypal.mjs';
+import {internationalBuyer} from '../lib/international-pricing.mjs';
 import {purchaseEmailConfig} from './purchase-email.mjs';
 const KEY='maker-renewal-notices.json',fail=(m,s=409)=>{throw Object.assign(Error(m),{status:s})};
 function renewalMessage(row,origin){const date=new Date(row.validUntil).toLocaleDateString(row.lang==='pt'?'pt-BR':row.lang||'pt-BR',{timeZone:'America/Maceio'}),link=`${origin}/${['pt','en','es','fr'].includes(row.lang)?row.lang:'pt'}/clube#assinatura`;
@@ -12,7 +13,7 @@ export async function renewalReport(legacy={subscriptions:[]}){
  const [purchases,membersRecord,notices]=await Promise.all([makerPurchases(),readRecord('club-members.json'),readRecord(KEY)]),members=membersRecord?.data?.members||[],jobs=Object.values(notices?.data?.jobs||{}),ids=new Set([...purchases.map(p=>p.memberId),...legacy.subscriptions.map(s=>s.memberId)]);
  const subscriptions=[...ids].map(memberId=>{const rows=purchases.filter(p=>p.memberId===memberId),l=legacy.subscriptions.filter(s=>s.memberId===memberId).at(-1),member=members.find(m=>m.id===memberId),latest=rows.at(-1),v=purchaseValidity(rows),validUntil=[v.validUntil,l?.validUntil].filter(Boolean).sort().at(-1)||v.lastExpiry||null,active=v.active||l?.active||false,window=active&&!l?.autoRenew?reminderWindow(validUntil):null;
  const row={id:memberId,memberId,name:member?.name||latest?.name||l?.name,email:member?.email||latest?.email||l?.email,whatsapp:member?.whatsapp||member?.directoryProfile?.whatsapp||latest?.whatsapp||'',lang:latest?.lang||'pt',provider:latest?.provider||l?.provider,active,validFrom:v.validFrom||null,validUntil,daysRemaining:validUntil?Math.ceil((Date.parse(validUntil)-Date.now())/86400000):null,autoRenew:l?.autoRenew||false,status:active?'active':rows.some(r=>['creating','pending','overdue','review'].includes(r.status))?'pending':validUntil?'expired':l?.status||latest?.status||'none',eligible:!!window,window,history:rows.map(purchasePublic).reverse(),notices:jobs.filter(j=>j.memberId===memberId).map(({payload,...j})=>j).sort((a,b)=>(b.at||'').localeCompare(a.at||''))};
- let origin='https://www.tiolira.com.br';try{origin=new URL(process.env.SITE_URL).origin}catch{}const message=window?renewalMessage(row,origin).text:'';const phone=row.whatsapp.replace(/\D/g,'');row.whatsappUrl=window&&/^\d{10,15}$/.test(phone)?`https://wa.me/${phone}?text=${encodeURIComponent(message)}`:'';return row;
+ let origin='https://www.tiolira.com.br';try{origin=new URL(process.env.SITE_URL).origin}catch{}const message=window?renewalMessage(row,origin).text:'';let phone=row.whatsapp.replace(/\D/g,'');if(!internationalBuyer(member||latest||{})&&/^\d{10,11}$/.test(phone))phone='55'+phone;row.whatsappUrl=window&&/^\d{10,15}$/.test(phone)?`https://wa.me/${phone}?text=${encodeURIComponent(message)}`:'';return row;
  }).sort((a,b)=>(a.daysRemaining??999999)-(b.daysRemaining??999999));
  return {providers:{asaas:{ready:paymentsReady(),environment:asaasConfig().environment},paypal:{ready:paypalReady(),environment:paypalConfig().environment}},emailReady:!!purchaseEmailConfig(),subscriptions};
 }
