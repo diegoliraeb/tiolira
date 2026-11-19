@@ -15,7 +15,7 @@ test('media-kit keys are stable, scoped and reject malformed or altered bearers'
 });
 test('all kit images and PDF links stay protected and page has no trackers',()=>{
  const key=deriveMediaKitKey('test-media-kit-only-secret-not-real-123456'),html=renderMediaKit(key,fixture);
- const images=[...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map(x=>x[1]);assert.ok(images.length>5);
+ const images=[...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map(x=>x[1]);assert.ok(images.length>5);assert.equal([...html.matchAll(/<img width="\d+" height="\d+"/g)].length,images.length);
  for(const url of images){assert.ok(url.startsWith('/midia-kit/imagem/'));assert.ok(url.endsWith('?key='+key));}
  assert.ok(html.includes('/midia-kit/arquivo?key='+key));assert.doesNotMatch(html,/<script|googletagmanager|ActivityTracker/);assert.match(html,/noindex,nofollow/);
 });

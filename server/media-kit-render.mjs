@@ -1,7 +1,8 @@
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const escaped=value=>typeof value==='string'?esc(value):Array.isArray(value)?value.map(escaped):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,escaped(v)])):value;
+const imageSizes={'hero.jpg':[1200,900],'click.jpg':[854,1600],'assembly.jpg':[270,480],'easter.jpg':[1312,1199],'passion.jpg':[1196,1315],'logo.png':[256,256]};
 export function renderMediaKit(key,content){
- const c=escaped(content),img=(file,alt,cls='',eager=false)=>`<img class="${cls}" src="/midia-kit/imagem/${file}?key=${encodeURIComponent(key)}" alt="${esc(alt)}" ${eager?'fetchpriority="high"':'loading="lazy"'} decoding="async">`;
+ const c=escaped(content),img=(file,alt,cls='',eager=false)=>`<img width="${(imageSizes[file]||[1254,1254])[0]}" height="${(imageSizes[file]||[1254,1254])[1]}" class="${cls}" src="/midia-kit/imagem/${file}?key=${encodeURIComponent(key)}" alt="${esc(alt)}" ${eager?'fetchpriority="high"':'loading="lazy"'} decoding="async">`;
  const stats=(items,cls='')=>`<div class="stats ${cls}">${items.map(([v,l])=>`<div class="stat"><strong>${v}</strong><span>${l}</span></div>`).join('')}</div>`;
  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive,nosnippet"><meta name="referrer" content="no-referrer"><meta name="color-scheme" content="light"><title>Tio Lira · Mídia kit</title><meta name="description" content="Apresentação reservada do universo Tio Lira para parcerias."><link rel="icon" href="/assets/tl-monogram-3d-icon.png"><style>
 @font-face{font-family:DM;src:url('/assets/fonts/dm-sans-400.ttf') format('truetype');font-weight:400;font-display:swap}@font-face{font-family:DM;src:url('/assets/fonts/dm-sans-600.ttf') format('truetype');font-weight:600;font-display:swap}
