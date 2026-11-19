@@ -9,6 +9,6 @@ const config = {
  {source:'/3d/calculadora',destination:'/pt/calculadora',permanent:true},
  {source:'/3d/admin',destination:'/admin',permanent:true}
  ]; },
- async headers() { return [{source:'/:path*',headers:[{key:'X-Content-Type-Options',value:'nosniff'},{key:'X-Frame-Options',value:'DENY'},{key:'Referrer-Policy',value:'strict-origin-when-cross-origin'},{key:'Permissions-Policy',value:'camera=(), microphone=(), geolocation=()'}]},{source:'/admin',headers:[{key:'X-Robots-Tag',value:'noindex, nofollow'}]},{source:'/:lang(pt|en|es|fr)/clube',headers:[{key:'X-Robots-Tag',value:'noindex, nofollow'}]},{source:'/:lang(pt|en|es|fr)/lembretes',headers:[{key:'X-Robots-Tag',value:'noindex, nofollow'}]}]; }
+ async headers() { return [{source:'/:path*',headers:[{key:'X-Content-Type-Options',value:'nosniff'},{key:'X-Frame-Options',value:'DENY'},{key:'Referrer-Policy',value:'strict-origin-when-cross-origin'},{key:'Permissions-Policy',value:'camera=(), microphone=(), geolocation=()'}]},{source:'/midia-kit/:path*',headers:[{key:'Referrer-Policy',value:'no-referrer'},{key:'X-Robots-Tag',value:'noindex, nofollow, noarchive, nosnippet'}]},{source:'/admin',headers:[{key:'X-Robots-Tag',value:'noindex, nofollow'}]},{source:'/:lang(pt|en|es|fr)/clube',headers:[{key:'X-Robots-Tag',value:'noindex, nofollow'}]},{source:'/:lang(pt|en|es|fr)/lembretes',headers:[{key:'X-Robots-Tag',value:'noindex, nofollow'}]}]; }
 };
 export default config;

@@ -9,3 +9,7 @@ dist/
 *.log
 
 .next/
+
+# Curated media-kit source, metrics and PDF stay in private storage, never GitHub.
+/media-kit/
+/scripts/build-media-kit-pdf.py
