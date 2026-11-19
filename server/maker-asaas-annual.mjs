@@ -1,3 +1,4 @@
+import {withMembershipLock,assertNoMakerworldCheckout} from './makerworld-links.mjs';
 import {paypalConfig} from './paypal.mjs';
 import {randomUUID} from 'node:crypto';
 import {asaas,asaasConfig,invoiceUrl} from './asaas.mjs';
@@ -81,7 +82,8 @@ function migrationCandidate(rows,memberId,legacy){const own=rows.filter(x=>x.mem
  return {memberId,name:seed.name,eligible:true,seedId:seed.id,validUntil:v.validUntil,firstDueDate:renewalDate(v.validUntil),billingType:'PIX'};
 }
 export async function annualMigrationPreview(){const rows=(await readRecord(KEY))?.data?.purchases||[],legacy=(await readRecord('maker-subscriptions.json'))?.data?.subscriptions?.filter(x=>x.environment===asaasConfig().environment)||[];return {candidates:[...new Set(rows.filter(current).map(x=>x.memberId))].map(id=>migrationCandidate(rows,id,legacy))};}
-export async function migrateAnnual(memberId){
+export async function migrateAnnual(memberId){return withMembershipLock(memberId,async()=>{await assertNoMakerworldCheckout({id:memberId});return migrateAnnualUnlocked(memberId)});}
+async function migrateAnnualUnlocked(memberId){
  const rows=(await readRecord(KEY))?.data?.purchases||[],existing=annualRoot(rows.filter(x=>current(x)&&x.memberId===memberId));if(existing){await syncAnnual(existing.id);return {annual:annualPublic(await rootRow(existing.id)),alreadyScheduled:true};}
  const legacy=(await readRecord('maker-subscriptions.json'))?.data?.subscriptions?.filter(x=>x.environment===asaasConfig().environment)||[];
  const candidate=migrationCandidate(rows,memberId,legacy);if(!candidate.eligible)fail(candidate.reason);

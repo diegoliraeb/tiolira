@@ -1,0 +1,62 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {Writable} from 'node:stream';
+import {finished} from 'node:stream/promises';
+import {PDFDocument} from 'pdf-lib';
+import handler from '../server/handler.mjs';
+import {makeSession} from '../server/auth.mjs';
+import {readRecord,writeRecord,updateRecord} from '../server/store.mjs';
+import {LINK_KEY,profileUsername,linkView,submitMakerworldLink,reviewMakerworldLink,memberMakerworldLink,withdrawMakerworldLink} from '../server/makerworld-links.mjs';
+import {subscriptionDashboard,startSubscription,annualLicense,subscriptionReport} from '../server/maker-subscriptions.mjs';
+import {serveProductDownload} from '../server/product-download.mjs';
+import {purchaseLicensePdf} from '../server/purchase-license-pdf.mjs';
+import {MAKER_VERSION} from '../lib/maker-license.mjs';
+import {migrateAnnual} from '../server/maker-asaas-annual.mjs';
+test('MakerWorld profile validation rejects arbitrary destinations and malformed date/profile claims',()=>{
+ assert.equal(profileUsername('https://makerworld.com/pt/@A_User'),'a_user');assert.equal(profileUsername('@Example'),'example');
+ for(const input of ['https://makerworld.com.evil.test/@name','https://evil.test/@name','https://name@makerworld.com/@name','https://makerworld.com/@name?x=1','javascript:alert(1)','https://makerworld.com/models/123','a/b'])assert.throws(()=>profileUsername(input));
+ const row={status:'approved',startsAt:'2025-01-01T00:00:00Z',endsAt:'2026-01-01T00:00:00Z'};assert.equal(linkView([row],Date.parse('2025-06-01')).active,true);assert.equal(linkView([row],Date.parse('2026-01-01')).active,false);assert.equal(linkView([{...row,status:'pending'}]).active,false);
+});
+test('manual external membership: auth, pending, verified approval, PDF/download access, expiry/revocation and zero provider charges',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'tl-maker-link-')),saved={...process.env},oldFetch=globalThis.fetch;
+ for(const k of ['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN'])delete process.env[k];Object.assign(process.env,{LOCAL_DATA_DIR:dir,ADMIN_SESSION_SECRET:'maker-link-test-only-secret-at-least-32-characters',ASAAS_ENVIRONMENT:'sandbox',PAYPAL_ENVIRONMENT:'sandbox'});
+ let network=0;globalThis.fetch=async()=>{network++;throw Error('External linking must never call billing providers')};
+ const m={id:'member-one',name:'Example Member',email:'example@example.invalid',countryCode:'BR',version:'one'},other={...m,id:'member-two',email:'other@example.invalid'},admin={version:'test-admin'};
+ const input={profile:'@example',reference:'membership-123',plan:'Tio Lira Commercial',confirm:true},day=n=>new Date(Date.now()+n*86400000).toISOString().slice(0,10);
+ const approve=r=>({id:r.id,version:r.version,action:'approved',checked:true,paymentRef:'external-payment-123',startsAt:day(-1),endsAt:day(25)});
+ const call=async(route,{method='GET',body={},cookie='',origin='http://localhost'}={})=>{const result={};await handler({method,url:'/api/'+route,body,headers:{host:'localhost',origin,cookie},socket:{remoteAddress:'external-membership-test'}},{setHeader(){},set statusCode(n){result.status=n},end(v){result.body=Buffer.isBuffer(v)?v:JSON.parse(v)}});return result;};
+ const product={id:'included-test',slug:'included-test',published:true,collection:'test',access:'paid',includedInSubscription:true,exclusive:false,filePath:'models/model.3mf',printProfiles:[{id:'fine',name:'Fine',filePath:'models/fine.3mf'}]},catalog={products:[product],collections:[{id:'test',published:true}]};
+ const deps={hasAccess:async()=>false,record:async()=>{},readBlob:async path=>({stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close()}})})};
+ const download=async(member,profileId)=>{let body='';const res=new Writable({write(c,e,cb){body+=c;cb()}});res.setHeader=()=>{};await serveProductDownload({member,data:catalog,productId:product.id,profileId,res},deps);await finished(res);return body;};
+ try{
+ await writeRecord('club-members.json',{members:[m,other]},null);await writeRecord('admin.json',admin,null);
+ const cookie=`tiolira_club=${await makeSession(m.version,{memberId:m.id})}`,otherCookie=`tiolira_club=${await makeSession(other.version,{memberId:other.id})}`,adminCookie=`tiolira_admin=${await makeSession(admin.version)}`;
+ assert.equal((await call('admin/makerworld-links')).status,401);assert.equal((await call('club/makerworld-link',{method:'POST',body:input})).status,401);
+ let response=await call('club/makerworld-link',{method:'POST',cookie,body:input});assert.equal(response.status,200);const request=response.body.request;assert.equal(response.body.pending,true);assert.equal((await subscriptionDashboard(m)).active,false);
+ assert.equal((await call('admin/makerworld-links/review',{method:'POST',cookie,body:approve(request)})).status,401);
+ assert.equal((await call('admin/makerworld-links/review',{method:'POST',cookie:adminCookie,origin:'https://evil.test',body:approve(request)})).status,403);
+ await assert.rejects(()=>download(m),{status:403});await assert.rejects(()=>annualLicense(m),{status:403});
+ await assert.rejects(()=>submitMakerworldLink(other,input));await assert.rejects(()=>startSubscription(m,{consent:true,termsVersion:MAKER_VERSION,billingType:'PIX'}));await assert.rejects(()=>migrateAnnual(m.id));
+ assert.equal((await call('club/makerworld-link',{method:'POST',cookie:otherCookie,body:{action:'withdraw',id:request.id}})).status,404);
+ for(const patch of [{checked:false},{startsAt:'2026-02-30'},{endsAt:day(-2)},{startsAt:day(1)},{endsAt:day(400)},{paymentRef:''},{version:99}])await assert.rejects(()=>reviewMakerworldLink(admin,{...approve(request),...patch}));
+ response=await call('admin/makerworld-links/review',{method:'POST',cookie:adminCookie,body:approve(request)});assert.equal(response.status,200);assert.equal((await subscriptionDashboard(m)).active,true);
+ assert.equal(await download(m),'models/model.3mf');assert.equal(await download(m,'fine'),'models/fine.3mf');await assert.rejects(()=>download(other),{status:403});
+ const license=await annualLicense(m);assert.equal(license.provider,'makerworld');assert.equal(license.partnerName,m.name);assert.match(license.terms,/exclusivamente no MakerWorld/);assert.match(license.terms,/Ayrton Senna/);assert.ok((await PDFDocument.load(await purchaseLicensePdf(license))).getPageCount()>0);
+ const pdf=await call('club/maker-subscription/license',{cookie});assert.ok(pdf.body.subarray(0,4).equals(Buffer.from('%PDF')));
+ const report=await subscriptionReport();assert.equal(report.summary.activeSubscribers,1);assert.equal(report.summary.confirmedPurchases,0);assert.equal(report.summary.totalCents,0);assert.equal(report.subscriptions[0].provider,'makerworld');
+ await assert.rejects(()=>reviewMakerworldLink(admin,approve(request)));await assert.rejects(()=>startSubscription(m,{consent:true,termsVersion:MAKER_VERSION,billingType:'PIX'}));
+ await submitMakerworldLink(m,input);const renewal=(await memberMakerworldLink(m)).request;await assert.rejects(()=>reviewMakerworldLink(admin,approve(renewal)));await withdrawMakerworldLink(m,{id:renewal.id});assert.equal((await subscriptionDashboard(m)).active,true);
+ await reviewMakerworldLink(admin,{id:request.id,version:2,action:'revoked',response:'Reembolso confirmado no MakerWorld.'});await assert.rejects(()=>download(m),{status:403});await assert.rejects(()=>annualLicense(m),{status:403});
+ // Approval cannot coexist with an existing paid site license or a pending invoice.
+ await submitMakerworldLink(other,{...input,profile:'@second'});let second=(await memberMakerworldLink(other)).request;
+ await writeRecord('maker-license-purchases.json',{purchases:[{id:'pending-site',memberId:other.id,provider:'asaas',environment:'sandbox',status:'pending',createdAt:new Date().toISOString()}]},null);
+ await assert.rejects(()=>reviewMakerworldLink(admin,{...approve(second),paymentRef:'second-pay'}),/cobrança/);
+ await updateRecord('maker-license-purchases.json',d=>{Object.assign(d.purchases[0],{status:'paid',startsAt:new Date(Date.now()-1000).toISOString(),endsAt:new Date(Date.now()+86400000).toISOString()});return d});await assert.rejects(()=>reviewMakerworldLink(admin,{...approve(second),paymentRef:'second-pay'}),/cobrança/);
+ await updateRecord('maker-license-purchases.json',()=>({purchases:[]}));await reviewMakerworldLink(admin,{...approve(second),paymentRef:'second-pay'});
+ await updateRecord(LINK_KEY,d=>{d.requests.find(r=>r.id===second.id).endsAt=new Date(Date.now()-1000).toISOString();return d});assert.equal((await subscriptionDashboard(other)).active,false);await assert.rejects(()=>download(other),{status:403});await assert.rejects(()=>annualLicense(other),{status:403});
+ assert.equal(network,0,'No Asaas, PayPal or MakerWorld billing request was sent');
+ }finally{globalThis.fetch=oldFetch;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);await rm(dir,{recursive:true,force:true});}
+});

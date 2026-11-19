@@ -1,3 +1,4 @@
+import {submitMakerworldLink,withdrawMakerworldLink,reviewMakerworldLink,makerworldLinksReport} from './makerworld-links.mjs';
 import {annualMigrationPreview,migrateAnnual} from './maker-asaas-annual.mjs';
 import {sendRenewalNotice} from './maker-renewals.mjs';
 import {configureMakerPaypal} from './maker-paypal.mjs';
@@ -66,6 +67,7 @@ export default async function handler(req,res){
   if(method==='POST'&&route==='webhooks/purchase-email'){assertWebhook(req);await receiveWebhook(await body(req,route),{emailRequired:true});return json(res,200,{received:true});}
   if(method==='POST'&&route==='webhooks/asaas'){assertWebhook(req);await receiveWebhook(await body(req,route));return json(res,200,{received:true});}
   if(method==='POST'&&route==='webhooks/maker-subscriptions'){assertWebhook(req);await subscriptionWebhook(await body(req,route));return json(res,200,{received:true});}
+  if(method==='GET'&&route==='admin/makerworld-links'){await requireAdmin(req);return json(res,200,await makerworldLinksReport());}
   if(method==='GET'&&route==='club/maker-subscription')return json(res,200,await subscriptionDashboard(await requireClub(req)));
   if(method==='GET'&&route==='admin/maker-subscriptions'){await requireAdmin(req);return json(res,200,await subscriptionReport());}
   if(method==='GET'&&route==='club/maker-subscription/license'){
@@ -194,6 +196,8 @@ export default async function handler(req,res){
    await rateLimit(req,'club-reset-password',10,15*60_000);
    await resetPassword(input);res.setHeader('Set-Cookie',clubSessionCookie('',true));return json(res,200,{ok:true});
   }
+  if(method==='POST'&&route==='club/makerworld-link'){const member=await requireClub(req);await rateLimit(req,'makerworld-link',6,60_000,member.id);return json(res,200,input.action==='withdraw'?await withdrawMakerworldLink(member,input):await submitMakerworldLink(member,input));}
+  if(method==='POST'&&route==='admin/makerworld-links/review'){const admin=await requireAdmin(req);await rateLimit(req,'makerworld-review',30,60_000);return json(res,200,await reviewMakerworldLink(admin,input));}
   if(method==='POST'&&['club/maker-subscription/start','club/maker-subscription/refresh','club/maker-subscription/cancel'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,'maker-subscription',10,60_000,member.id);return json(res,200,route.endsWith('/start')?await startSubscription(member,input):route.endsWith('/cancel')?await cancelSubscription(member):await refreshSubscription(member));
   }
