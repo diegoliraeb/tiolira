@@ -1,3 +1,4 @@
+import {canDownloadProduct} from '../lib/subscriber-access.mjs';
 import {commercialPolicy} from '../lib/maker-license.mjs';
 import {subscriptionDashboard} from './maker-subscriptions.mjs';
 import {PRINT_REWARDS_KEY} from './print-rewards-access.mjs';
@@ -23,9 +24,9 @@ export function publicClubMember(member){
 }
 export function clubProducts(data,owned=new Set(),annual=false,legacy=new Set()){
  const collections=new Set(data.collections.filter(c=>c.published).map(c=>c.id));
- return data.products.filter(p=>p.published&&collections.has(p.collection)&&['site','maker','paid'].includes(p.access)&&isAvailable(p)&&(!isPaidProduct(p)||owned.has(p.id)||!data.collections.some(c=>c.id===p.collection&&c.comingSoon))).map(({filePath,fileProfile,printProfiles,...p})=>({
-  ...p,printEstimate:productPrintEstimate({...p,filePath}),canPurchase:!owned.has(p.id)&&canPurchaseProduct({...p,filePath,printProfiles},data),downloadUrl:isPaidProduct(p)&&!owned.has(p.id)?'':['site','paid'].includes(p.access)&&hasProductFiles({filePath,printProfiles})&&!p.exclusive?`/api/download?id=${encodeURIComponent(p.id)}`:p.url,
-  printProfiles:publicPrintProfiles({...p,filePath,fileProfile,printProfiles},['site','paid'].includes(p.access)&&!p.exclusive&&(!isPaidProduct(p)||owned.has(p.id))),
+ return data.products.filter(p=>p.published&&collections.has(p.collection)&&['site','maker','paid','subscribers'].includes(p.access)&&isAvailable(p)&&(!isPaidProduct(p)||owned.has(p.id)||!data.collections.some(c=>c.id===p.collection&&c.comingSoon))).map(({filePath,fileProfile,printProfiles,...p})=>({
+  ...p,printEstimate:productPrintEstimate({...p,filePath}),canPurchase:!owned.has(p.id)&&canPurchaseProduct({...p,filePath,printProfiles},data),downloadUrl:canDownloadProduct(p,{owned:owned.has(p.id),annual})&&hasProductFiles({filePath,printProfiles})?`/api/download?id=${encodeURIComponent(p.id)}`:p.access==='subscribers'?'':p.access==='maker'?p.url:!isPaidProduct(p)?p.url:'',
+  printProfiles:publicPrintProfiles({...p,filePath,fileProfile,printProfiles},canDownloadProduct(p,{owned:owned.has(p.id),annual})),
   commercialPolicy:commercialPolicy(p,data.collections),canLicense:commercialPolicy(p,data.collections)==='noncommercial'?false:owned.has(p.id)||legacy.has(p.id)||commercialPolicy(p,data.collections)==='free'||commercialPolicy(p,data.collections)==='annual'&&annual
  }));
 }

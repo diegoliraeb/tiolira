@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import {collectionCover} from '../lib/collection-covers.mjs';
 import {filterAdminProducts,sortAdminProductsBySales} from '../lib/admin-catalog.mjs';
 import {money} from './PartnerShop';
-const accessNames={maker:'MakerWorld',site:'Gratuita',paid:'Venda avulsa',members:'Assinatura',soon:'Em breve'};
+const accessNames={maker:'MakerWorld',site:'Gratuita',paid:'Venda avulsa',subscribers:'Exclusiva para assinantes',members:'Assinatura externa',soon:'Em breve'};
 export default function AdminCatalogList({section,items,collections,onEdit,preview=false}){
  const [query,setQuery]=useState(''),[collection,setCollection]=useState('all'),[publication,setPublication]=useState('all'),[layout,setLayout]=useState('list');
  const [sales,setSales]=useState(null),[salesError,setSalesError]=useState(''),[loadingSales,setLoadingSales]=useState(false),[reload,setReload]=useState(0);

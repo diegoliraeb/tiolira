@@ -6,7 +6,7 @@ export default function AdminFileAudit({products}){
  const [results,setResults]=useState([]),[busy,setBusy]=useState(false),[current,setCurrent]=useState('');
  const controller=useRef(null);
  useEffect(()=>()=>controller.current?.abort(),[]);
- const files=products.filter(p=>p.published&&['site','paid'].includes(p.access)).flatMap(p=>productFiles(p).filter(file=>file.filePath.toLowerCase().endsWith('.3mf')).map(file=>({id:p.id,profileId:file.id,name:p.name+' · '+file.name})));
+ const files=products.filter(p=>p.published&&['site','paid','subscribers'].includes(p.access)).flatMap(p=>productFiles(p).filter(file=>file.filePath.toLowerCase().endsWith('.3mf')).map(file=>({id:p.id,profileId:file.id,name:p.name+' · '+file.name})));
  async function verify(){
   if(controller.current)return;
   const abort=new AbortController();controller.current=abort;setResults([]);setBusy(true);

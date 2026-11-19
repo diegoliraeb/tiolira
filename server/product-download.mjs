@@ -1,12 +1,16 @@
+import {subscriptionDashboard} from './maker-subscriptions.mjs';
+import {canDownloadProduct} from '../lib/subscriber-access.mjs';
 import {get} from '@vercel/blob';
 import {Readable} from 'node:stream';
 import {isPaidProduct,memberHasAccess,recordDownload} from './commerce.mjs';
 import {resolveProductFile} from '../lib/print-profiles.mjs';
 const fail=(message,status)=>{throw Object.assign(new Error(message),{status});};
-export async function serveProductDownload({member,data,productId,profileId,res},{readBlob=get,hasAccess=memberHasAccess,record=recordDownload}={}){
+export async function serveProductDownload({member,data,productId,profileId,res},{readBlob=get,hasAccess=memberHasAccess,record=recordDownload,subscription=subscriptionDashboard}={}){
  const product=data.products.find(p=>p.id===productId&&p.published);
- if(!product||!['site','paid'].includes(product.access)||product.exclusive||!data.collections.some(c=>c.id===product.collection&&c.published))fail('Arquivo não disponível para download direto.',404);
- if(isPaidProduct(product)&&!await hasAccess(member,product.id))fail('Compre esta peça para liberar o download.',403);
+ if(!product||!['site','paid','subscribers'].includes(product.access)||product.exclusive||!data.collections.some(c=>c.id===product.collection&&c.published))fail('Arquivo não disponível para download direto.',404);
+ const owned=(isPaidProduct(product)||product.access==='subscribers')&&await hasAccess(member,product.id);
+ const annual=product.access==='subscribers'&&!owned&&(await subscription(member)).active===true;
+ if(!canDownloadProduct(product,{owned,annual}))fail(product.access==='subscribers'?'Assinatura ativa necessária para baixar esta obra.':'Compre esta peça para liberar o download.',403);
  const file=resolveProductFile(product,profileId);
  if(!file)fail('Perfil de impressão não disponível.',404);
  const blob=await readBlob(file.filePath,{access:'private',useCache:false});
