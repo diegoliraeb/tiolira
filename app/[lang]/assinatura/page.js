@@ -11,7 +11,7 @@ import {pageMetadata,productPath} from '../../../lib/seo.mjs';
 import {commercialPolicy,MAKER_PRICE,makerTerms} from '../../../lib/maker-license.mjs';
 import {subscriptionPageCopy} from '../../../lib/subscription-page.mjs';
 export const dynamic='force-dynamic';
-export async function generateMetadata({params}){const {lang}=await params,c=subscriptionPageCopy[lang];if(!c)notFound();return pageMetadata({lang,path:'/assinatura',title:c.nav+' · MakerWorld',description:c.description});}
+export async function generateMetadata({params}){const {lang}=await params,c=subscriptionPageCopy[lang];if(!c)notFound();return pageMetadata({lang,path:'/assinatura',title:c.nav+' · Site / MakerWorld',description:c.description});}
 export default async function Page({params}){
  const {lang}=await params,c=subscriptionPageCopy[lang];if(!c)notFound();
  const catalog=await readPublicCatalog(),allAnnual=catalog.products.filter(p=>p.published!==false&&commercialPolicy(p,catalog.collections)==='annual'),products=allAnnual.filter(p=>p.access==='maker'),exclusives=allAnnual.filter(isSubscriptionProduct),price=new Intl.NumberFormat(lang==='pt'?'pt-BR':lang,{style:'currency',currency:'BRL'}).format(MAKER_PRICE/100),subscribe=`/${lang}/clube#assinatura`;

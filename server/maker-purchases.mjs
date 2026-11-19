@@ -15,7 +15,11 @@ export const currentPurchase=r=>r.environment===purchaseEnvironment(r.provider);
 export async function makerPurchases(memberId){return ((await readRecord(PURCHASE_KEY))?.data?.purchases||[]).filter(r=>currentPurchase(r)&&(!memberId||r.memberId===memberId));}
 const root=()=>{const u=new URL(process.env.SITE_URL);if(u.protocol!=='https:'||u.username||u.password)fail('Endereço do site indisponível.',503);return u.origin};
 export function purchasePublic(r){if(!r)return null;return {id:r.id,status:r.status,provider:r.provider,billingType:r.billingType,currency:r.currency,totalCents:r.totalCents,createdAt:r.createdAt,paidAt:r.paidAt||null,dueDate:r.dueDate||null,annual:r.annual||false,subscriptionId:r.subscriptionId||null,startsAt:r.startsAt||null,endsAt:r.endsAt||null,paymentUrl:r.provider==='paypal'?paypalApprovalUrl(r.paymentUrl,r.environment):invoiceUrl(r.paymentUrl)};}
-export async function purchaseDashboard(member){const rows=await makerPurchases(member.id),market=makerMarket(member),pending=rows.find(r=>['creating','pending','overdue','review'].includes(r.status)),validity=purchaseValidity(rows);return {...validity,market,recurring:annualPublic(annualRoot(rows.filter(r=>r.provider==='asaas'))),ready:market.provider==='asaas'?paymentsReady():paypalReady(),purchase:purchasePublic(pending),purchases:rows.map(purchasePublic).reverse()};}
+export async function purchaseDashboard(member){
+ const rows=await makerPurchases(member.id),market=makerMarket(member),validity=purchaseValidity(rows);
+ const pending=rows.find(r=>['creating','pending','overdue','review'].includes(r.status)&&!(validity.active&&r.subscriptionRootId&&r.dueDate&&Date.parse(r.dueDate+'T03:00:00Z')>Date.now()+30*86400000));
+ return {...validity,market,recurring:annualPublic(annualRoot(rows.filter(r=>r.provider==='asaas'))),ready:market.provider==='asaas'?paymentsReady():paypalReady(),purchase:purchasePublic(pending),purchases:rows.map(purchasePublic).reverse()};
+}
 export async function startMakerPurchase(member,input,{legacyAutoRenew=false}={}){
  if(input.consent!==true||input.termsVersion!==MAKER_VERSION)fail('Aceite os termos da licença anual.',400);
  if(legacyAutoRenew)fail('Você já possui renovação automática ativa. Cancele-a antes de fazer uma compra avulsa.');
