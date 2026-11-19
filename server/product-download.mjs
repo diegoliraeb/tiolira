@@ -1,5 +1,5 @@
 import {subscriptionDashboard} from './maker-subscriptions.mjs';
-import {canDownloadProduct} from '../lib/subscriber-access.mjs';
+import {canDownloadProduct,isSubscriptionProduct} from '../lib/subscriber-access.mjs';
 import {get} from '@vercel/blob';
 import {Readable} from 'node:stream';
 import {isPaidProduct,memberHasAccess,recordDownload} from './commerce.mjs';
@@ -9,8 +9,8 @@ export async function serveProductDownload({member,data,productId,profileId,res}
  const product=data.products.find(p=>p.id===productId&&p.published);
  if(!product||!['site','paid','subscribers'].includes(product.access)||product.exclusive||!data.collections.some(c=>c.id===product.collection&&c.published))fail('Arquivo não disponível para download direto.',404);
  const owned=(isPaidProduct(product)||product.access==='subscribers')&&await hasAccess(member,product.id);
- const annual=product.access==='subscribers'&&!owned&&(await subscription(member)).active===true;
- if(!canDownloadProduct(product,{owned,annual}))fail(product.access==='subscribers'?'Assinatura ativa necessária para baixar esta obra.':'Compre esta peça para liberar o download.',403);
+ const annual=isSubscriptionProduct(product)&&!owned&&(await subscription(member)).active===true;
+ if(!canDownloadProduct(product,{owned,annual}))fail(isSubscriptionProduct(product)?'Assine ou compre esta obra para liberar o download.':'Compre esta peça para liberar o download.',403);
  const file=resolveProductFile(product,profileId);
  if(!file)fail('Perfil de impressão não disponível.',404);
  const blob=await readBlob(file.filePath,{access:'private',useCache:false});
