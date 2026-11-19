@@ -25,3 +25,11 @@ test('private content imports reject invalid asset references and unsafe email f
  assert.throws(()=>validateKitContent({...fixture,nativity:[{image:'../../security.json'}]}));
  const html=renderMediaKit('example',fixture);assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
 });
+
+import {Script} from 'node:vm';
+import {renderMediaKitEditor} from '../app/midia-kit/gerenciar/route.js';
+test('editor upload script parses and the form never defaults to GET',()=>{
+ const html=renderMediaKitEditor('00000000-0000-0000-0000-000000000000','test',null);
+ const script=html.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1];assert.doesNotThrow(()=>new Script(script));
+ assert.match(html,/<form[^>]+method=\"post\"/);
+});
