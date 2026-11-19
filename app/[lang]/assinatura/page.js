@@ -1,3 +1,4 @@
+import {annualAsaasTerms} from '../../../lib/maker-annual-copy.mjs';
 import {subscriberCopy,isSubscriptionProduct} from '../../../lib/subscriber-access.mjs';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
@@ -19,7 +20,7 @@ export default async function Page({params}){
  <section className="subscription-section"><h2>{c.stepsTitle}</h2><ol className="subscription-steps">{c.steps.map(([title,text],i)=><li key={title}><span className="subscription-number">0{i+1}</span><h3>{title}</h3><p>{text}</p></li>)}</ol></section>
  <section className="subscription-section"><h2>{c.scopeTitle}</h2><div className="subscription-scope">{c.scope.map(([title,text])=><article key={title}><h3>{title}</h3><p>{text}</p></article>)}</div></section>
  <section className="subscription-section" id="incluidas"><h2>{c.catalogTitle} <small>({products.length})</small></h2><p>{c.catalogIntro}</p>{products.length?<CatalogProductGrid products={products} lang={lang}/>:<p>{c.empty}</p>}</section>
- <section className="subscription-section" id="exclusivas"><h2>{subscriberCopy[lang].title} <small>({exclusives.length})</small></h2><p>{subscriberCopy[lang].description}</p>{exclusives.length?<CatalogProductGrid products={exclusives} lang={lang}/>:<p>{subscriberCopy[lang].empty}</p>}</section><section className="subscription-section subscription-faq"><h2>{c.faqTitle}</h2>{c.faq.map(([q,a])=><details key={q}><summary>{q}</summary><p>{a}</p></details>)}<details><summary>{c.terms}</summary><p>{makerTerms[lang]}</p></details></section>
+ <section className="subscription-section" id="exclusivas"><h2>{subscriberCopy[lang].title} <small>({exclusives.length})</small></h2><p>{subscriberCopy[lang].description}</p>{exclusives.length?<CatalogProductGrid products={exclusives} lang={lang}/>:<p>{subscriberCopy[lang].empty}</p>}</section><section className="subscription-section subscription-faq"><h2>{c.faqTitle}</h2>{c.faq.map(([q,a])=><details key={q}><summary>{q}</summary><p>{a}</p></details>)}<details><summary>{c.terms}</summary><h3>Brasil · Asaas</h3><p>{annualAsaasTerms[lang]}</p><h3>PayPal</h3><p>{makerTerms[lang]}</p></details></section>
  <section className="subscription-closing"><h2>{c.finalTitle}</h2><p>{price} · {c.period}</p><Link className="button primary" href={subscribe}>{c.cta} ↗</Link><Link className="text-link" href={subscribe}>{c.account}</Link></section>
  </main><Footer lang={lang}/></>;
 }

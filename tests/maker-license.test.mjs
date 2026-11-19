@@ -34,6 +34,8 @@ test('checkout, verification, replay, cancellation, refunds and access controls'
  const call=async(route,method='GET',body={})=>{let out;await handler({method,url:'/api/'+route,body,headers:{host:'localhost',origin:'http://localhost'},socket:{remoteAddress:'test'}},{setHeader(){},set statusCode(s){this.status=s},end(value){out={status:this.status,body:JSON.parse(value)}}});return out};
  try{
  for(const path of ['club/maker-subscription','club/maker-subscription/license','admin/maker-subscriptions'])assert.equal((await call(path)).status,401);
+ assert.equal((await call('admin/maker-subscriptions/annual','POST',{preview:true})).status,401);
+ assert.equal((await call('admin/maker-subscriptions/annual','POST',{memberId:'someone'})).status,401);
  assert.equal((await call('webhooks/maker-subscriptions','POST',{event:'CHECKOUT_PAID'})).status,401);
  await assert.rejects(()=>startSubscription(member,{consent:false}),/Aceite/);
  const input={consent:true,termsVersion:MAKER_VERSION,lang:'pt',priceCents:1};await assert.rejects(()=>startSubscription(member,input),/indisponível/);

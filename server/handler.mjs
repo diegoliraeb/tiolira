@@ -1,3 +1,4 @@
+import {annualMigrationPreview,migrateAnnual} from './maker-asaas-annual.mjs';
 import {sendRenewalNotice} from './maker-renewals.mjs';
 import {configureMakerPaypal} from './maker-paypal.mjs';
 import {commercialPolicy} from '../lib/maker-license.mjs';
@@ -196,6 +197,7 @@ export default async function handler(req,res){
   if(method==='POST'&&['club/maker-subscription/start','club/maker-subscription/refresh','club/maker-subscription/cancel'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,'maker-subscription',10,60_000,member.id);return json(res,200,route.endsWith('/start')?await startSubscription(member,input):route.endsWith('/cancel')?await cancelSubscription(member):await refreshSubscription(member));
   }
+  if(method==='POST'&&route==='admin/maker-subscriptions/annual'){await requireAdmin(req);await rateLimit(req,'maker-annual-migration',30,60_000);return json(res,200,input.preview===true?await annualMigrationPreview():await migrateAnnual(String(input.memberId||'')));}
   if(method==='POST'&&route==='admin/maker-subscriptions/notice'){await requireAdmin(req);await rateLimit(req,'maker-renewal-notice',20,60_000);return json(res,200,await sendRenewalNotice(input.memberId,input.channel,await legacySubscriptionReport()));}
   if(method==='POST'&&route==='admin/maker-subscriptions/configure-paypal'){await requireAdmin(req);return json(res,200,await configureMakerPaypal());}
   if(method==='POST'&&route==='admin/maker-subscriptions/configure'){await requireAdmin(req);return json(res,200,await configureSubscriptionWebhook());}
