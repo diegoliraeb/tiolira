@@ -25,7 +25,7 @@ export async function createAnnual(id){
   const customerSubs=await list(`/subscriptions?customer=${enc(r.customerId)}&includeDeleted=true`);
   if(customerSubs.some(s=>!s.deleted&&s.status!=='INACTIVE'&&(String(s.externalReference||'').startsWith('tl-maker')||s.cycle==='YEARLY'&&Math.round(Number(s.value)*100)===MAKER_PRICE)))fail('Já existe uma assinatura deste cliente no Asaas. Confira antes de criar outra.');
   await updateRecord(KEY,d=>{const row=d.purchases.find(x=>x.id===id);if(row.createAttemptAt)fail('Criação já iniciada. Atualize para conferir.');row.createAttemptAt=new Date().toISOString();return d});
-  const remote=await asaas('/subscriptions',{method:'POST',body:{customer:r.customerId,billingType:r.billingType,value:MAKER_PRICE/100,nextDueDate:r.firstDueDate,cycle:'YEARLY',description:'Assinatura anual Tio Lira — Licença comercial',externalReference:ref(r),...(r.billingType==='PIX'?{pixAutomaticAuthorizationMode:'DISABLED'}:{}),...(r.callback?{callback:{successUrl:r.callback,autoRedirect:true}}:{})}});
+  const remote=await asaas('/subscriptions',{method:'POST',body:{customer:r.customerId,billingType:r.billingType,value:MAKER_PRICE/100,nextDueDate:r.firstDueDate,cycle:'YEARLY',description:'Assinatura anual Tio Lira — Licença comercial Site / MakerWorld',externalReference:ref(r),...(r.billingType==='PIX'?{pixAutomaticAuthorizationMode:'DISABLED'}:{}),...(r.callback?{callback:{successUrl:r.callback,autoRedirect:true}}:{})}});
   await bind(r,remote);await syncAnnual(id);
  }catch(e){await updateRecord(KEY,d=>{const row=d.purchases.find(x=>x.id===id);if(!row.subscriptionId){row.annualState=e.uncertain===false?'failed':'review';row.status=row.annualState==='failed'?'failed':'review';}return d});throw e;}
 }
