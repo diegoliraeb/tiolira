@@ -18,7 +18,7 @@ export function purchasePublic(r){if(!r)return null;return {id:r.id,status:r.sta
 export async function purchaseDashboard(member){
  const rows=await makerPurchases(member.id),market=makerMarket(member),validity=purchaseValidity(rows);
  const pending=rows.find(r=>['creating','pending','overdue','review'].includes(r.status)&&!(validity.active&&r.subscriptionRootId&&r.dueDate&&Date.parse(r.dueDate+'T03:00:00Z')>Date.now()+30*86400000));
- return {...validity,market,recurring:annualPublic(annualRoot(rows.filter(r=>r.provider==='asaas'))),ready:market.provider==='asaas'?paymentsReady():paypalReady(),purchase:purchasePublic(pending),purchases:rows.map(purchasePublic).reverse()};
+ return {...validity,market,billingDocument:market.provider==='asaas'?String(member.cpfCnpj||''):null,recurring:annualPublic(annualRoot(rows.filter(r=>r.provider==='asaas'))),ready:market.provider==='asaas'?paymentsReady():paypalReady(),purchase:purchasePublic(pending),purchases:rows.map(purchasePublic).reverse()};
 }
 export async function startMakerPurchase(member,input,{legacyAutoRenew=false}={}){
  if(input.consent!==true||input.termsVersion!==MAKER_VERSION)fail('Aceite os termos da licença anual.',400);
@@ -26,7 +26,7 @@ export async function startMakerPurchase(member,input,{legacyAutoRenew=false}={}
  const market=makerMarket(member),billingType=market.provider==='paypal'?'PAYPAL':input.billingType;
  if(market.provider==='asaas'&&!['PIX','CREDIT_CARD'].includes(billingType))fail('Escolha PIX ou cartão.',400);
  if(!(market.provider==='asaas'?paymentsReady():paypalReady()))fail('Pagamento indisponível no momento.',503);
- const cpfCnpj=String(member.cpfCnpj||'').replace(/\D/g,'');if(market.provider==='asaas'&&!validBillingDocument(cpfCnpj))fail(BILLING_DOCUMENT_ERROR,400);
+ if(market.provider==='asaas'&&!validBillingDocument(member.cpfCnpj))fail(BILLING_DOCUMENT_ERROR,400);const cpfCnpj=String(member.cpfCnpj||'').replace(/[.\/\-\s]/g,'');
  const id=randomUUID(),createdAt=new Date().toISOString(),lang=['pt','en','es','fr'].includes(input.lang)?input.lang:'pt',callback=`${root()}/${lang}/clube#assinatura`;
  let chosen;
  await updateRecord(PURCHASE_KEY,data=>{data||={purchases:[]};const rows=data.purchases.filter(r=>r.memberId===member.id&&currentPurchase(r)),pending=rows.find(r=>['creating','pending','overdue','review'].includes(r.status));const recurring=annualRoot(rows.filter(r=>r.provider==='asaas'));if(recurring){chosen=recurring.id;return data}if(pending){chosen=pending.id;return data}const v=purchaseValidity(rows);if(v.active&&Date.parse(v.validUntil)>Date.now()+30*86400000)fail('Sua licença já está ativa. A renovação fica disponível nos últimos 30 dias.');chosen=id;data.purchases.push({id,memberId:member.id,name:member.name,email:member.email,whatsapp:member.whatsapp||'',countryCode:member.countryCode||'',...market,billingType,environment:purchaseEnvironment(market.provider),createdAt,lang,status:'creating',terms:market.provider==='asaas'?annualAsaasTerms.pt:MAKER_TERMS,...(market.provider==='asaas'?{annual:true,annualState:'creating',firstDueDate:new Date().toLocaleDateString('en-CA',{timeZone:'America/Maceio'})}:{}),termsVersion:MAKER_VERSION,consentedAt:createdAt,callback,merchantId:market.provider==='paypal'?paypalConfig().merchantId:undefined});return data;});

@@ -37,6 +37,19 @@ export async function syncPartnerProfile(member){
  });
  return updated.members.find(m=>m.id===member.id);
 }
+// Billing details are private and can be completed without resubmitting a public profile.
+export async function updateBillingDocument(member,input){
+ const value=input?.cpfCnpj;
+ if(typeof value!=='string'||value.length>18||!validBillingDocument(value))throw Object.assign(Error(BILLING_DOCUMENT_ERROR),{status:400});
+ const cpfCnpj=value.replace(/[.\/\-\s]/g,'');
+ await updateRecord('club-members.json',old=>{
+  const current=old?.members.find(m=>m.id===member.id&&m.version===member.version);
+  if(!current)throw Object.assign(Error('Entre novamente na sua conta.'),{status:401});
+  current.cpfCnpj=cpfCnpj;
+  return old;
+ });
+ return {saved:true};
+}
 export async function updatePartnerProfile(member,input){
  const parsed=profileSchema.parse(input);
  const profile=pick(await normalizeStoreLocation(parsed));

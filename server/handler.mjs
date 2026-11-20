@@ -31,7 +31,7 @@ import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
 import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,memberLicenses,downloadablePurchaseLicense,salesReport,productSalesSummary,downloadPartnersReport,assertWebhook,receiveWebhook,memberHasAccess,isPaidProduct} from './commerce.mjs';
 import {configurePurchaseEmailWebhook,checkAsaasConnection} from './asaas.mjs';
-import {updatePartnerProfile,partnerProfile} from './partner-profile.mjs';
+import {updatePartnerProfile,partnerProfile,updateBillingDocument} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
 import {clubDashboard,clubProducts,issueLicense,couponSchema,requestPasswordReset,resetPassword} from './club.mjs';
 import {readClickCounts,recordProductClick} from './product-clicks.mjs';
@@ -216,6 +216,7 @@ export default async function handler(req,res){
    if(isPaidProduct(product)||owned.has(product.id)){const license=(await memberLicenses(member)).find(l=>l.productId===product.id&&l.status==='active');if(!license)fail('Licença aguardando confirmação do pagamento.',409);return json(res,200,{license});}
    return json(res,200,{license:await issueLicense(member,product)});
   }
+  if(method==='PUT'&&route==='club/billing-document'){const member=await requireClub(req);await rateLimit(req,'billing-document',20,600_000,member.id);return json(res,200,await updateBillingDocument(member,input));}
   if(method==='PUT'&&route==='club/profile'){
    const member=await requireClub(req);
    await rateLimit(req,'profile-save',20,600_000,member.id);
