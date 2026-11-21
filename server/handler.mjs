@@ -1,3 +1,4 @@
+import {pauseMakerworldLinks} from './makerworld-pause.mjs';
 import {correctMemberEmail,inspectAnnualPayment,recordDirectAnnualPayment} from './admin-member-support.mjs';
 import {submitMakerworldLink,withdrawMakerworldLink,reviewMakerworldLink,makerworldLinksReport} from './makerworld-links.mjs';
 import {annualMigrationPreview,migrateAnnual} from './maker-asaas-annual.mjs';
@@ -198,6 +199,7 @@ export default async function handler(req,res){
    await resetPassword(input);res.setHeader('Set-Cookie',clubSessionCookie('',true));return json(res,200,{ok:true});
   }
   if(method==='POST'&&route==='club/makerworld-link'){const member=await requireClub(req);await rateLimit(req,'makerworld-link',6,60_000,member.id);return json(res,200,input.action==='withdraw'?await withdrawMakerworldLink(member,input):await submitMakerworldLink(member,input));}
+  if(method==='POST'&&route==='admin/makerworld-links/pause'){const admin=await requireAdmin(req);await rateLimit(req,'makerworld-pause',10,60_000);return json(res,200,await pauseMakerworldLinks(admin));}
   if(method==='POST'&&route==='admin/makerworld-links/review'){const admin=await requireAdmin(req);await rateLimit(req,'makerworld-review',30,60_000);return json(res,200,await reviewMakerworldLink(admin,input));}
   if(method==='POST'&&['club/maker-subscription/start','club/maker-subscription/refresh','club/maker-subscription/cancel'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,'maker-subscription',10,60_000,member.id);return json(res,200,route.endsWith('/start')?await startSubscription(member,input):route.endsWith('/cancel')?await cancelSubscription(member):await refreshSubscription(member));
