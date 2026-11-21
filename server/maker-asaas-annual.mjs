@@ -32,8 +32,10 @@ export async function createAnnual(id){
 }
 export async function applyAnnualPayment(id,p){return updateRecord(KEY,d=>{
  const root=d?.purchases.find(r=>r.id===id&&current(r)&&r.annual);
- if(!root||!root.subscriptionId||!/^pay_[\w-]+$/.test(p.id||'')||p.subscription!==root.subscriptionId||p.customer!==root.customerId||p.billingType!==root.billingType||!/^\d{4}-\d{2}-\d{2}$/.test(p.dueDate||'')||p.dueDate<root.firstDueDate)fail('Cobrança não corresponde à assinatura anual.');
- const revoked=['REFUNDED','REFUND_REQUESTED','REFUND_IN_PROGRESS','CHARGEBACK_REQUESTED','CHARGEBACK_DISPUTE','AWAITING_CHARGEBACK_REVERSAL'].includes(p.status)||(p.refunds||[]).some(x=>x.status!=='CANCELLED');
+ const direct=root?.directReceipt?.paymentId===p.id?root.directReceipt:null;
+ const cash=!!direct&&(p.billingType==='RECEIVED_IN_CASH'||p.status==='RECEIVED_IN_CASH');
+ if(!root||!root.subscriptionId||!/^pay_[\w-]+$/.test(p.id||'')||p.subscription!==root.subscriptionId||p.customer!==root.customerId||(p.billingType!==root.billingType&&!cash)||!/^\d{4}-\d{2}-\d{2}$/.test(p.dueDate||'')||p.dueDate<root.firstDueDate)fail('Cobrança não corresponde à assinatura anual.');
+ const revoked=(!!direct?.confirmedAt&&!cash&&!['RECEIVED','CONFIRMED'].includes(p.status))||['REFUNDED','REFUND_REQUESTED','REFUND_IN_PROGRESS','CHARGEBACK_REQUESTED','CHARGEBACK_DISPUTE','AWAITING_CHARGEBACK_REVERSAL'].includes(p.status)||(p.refunds||[]).some(x=>x.status!=='CANCELLED');
  let row=d.purchases.find(x=>current(x)&&x.paymentId===p.id);
  if(row&&row.id!==root.id&&row.subscriptionRootId!==root.id)fail('Cobrança já vinculada a outro registro.');
  if(Math.round(Number(p.value)*100)!==MAKER_PRICE&&!(revoked&&row?.paymentId===p.id))fail('Valor da assinatura não corresponde à licença.');
@@ -41,8 +43,10 @@ export async function applyAnnualPayment(id,p){return updateRecord(KEY,d=>{
   if(!root.migrationSourceId&&!root.paymentId&&p.dueDate===root.firstDueDate)row=root;
   else {row={id:randomUUID(),memberId:root.memberId,name:root.name,email:root.email,whatsapp:root.whatsapp,countryCode:root.countryCode,provider:'asaas',environment:root.environment,billingType:root.billingType,currency:'BRL',totalCents:MAKER_PRICE,createdAt:new Date().toISOString(),lang:root.lang,terms:root.terms,termsVersion:root.termsVersion,consentedAt:root.consentedAt,subscriptionRootId:root.id,subscriptionId:root.subscriptionId,customerId:root.customerId};d.purchases.push(row);}
  }
- let status=revoked?'revoked':['CONFIRMED','RECEIVED'].includes(p.status)?'paid':p.deleted?'cancelled':['REPROVED_BY_RISK_ANALYSIS','CREDIT_CARD_CAPTURE_REFUSED'].includes(p.status)?'failed':p.status==='OVERDUE'?'overdue':'pending';
+ let status=revoked?'revoked':(['CONFIRMED','RECEIVED'].includes(p.status)||cash&&p.status==='RECEIVED_IN_CASH')?'paid':p.deleted?'cancelled':['REPROVED_BY_RISK_ANALYSIS','CREDIT_CARD_CAPTURE_REFUSED'].includes(p.status)?'failed':p.status==='OVERDUE'?'overdue':'pending';
  if(row.status==='revoked')status='revoked';else if(row.status==='paid'&&!revoked)status='paid';
+ if(cash&&status==='paid'){direct.confirmedAt||=new Date().toISOString();direct.status='confirmed';}
+ row.providerStatus=p.status;row.providerBillingType=p.billingType;
  row.paymentId=p.id;row.paymentUrl=invoiceUrl(p.invoiceUrl);row.dueDate=p.dueDate;row.status=status;row.checkedAt=new Date().toISOString();
  if(status==='paid'&&!row.startsAt){
   if(d.purchases.some(x=>x.id!==row.id&&x.subscriptionId===root.subscriptionId&&x.dueDate===p.dueDate&&x.status==='paid'))fail('Outro pagamento deste ciclo já foi confirmado. Conferência necessária.');
@@ -65,10 +69,11 @@ export async function syncAnnual(id){
  const payments=await list(`/subscriptions/${enc(r.subscriptionId)}/payments`);
  for(const p of payments.sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||'')||(a.id||'').localeCompare(b.id||'')))await applyAnnualPayment(id,p);
  const pending=payments.filter(p=>!p.deleted&&['PENDING','OVERDUE','AWAITING_RISK_ANALYSIS'].includes(p.status)).map(p=>p.dueDate).sort()[0];
- const paidDue=payments.filter(p=>!p.deleted&&['RECEIVED','CONFIRMED'].includes(p.status)).map(p=>p.dueDate).sort().at(-1);
+ const paidDue=payments.filter(p=>!p.deleted&&['RECEIVED','CONFIRMED','RECEIVED_IN_CASH'].includes(p.status)).map(p=>p.dueDate).sort().at(-1);
  const next=pending||[remote.nextDueDate,paidDue?yearAfter(paidDue+'T03:00:00Z').slice(0,10):r.firstDueDate].filter(Boolean).sort().at(-1);
  if(next)await updateRecord(KEY,d=>{d.purchases.find(x=>x.id===id).nextDueDate=next;return d;});
  if(r.annualState==='cancelled')await updateRecord(KEY,d=>{for(const x of d.purchases.filter(x=>x.id===id||x.subscriptionRootId===id))if(['creating','pending','overdue','review','scheduled'].includes(x.status))x.status='cancelled';return d;});
+ return {subscriptionId:r.subscriptionId,payments:payments.map(p=>({id:p.id,status:p.status,billingType:p.billingType,value:p.value,dueDate:p.dueDate,paymentDate:p.paymentDate||p.clientPaymentDate||p.confirmedDate||null}))};
 }
 export async function annualEvent(e){const rows=(await readRecord(KEY))?.data?.purchases||[],s=e.subscription||{},p=e.payment||{};const r=rows.find(x=>current(x)&&x.annual&&(x.subscriptionId&&[s.id,p.subscription].includes(x.subscriptionId)||s.externalReference===ref(x)||p.externalReference===ref(x)));if(!r)return false;await syncAnnual(r.id);return true;}
 export async function cancelAnnual(id,memberId){let r=await rootRow(id);if(r.memberId!==memberId)fail('Assinatura não encontrada.',404);await syncAnnual(id);r=await rootRow(id);if(!r.subscriptionId)fail('Aguarde a confirmação da criação antes de cancelar.');if(r.annualState!=='cancelled'){const result=await asaas(`/subscriptions/${enc(r.subscriptionId)}`,{method:'DELETE'});if(result.deleted!==true)fail('Cancelamento não confirmado.',502);await updateRecord(KEY,d=>{const x=d.purchases.find(x=>x.id===id);x.annualState='cancelled';x.cancelledAt=new Date().toISOString();for(const p of d.purchases.filter(p=>p.id===id||p.subscriptionRootId===id))if(['creating','pending','overdue','review','scheduled'].includes(p.status))p.status='cancelled';return d;});}}
