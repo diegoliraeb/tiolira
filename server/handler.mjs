@@ -1,3 +1,4 @@
+import {readPoll,votePoll} from './click-sanctis-poll.mjs';
 import {pauseMakerworldLinks} from './makerworld-pause.mjs';
 import {correctMemberEmail,inspectAnnualPayment,recordDirectAnnualPayment} from './admin-member-support.mjs';
 import {submitMakerworldLink,withdrawMakerworldLink,reviewMakerworldLink,makerworldLinksReport} from './makerworld-links.mjs';
@@ -135,9 +136,11 @@ export default async function handler(req,res){
   }
   if(['GET','HEAD'].includes(method)&&route==='media')return await serveCatalogImage(url.searchParams.get('path'),res,undefined,{head:method==='HEAD'});
   if(method==='GET'&&route==='download'){const member=await requireClub(req);await rateLimit(req,'file-download',120,600_000,member.id);await safelyAttributeBanner(req,member);const {data}=await getCatalog();return await serveProductDownload({member,data,productId:url.searchParams.get('id'),profileId:url.searchParams.get('profile'),res});}
+  if(method==='GET'&&route==='polls/click-sanctis')return json(res,200,await readPoll(req,res));
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req,route);
+  if(method==='POST'&&route==='polls/click-sanctis')return json(res,200,await votePoll(req,res,input));
   if(method==='POST'&&route==='club/print-rewards/claim'){const member=await requireClub(req);await rateLimit(req,'print-reward-claim',10,60_000,member.id);return json(res,200,await claimPrintReward(member,input));}
   if(method==='POST'&&route==='club/print-rewards/photo'){const member=await requireClub(req);await rateLimit(req,'print-reward-photo',30,600_000,member.id);return json(res,200,await uploadPrintRewardPhoto(member,input));}
   if(method==='POST'&&route==='club/print-rewards/submit'){const member=await requireClub(req);await rateLimit(req,'print-reward-submit',10,60_000,member.id);return json(res,200,await submitPrintReward(member,input));}
