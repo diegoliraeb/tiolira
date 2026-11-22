@@ -4,7 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {Writable} from 'node:stream';
+import {Readable,Writable} from 'node:stream';
 import {finished} from 'node:stream/promises';
 import seed from '../data/catalog.json' with {type:'json'};
 import {writeRecord,readRecord,updateRecord,getCatalog} from '../server/store.mjs';
@@ -53,7 +53,7 @@ test('individual collection grants: authorization, profiles, licenses, checkout,
   });
   await t.test('every profile streams for recipient only; licenses bind to recipient and download as PDF',async()=>{
    let reads=0;
-   const deps={record:async()=>{},readBlob:async path=>{reads++;return {stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close();}})};}};
+   const deps={prepare:async({stream})=>({id:'access-test',stream:Readable.fromWeb(stream),cleanup:async()=>{},finish:async()=>{}}),record:async()=>{},readBlob:async path=>{reads++;return {stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close();}})};}};
    for(const profileId of ['original','layer-020']){
     const chunks=[],res=new Writable({write(c,e,cb){chunks.push(c);cb();}});res.setHeader=()=>{};
     await serveProductDownload({member,data,productId:product.id,profileId,res},deps);await finished(res);assert.equal(Buffer.concat(chunks).toString(),profileId==='original'?'models/grant.3mf':'models/020.3mf');

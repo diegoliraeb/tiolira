@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Writable} from 'node:stream';
+import {Readable,Writable} from 'node:stream';
 import {finished} from 'node:stream/promises';
 import {productSchema,publicCatalog} from '../server/schema.mjs';
 import {clubProducts} from '../server/club.mjs';
@@ -28,7 +28,7 @@ test('public and inactive libraries expose no file paths or download URLs, activ
 });
 test('download rechecks active paid period and ownership for every private profile, before reading Blob',async()=>{
  let reads=0,records=0,owned=false,active=false;
- const deps={hasAccess:async()=>owned,subscription:async()=>({active}),record:async()=>records++,readBlob:async path=>{reads++;return {stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close()}})}}};
+ const deps={prepare:async({stream})=>({id:'test',stream:Readable.fromWeb(stream),cleanup:async()=>{},finish:async()=>{}}),hasAccess:async()=>owned,subscription:async()=>({active}),record:async()=>records++,readBlob:async path=>{reads++;return {stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close()}})}}};
  const args={member:{id:'m'},data,productId:product.id};
  for(const profileId of [undefined,'fine'])await assert.rejects(()=>serveProductDownload({...args,profileId},deps),{status:403});assert.equal(reads,0);
  for(const mode of ['subscriber','previous-buyer']){active=mode==='subscriber';owned=!active;for(const profileId of [undefined,'fine']){let body='';const res=new Writable({write(c,e,cb){body+=c;cb()}});res.setHeader=()=>{};await serveProductDownload({...args,profileId,res},deps);await finished(res);assert.equal(body,profileId?'models/fine.3mf':'models/member.3mf')}}

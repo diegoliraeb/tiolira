@@ -3,6 +3,7 @@ const fail=(message,status)=>{throw Object.assign(Error(message),{status});};
 // Large payloads are reserved for the existing image/file workflows.
 // Login and telemetry must never allocate the old 36 MB global JSON allowance.
 export function requestBodyLimit(route){
+ if(route==='admin/download-traces/inspect')return 4096;
  if(route==='polls/click-sanctis')return 2048;
  if(route==='admin/upload')return 35_500_000;
  if(['club/print-rewards/photo','stores/apply','club/profile','club/reviews','club/messages','admin/messages','admin/stores'].includes(route))return 3_100_000;

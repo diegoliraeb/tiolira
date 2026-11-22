@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Writable} from 'node:stream';
+import {Readable,Writable} from 'node:stream';
 import {finished} from 'node:stream/promises';
 import {productSchema,publicCatalog} from '../server/schema.mjs';
 import {clubProducts} from '../server/club.mjs';
@@ -33,7 +33,7 @@ test('invalid subscription flags cannot turn free, external, unpublished-file or
 });
 test('every download rechecks membership, expired members blocked before Blob reads, individual buyers retain access',async()=>{
  let active=false,owned=false,reads=0;
- const deps={hasAccess:async()=>owned,subscription:async()=>({active}),record:async()=>{},readBlob:async path=>{reads++;return {stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close();}})}}};
+ const deps={prepare:async({stream})=>({id:'access-test',stream:Readable.fromWeb(stream),cleanup:async()=>{},finish:async()=>{}}),hasAccess:async()=>owned,subscription:async()=>({active}),record:async()=>{},readBlob:async path=>{reads++;return {stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close();}})}}};
  const args={member:{id:'test-member'},data,productId:p.id};
  for(const profileId of [undefined,'fine'])await assert.rejects(()=>serveProductDownload({...args,profileId},deps),{status:403});
  assert.equal(reads,0);

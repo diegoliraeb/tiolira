@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Writable} from 'node:stream';
+import {Readable,Writable} from 'node:stream';
 import {finished} from 'node:stream/promises';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -43,7 +43,7 @@ test('legacy links resolve primary file; profiles-only products are purchasable 
 });
 test('protected streaming binds each profile to the purchased work and transfers the correct bytes',async()=>{
  let readPaths=[],records=0,allowed=true;
- const deps={hasAccess:async(member,id)=>{assert.equal(id,product.id);return allowed},record:async()=>records++,readBlob:async path=>{readPaths.push(path);return {stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close();}})}}};
+ const deps={prepare:async({stream})=>({id:'access-test',stream:Readable.fromWeb(stream),cleanup:async()=>{},finish:async()=>{}}),hasAccess:async(member,id)=>{assert.equal(id,product.id);return allowed},record:async()=>records++,readBlob:async path=>{readPaths.push(path);return {stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close();}})}}};
  for(const profileId of [null,'original','layer-020']){
   const chunks=[],headers={},res=new Writable({write(chunk,encoding,callback){chunks.push(chunk);callback();}});res.setHeader=(k,v)=>headers[k]=v;
   await serveProductDownload({member:{id:'buyer'},data,productId:product.id,profileId,res},deps);await finished(res);

@@ -20,6 +20,7 @@ import {adminCollectionAccess,saveCollectionAccess} from './collection-access.mj
 import {runProductUpdateEmails} from './product-update-email.mjs';
 import {runPurchaseEmailResends} from './purchase-email-resends.mjs';
 import {serveProductDownload} from './product-download.mjs';
+import {lookupTrace} from './download-traces.mjs';
 import {resolveProductFile} from '../lib/print-profiles.mjs';
 import {costSheetReport,costSheetPdf} from './cost-sheet-pdf.mjs';
 import {costSheets,saveCostSheet} from './cost-sheets.mjs';
@@ -140,6 +141,7 @@ export default async function handler(req,res){
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
   const input=await body(req,route);
+  if(method==='POST'&&route==='admin/download-traces/inspect'){await requireAdmin(req);await rateLimit(req,'download-trace-inspect',30,60_000);return json(res,200,await lookupTrace(input));}
   if(method==='POST'&&route==='polls/click-sanctis')return json(res,200,await votePoll(req,res,input));
   if(method==='POST'&&route==='club/print-rewards/claim'){const member=await requireClub(req);await rateLimit(req,'print-reward-claim',10,60_000,member.id);return json(res,200,await claimPrintReward(member,input));}
   if(method==='POST'&&route==='club/print-rewards/photo'){const member=await requireClub(req);await rateLimit(req,'print-reward-photo',30,600_000,member.id);return json(res,200,await uploadPrintRewardPhoto(member,input));}

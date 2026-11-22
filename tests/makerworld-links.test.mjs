@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {Writable} from 'node:stream';
+import {Readable,Writable} from 'node:stream';
 import {finished} from 'node:stream/promises';
 import {PDFDocument} from 'pdf-lib';
 import handler from '../server/handler.mjs';
@@ -29,7 +29,7 @@ test('manual external membership: auth, pending, verified approval, PDF/download
  const approve=r=>({id:r.id,version:r.version,action:'approved',checked:true,paymentRef:'external-payment-123',startsAt:day(-1),endsAt:day(25)});
  const call=async(route,{method='GET',body={},cookie='',origin='http://localhost'}={})=>{const result={};await handler({method,url:'/api/'+route,body,headers:{host:'localhost',origin,cookie},socket:{remoteAddress:'external-membership-test'}},{setHeader(){},set statusCode(n){result.status=n},end(v){result.body=Buffer.isBuffer(v)?v:JSON.parse(v)}});return result;};
  const product={id:'included-test',slug:'included-test',published:true,collection:'test',access:'paid',includedInSubscription:true,exclusive:false,filePath:'models/model.3mf',printProfiles:[{id:'fine',name:'Fine',filePath:'models/fine.3mf'}]},catalog={products:[product],collections:[{id:'test',published:true}]};
- const deps={hasAccess:async()=>false,record:async()=>{},readBlob:async path=>({stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close()}})})};
+ const deps={prepare:async({stream})=>({id:'access-test',stream:Readable.fromWeb(stream),cleanup:async()=>{},finish:async()=>{}}),hasAccess:async()=>false,record:async()=>{},readBlob:async path=>({stream:new ReadableStream({start(c){c.enqueue(Buffer.from(path));c.close()}})})};
  const download=async(member,profileId)=>{let body='';const res=new Writable({write(c,e,cb){body+=c;cb()}});res.setHeader=()=>{};await serveProductDownload({member,data:catalog,productId:product.id,profileId,res},deps);await finished(res);return body;};
  try{
  await writeRecord('club-members.json',{members:[m,other]},null);await writeRecord('admin.json',admin,null);
