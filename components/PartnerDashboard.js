@@ -37,6 +37,9 @@ function MenuIcon({kind}){
 export default function PartnerDashboard({lang,t,member,collections,applyDashboard,downloads,coupons,licenses,collectionLicenses,setLicenses,logout,busy}){
  const mc=makerCopy[lang]||makerCopy.pt;
  const costCopy=calculatorCopy(lang);
+ const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+ const mobileMenuButton=useRef(null);
+ const menuCopy=({pt:{open:'Abrir menu',close:'Fechar menu',label:'Menu',closeLabel:'Fechar'},en:{open:'Open menu',close:'Close menu',label:'Menu',closeLabel:'Close'},es:{open:'Abrir menú',close:'Cerrar menú',label:'Menú',closeLabel:'Cerrar'},fr:{open:'Ouvrir le menu',close:'Fermer le menu',label:'Menu',closeLabel:'Fermer'}})[lang]||{open:'Abrir menu',close:'Fechar menu',label:'Menu',closeLabel:'Fechar'};
  const [costProduct,setCostProduct]=useState(null);
  const [feedbackUnread,setFeedbackUnread]=useState(0);
  useEffect(()=>{fetch('/api/club/feedback').then(r=>r.ok?r.json():null).then(d=>d&&setFeedbackUnread(d.threads.filter(t=>t.unread).length)).catch(()=>{});},[]);
@@ -64,6 +67,7 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
  useEffect(()=>{if(selected){setMessage('');setCopyMessage('');dialog.current.showModal();}},[selected]);
  useEffect(()=>{
   const read=()=>{
+   setMobileMenuOpen(false);
    const purchase=/^#comprar=(gameday-santa-[a-z0-9-]+)$/.exec(window.location.hash);
    if(purchase){
     setRequestedProductId(purchase[1]);cartState.setActiveOrderId(null);cartState.setShopView('cart');setSection('compras');
@@ -73,6 +77,8 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
   read();window.addEventListener('hashchange',read);window.addEventListener('popstate',read);return()=>{window.removeEventListener('hashchange',read);window.removeEventListener('popstate',read)};
  },[]);
  function navigate(next,id='all'){
+  if(mobileMenuOpen&&window.innerWidth<=600)mobileMenuButton.current?.focus({preventScroll:true});
+  setMobileMenuOpen(false);
   setSection(next);setCollection(id);setCopyMessage('');setMessage('');
   setQuery('');
   const hash=next==='colecoes'&&id!=='all'?`colecao=${encodeURIComponent(id)}`:next;
@@ -92,10 +98,10 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
 
  const blackFridayCampaigns=(cartState.data?.natalCampaign?.campaigns||[cartState.data?.natalCampaign]).filter(c=>c&&c.active!==false&&!c.used&&natalActive(Date.now(),c.collectionId||'natal-brasileiro'));
  return <section className="partner-workspace partner-movement" data-section={section} data-motion={motion?'on':'off'}>
- <aside className="partner-sidebar">
+ <aside className="partner-sidebar" data-menu-open={mobileMenuOpen} onKeyDown={e=>{if(e.key==='Escape'&&mobileMenuOpen){setMobileMenuOpen(false);mobileMenuButton.current?.focus({preventScroll:true});}}}>
   <div className="partner-wordmark"><span>{copy.space}</span><h2>{shopText(lang,"Clube")}<br/>Tio <em>Lira.</em></h2></div>
-  <div className="partner-identity"><span className="partner-avatar" aria-hidden="true">{member.name?.charAt(0).toUpperCase()}</span><div><strong>{member.name}</strong><small>{t.clubArea}</small></div></div>
-  <nav aria-label={t.clubArea} className="partner-side-nav"><button aria-current={section==='assinatura'?'page':undefined} onClick={()=>navigate('assinatura')}><MenuIcon kind="licenses"/><span>{mc.title}</span></button>
+  <div className="partner-sidebar-header"><div className="partner-identity"><span className="partner-avatar" aria-hidden="true">{member.name?.charAt(0).toUpperCase()}</span><div><strong>{member.name}</strong><small>{t.clubArea}</small></div></div><button ref={mobileMenuButton} type="button" className="partner-mobile-menu-toggle" aria-label={mobileMenuOpen?menuCopy.close:menuCopy.open} aria-expanded={mobileMenuOpen} aria-controls="partner-menu-navigation" onClick={()=>setMobileMenuOpen(open=>!open)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d={mobileMenuOpen?'M6 6l12 12M6 18L18 6':'M4 6h16M4 12h16M4 18h16'}/></svg><span>{mobileMenuOpen?menuCopy.closeLabel:menuCopy.label}</span></button></div>
+  <nav id="partner-menu-navigation" aria-label={t.clubArea} className="partner-side-nav"><button aria-current={section==='assinatura'?'page':undefined} onClick={()=>navigate('assinatura')}><MenuIcon kind="licenses"/><span>{mc.title}</span></button>
    <button aria-current={section==='inicio'?'page':undefined} onClick={()=>navigate('inicio')}><MenuIcon kind="home"/><span>{copy.home}</span></button>
    <button aria-current={section==='colecoes'?'page':undefined} onClick={()=>navigate('colecoes')}><MenuIcon kind="collections"/><span>{t.collections}</span></button>
    <button aria-current={section==='compras'&&['catalog','cart'].includes(cartState.shopView)?'page':undefined} onClick={()=>openShop('catalog')}><MenuIcon kind="cart"/><span>{copy.shop}</span>{cartCount>0&&<small className="partner-nav-count">{cartCount}</small>}</button>
