@@ -12,7 +12,7 @@ import {shop,quoteCheckout,checkout,purchaseAccess,purchaseLicenses} from '../se
 import {applyPaypalOrder} from '../server/paypal-commerce.mjs';
 import {cartSelection} from '../lib/cart-lines.mjs';
 
-test('32-team pack: daily BRL, fixed USD, cart/checkout parity and 32 paid entitlements',async()=>{
+test('32-team pack: fixed BRL, proportional bundle discount, fixed USD, cart/checkout parity and 32 paid entitlements',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'gameday-bundle-'));
  const keys=['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN','LOCAL_DATA_DIR','ASAAS_ENVIRONMENT','PAYPAL_ENVIRONMENT','PAYPAL_CLIENT_ID','PAYPAL_CLIENT_SECRET','PAYPAL_MERCHANT_ID','PAYPAL_WEBHOOK_ID','SITE_URL','RESEND_API_KEY'];
  const env=Object.fromEntries(keys.map(k=>[k,process.env[k]])),oldFetch=globalThis.fetch;
@@ -26,15 +26,15 @@ test('32-team pack: daily BRL, fixed USD, cart/checkout parity and 32 paid entit
  await writeRecord('catalog.json',{...structuredClone(seed),products:[...products,other],collections:[collection,otherCollection]},null);
  await writeRecord('commerce.json',{orders:[],downloads:{},recentDownloads:[]},null);
  globalThis.fetch=async()=>Response.json({value:[{cotacaoVenda:5.5013,dataHoraCotacao:'2026-11-06 13:00:00'}]});
- assert.equal((await refreshGamedayPrices()).changed,33);
+ assert.equal((await refreshGamedayPrices()).changed,0);
  let saved=(await readRecord('catalog.json')).data;
- assert(saved.products.slice(0,32).every(p=>p.priceCents===8246&&p.priceUsdCents===1499));
- assert.equal(saved.collections[0].priceCents,109476);assert.equal(saved.collections[0].priceUsdCents,19900);
+ assert(saved.products.slice(0,32).every(p=>p.priceCents===1990&&p.priceUsdCents===1499));
+ assert.equal(saved.collections[0].priceCents,24875);assert.equal(saved.collections[0].priceUsdCents,19900);
  assert.deepEqual(saved.collections[1],otherCollection);assert.deepEqual(saved.products[32],other);
  assert.equal((await refreshGamedayPrices()).changed,0);
  const member={id:randomUUID(),name:'Test',email:'test@example.invalid',countryCode:'US'};
  const bundle=[{kind:'collection',id:'nfl-santas'}];
- for(const [countryCode,currency,single,total] of [['US','USD',1499,19900],['BR','BRL',8246,109476]]){
+ for(const [countryCode,currency,single,total] of [['US','USD',1499,19900],['BR','BRL',1990,24875]]){
   const buyer={...member,countryCode},offers=await shop(buyer);
   assert.equal(offers.currency,currency);assert.equal(offers.products.find(p=>p.id===products[0].id).priceCents,single);
   for(const items of [bundle,[...bundle,{kind:'product',id:products[0].id}]]){
@@ -61,7 +61,7 @@ test('32-team pack: daily BRL, fixed USD, cart/checkout parity and 32 paid entit
  const licenses=await purchaseLicenses(member);assert.equal(licenses.length,32);assert.equal(new Set(licenses.map(l=>l.productId)).size,32);
  for(const p of products)assert.equal(await purchaseAccess(member,p.id),true);
  globalThis.fetch=async()=>Response.json({value:[{cotacaoVenda:5.6,dataHoraCotacao:'2026-11-09 13:00:00'}]});
- await refreshGamedayPrices();assert.equal((await readRecord('catalog.json')).data.collections[0].priceCents,111440);
+ await refreshGamedayPrices();assert.equal((await readRecord('catalog.json')).data.collections[0].priceCents,24875);
  assert.equal((await readRecord('commerce.json')).data.orders[0].totalCents,19900);
  saved=await readRecord('catalog.json');saved.data.collections[0].priceCents=0;await writeRecord('catalog.json',saved.data,saved.etag);
  await refreshGamedayPrices();assert.equal((await readRecord('catalog.json')).data.collections[0].priceCents,0);

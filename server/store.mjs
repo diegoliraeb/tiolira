@@ -1,4 +1,5 @@
 import {migrateSubscriptionCatalog} from './subscription-catalog.mjs';
+import {migrateNflFixedPrices} from './nfl-fixed-prices.mjs';
 import {migrateMakerCatalog} from './maker-catalog.mjs';
 import {databaseUrl,readPostgresRecord,writePostgresRecord} from './postgres.mjs';
 import {migrateFamilyCovers} from './family-covers.mjs';
@@ -38,7 +39,7 @@ export async function getCatalog(){
  for(let attempt=0;attempt<5;attempt++){
   const record=await readRecord('catalog.json');
   if(!record)return {data:migrateFamilyCovers(normalizeCatalogGalleries(structuredClone(seed))),etag:null};
-  const data=migrateSubscriptionCatalog(migrateMakerCatalog(migrateFamilyCovers(normalizeCatalogGalleries(record.data))));
+  const data=migrateNflFixedPrices(migrateSubscriptionCatalog(migrateMakerCatalog(migrateFamilyCovers(normalizeCatalogGalleries(record.data)))));
   if(data===record.data)return record;
   try{return {data,etag:await writeRecord('catalog.json',data,record.etag)};}
   catch(error){if(!(error instanceof Conflict)||attempt===4)throw error;await delay(10*(attempt+1));}

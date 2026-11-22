@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {closingRate,refreshGamedayPrices} from '../server/gameday-pricing.mjs';
-import {readRecord,writeRecord} from '../server/store.mjs';
+import {refreshGamedayPrices} from '../server/gameday-pricing.mjs';
+import {getCatalog,readRecord,writeRecord} from '../server/store.mjs';
 import {marketCatalog} from '../lib/international-pricing.mjs';
 import {quoteCart} from '../server/commerce.mjs';
 import {cartSelection} from '../lib/cart-lines.mjs';
 import seed from '../data/catalog.json' with {type:'json'};
 
-test('daily PTAX reprices only Gameday BRL and preserves USD, other products and orders',async()=>{
+test('NFL designs use fixed BRL 19.90 once; daily PTAX preserves manual prices, USD and orders',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'gameday-pricing-'));
  const previous=process.env.LOCAL_DATA_DIR,oldFetch=globalThis.fetch;
  process.env.LOCAL_DATA_DIR=dir;
@@ -20,30 +20,27 @@ test('daily PTAX reprices only Gameday BRL and preserves USD, other products and
  const catalog={...structuredClone(seed),products:[product,other],collections:[{id:'nfl-santas',published:true,priceCents:0},{id:'other',published:true,priceCents:0}]};
  await writeRecord('catalog.json',catalog,null);
  await writeRecord('orders.json',{amount:7000},null);
- globalThis.fetch=async url=>{
-  assert(!url.href.includes('+'));
-  return Response.json({value:[{cotacaoVenda:5.5013,dataHoraCotacao:'2026-11-06 13:00:00'}]});
- };
- assert.deepEqual(await closingRate(),{rate:5.5013,date:'2026-11-06'});
- assert.equal((await refreshGamedayPrices()).changed,1);
+ globalThis.fetch=async()=>{throw new Error('Fixed prices must not call exchange rates');};
+ assert.equal((await refreshGamedayPrices()).changed,0);
  const updated=(await readRecord('catalog.json')).data;
- assert.equal(updated.products[0].priceCents,7146);
+ assert.equal(updated.products[0].priceCents,1990);
  assert.equal(updated.products[0].priceUsdCents,1299);
  assert.deepEqual(updated.products[1],other);
  assert.equal((await readRecord('orders.json')).data.amount,7000);
  assert.equal((await refreshGamedayPrices()).changed,0);
  const selection=[{kind:'product',id:product.id},{kind:'product',id:'other'}];
- for(const [currency,total] of [['BRL',8436],['USD',1514]]){
+ for(const [currency,total] of [['BRL',3280],['USD',1514]]){
   const market=marketCatalog(updated,currency);
   const q=quoteCart(market,selection);
   assert.equal(q.totalCents,total);
   assert.equal(cartSelection({...market,collections:market.collections.filter(c=>c.priceCents>0)},selection).total,total);
  }
+ const current=await readRecord('catalog.json');current.data.products[0].priceCents=2190;await writeRecord('catalog.json',current.data,current.etag);assert.equal((await getCatalog()).data.products[0].priceCents,2190);await refreshGamedayPrices();assert.equal((await readRecord('catalog.json')).data.products[0].priceCents,2190);
  globalThis.fetch=async()=>new Response('',{status:503});
- await assert.rejects(refreshGamedayPrices());
- assert.equal((await readRecord('catalog.json')).data.products[0].priceCents,7146);
+ assert.equal((await refreshGamedayPrices()).changed,0);
+ assert.equal((await readRecord('catalog.json')).data.products[0].priceCents,2190);
  globalThis.fetch=async()=>Response.json({value:[{cotacaoVenda:-1}]});
- await assert.rejects(refreshGamedayPrices());
+ assert.equal((await refreshGamedayPrices()).changed,0);
  }finally{
  globalThis.fetch=oldFetch;
  if(previous===undefined)delete process.env.LOCAL_DATA_DIR;else process.env.LOCAL_DATA_DIR=previous;
