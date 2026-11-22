@@ -12,3 +12,15 @@
 .natal-promo-compact .natal-promo-terms[open]{margin-top:8px;padding-top:4px;border-top:1px solid #d8c8ae}
 .natal-promo-compact .natal-promo-terms p{font-size:12px;margin:8px 0}
 @media(max-width:650px){.natal-promo.natal-promo-compact{padding:10px 12px;gap:4px 10px;grid-template-columns:minmax(0,1fr) auto}.natal-promo-compact .natal-promo-compact-copy{grid-column:1/-1}.natal-promo-compact .natal-promo-compact-action{grid-column:2;grid-row:2}.natal-promo-compact .natal-promo-terms{grid-column:1;grid-row:2;align-self:center}.natal-promo-compact .natal-promo-terms[open]{grid-column:1/-1;grid-row:3}.natal-promo-compact .button{font-size:11px;min-height:36px;padding:7px 10px}}
+
+/* One quiet entry notice. No promotional banners in partner menu destinations. */
+.club-black-friday{margin:0 0 16px;border:1px solid #ded5c3;border-radius:10px;background:#eee8db;color:#303b27}
+.club-black-friday>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:8px 12px;box-sizing:border-box;cursor:pointer;list-style:none;font-size:12px}
+.club-black-friday>summary::-webkit-details-marker{display:none}
+.club-black-friday>summary>strong{font-size:11px;letter-spacing:.1em}
+.club-black-friday>summary>span{display:flex;align-items:center;gap:8px}
+.club-black-friday>summary:focus-visible{outline:2px solid #805535;outline-offset:3px;border-radius:8px}
+.club-black-friday[open]>summary{border-bottom:1px solid #ded5c3}
+.club-black-friday[open]>summary>span>span{transform:rotate(45deg)}
+.club-black-friday-offers{padding:10px}
+.club-black-friday-offers .natal-promo:last-child{margin-bottom:0}
