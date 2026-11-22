@@ -109,3 +109,15 @@
  .partner-movement .partner-content{scroll-margin-top:76px;padding-top:16px}
  .partner-breadcrumb{margin-bottom:16px}
 }
+
+/* Mobile cart belongs in the compact header, never over a model or download. */
+.partner-mobile-cart{display:none}
+@media(max-width:600px){
+ .partner-movement.partner-workspace .partner-sidebar{top:0}
+ .partner-sidebar-header{gap:8px}
+ .partner-mobile-cart{display:flex;position:relative;align-items:center;justify-content:center;flex-shrink:0;width:44px;min-height:44px;padding:8px;border:1px solid #ffffff45;border-radius:9px;background:transparent;color:inherit}
+ .partner-mobile-cart svg{width:22px;height:22px}
+ .partner-mobile-cart>span{position:absolute;top:1px;right:1px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#f3ecd9;color:#303b29;font-size:9px;line-height:15px;text-align:center}
+ .partner-movement.partner-workspace .partner-content>.partner-cart-topbar{display:none}
+ .partner-movement.partner-workspace .partner-content{padding-bottom:32px}
+}
