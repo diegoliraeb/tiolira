@@ -82,7 +82,7 @@ export default async function handler(req,res){
   }
   if(method==='GET'&&route==='admin/maker-subscriptions'){await requireAdmin(req);return json(res,200,await subscriptionReport());}
   if(method==='GET'&&route==='club/maker-subscription/license'){
-   const member=await requireClub(req);await rateLimit(req,'maker-license-pdf',20,60_000,member.id);const pdf=await purchaseLicensePdf(await annualLicense(member));res.setHeader('Content-Type','application/pdf');res.setHeader('Content-Disposition','attachment; filename="licenca-anual-makerworld.pdf"');return res.end(Buffer.from(pdf));
+   const member=await requireClub(req);await rateLimit(req,'maker-license-pdf',20,60_000,member.id);const license=await annualLicense(member);if(url.searchParams.get('format')==='json'){res.setHeader('Cache-Control','private, no-store');return json(res,200,{license:{code:license.code,status:license.status,validUntil:license.validUntil}});}const pdf=await purchaseLicensePdf(license);res.setHeader('Content-Type','application/pdf');res.setHeader('Content-Disposition','attachment; filename="licenca-anual-makerworld.pdf"');return res.end(Buffer.from(pdf));
   }
   if(method==='GET'&&route==='club/licenses/download'){
    const member=await requireClub(req);await rateLimit(req,'license-pdf',120,600_000,member.id);const license=await downloadablePurchaseLicense(member,url.searchParams.get('code'));

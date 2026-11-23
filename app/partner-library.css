@@ -9,3 +9,5 @@
 @media(max-width:359px){.partner-art-grid{grid-template-columns:1fr}.partner-art-picture img{height:210px}}
 
 @media(max-width:600px){.partner-file-actions>.text-link{flex-basis:100%;text-align:left}.partner-file-actions>.button{min-width:130px}}
+
+.license-announcement-notice{padding:18px;border:1px solid #c5d4bc;border-radius:12px;background:#edf2e7;margin:16px 0}.license-announcement-notice strong{font-size:17px}.license-announcement-notice p{font-size:14px;line-height:1.65;margin:8px 0 0}.license-announcement-copy{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin:14px 0;min-width:0}.license-announcement-copy code{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;user-select:all;font-size:14px;padding:10px;background:#fffdf7;border-radius:6px}.license-announcement-copy .button{white-space:normal;max-width:100%}.license-announcement-copy p{font-size:14px;margin:0}

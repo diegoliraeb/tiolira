@@ -1,5 +1,6 @@
 'use client';
 import SubscriberGroup from './SubscriberGroup';
+import LicenseAnnouncement,{LicenseAnnouncementNotice} from './LicenseAnnouncement';
 import {clubInterfaceCopy} from '../lib/club-interface-copy.mjs';
 import MakerworldLink,{makerworldLinkCopy} from './MakerworldLink';
 import {validBillingDocument} from '../lib/billing-document.mjs';
@@ -21,7 +22,7 @@ export default function MakerSubscription({lang='pt',onRefresh}){
  const renew=!data?.external?.checkoutBlocked&&data?.active&&!data.autoRenew&&!data.recurring&&!data.legacyActive&&Date.parse(data.validUntil)<=Date.now()+30*86400000;
  return <section className="maker-subscription"><header className="partner-panel-heading maker-account-heading"><p className="eyebrow">TIO LIRA · SITE / MAKERWORLD</p><h1>{c.title}</h1><p>{data?.active?clubInterfaceCopy(lang).active:price}</p><a className="text-link" href={`/${lang}/assinatura/sobre`}>{clubInterfaceCopy(lang).about}</a></header>
  <MakerworldLink lang={lang} value={data?.external} onChange={async external=>{setData(d=>({...d,external}));const r=await fetch('/api/club/maker-subscription');if(r.ok)setData(await r.json());await onRefresh?.();}}/>
- {data?.active&&<div className="maker-license-state"><h2>{c.active} {new Date(data.validUntil).toLocaleDateString(lang,{timeZone:'America/Maceio'})}</h2><a className="button primary" href="/api/club/maker-subscription/license">{c.pdf}</a></div>}
+ {data?.active&&<div className="maker-license-state"><h2>{c.active} {new Date(data.validUntil).toLocaleDateString(lang,{timeZone:'America/Maceio'})}</h2><a className="button primary" href="/api/club/maker-subscription/license">{c.pdf}</a><LicenseAnnouncementNotice lang={lang}/><LicenseAnnouncement annual lang={lang}/></div>}
  {data?.active&&<SubscriberGroup lang={lang}/>}
  {data?.recurring&&<div className="maker-license-state"><h2>{a.scheduled}</h2><p>{data.recurring.nextDueDate?`${a.next}: ${new Date(data.recurring.nextDueDate+'T12:00:00Z').toLocaleDateString(lang)}`:a.processing}</p>{data.recurring.migrated&&<p>{a.migrated}</p>}{['creating','review'].includes(data.recurring.state)&&<p>{a.processing}</p>}</div>}
  {data?.legacyPending&&<p className="notice">{c.pending} {data.legacyCheckoutUrl&&<a href={data.legacyCheckoutUrl}>{c.pay}</a>}</p>}
