@@ -19,6 +19,7 @@ import './free-artwork.css';
 import './family-covers.css';
 import './povos-covers.css';
 import './navigation.css';
+import './partner-library.css';
 const defaultShare=homeMetadata('pt');
 export const metadata={metadataBase:new URL('https://www.tiolira.com.br'),title:{default:`${seoCopy.pt.homeTitle} · Tio Lira`,template:'%s · Tio Lira'},description:seoCopy.pt.homeDescription,openGraph:defaultShare.openGraph,twitter:defaultShare.twitter,icons:{icon:'/assets/tl-monogram-3d-icon.png'}};
 export default async function Layout({children}){

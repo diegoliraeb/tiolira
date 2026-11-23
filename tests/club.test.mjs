@@ -56,7 +56,7 @@ test('partner area protects coupons, licenses and password recovery',async t=>{
    await updateRecord('catalog.json',old=>{old.collections.push({id:'free-new',name:'Nova coleção grátis',published:true,free:true},{id:'free-hidden',name:'Rascunho',published:false,free:true},{id:'paid-new',name:'Paga',published:true,free:false});old.products.push({...product,id:'free-new-piece',collection:'free-new',allowPhysicalSales:false});return old});
    const newDashboard=await call('club/me',{method:'GET',cookie:cookieA});assert.ok(newDashboard.body.collectionLicenses.some(l=>l.collectionId==='free-new'));assert.ok(!newDashboard.body.collectionLicenses.some(l=>['free-hidden','paid-new'].includes(l.collectionId)));assert.ok(newDashboard.body.downloads.find(p=>p.id==='free-new-piece').canLicense);
    assert.equal((await call('club/licenses',{cookie:cookieA,body:{productId:'free-new-piece'}})).status,200);
-   const record=(await readRecord(`club-licenses/${a.id}.json`)).data;assert.ok(record.licenses.some(l=>l.productId==='free-new-piece'));assert.equal(record.collectionLicenses.find(l=>l.collectionId==='presepio').code,nativity.code);
+   const record=(await readRecord(`club-licenses/${a.id}.json`)).data;assert.ok(!record.licenses.some(l=>l.productId==='free-new-piece'));assert.ok(record.collectionLicenses.find(l=>l.collectionId==='free-new').productIds.includes('free-new-piece'));assert.equal(record.collectionLicenses.find(l=>l.collectionId==='presepio').code,nativity.code);
    await updateRecord('catalog.json',old=>{old.collections.find(c=>c.id==='free-new').free=false;return old});
    const history=await call('club/me',{method:'GET',cookie:cookieA});assert.ok(history.body.collectionLicenses.some(l=>l.collectionId==='free-new'));
    const newPartner={id:randomUUID(),name:'Novo parceiro',email:'new-partner@example.invalid',version:randomUUID(),hash};await updateRecord('club-members.json',old=>({...old,members:[...old.members,newPartner]}));
@@ -90,7 +90,7 @@ test('partner area protects coupons, licenses and password recovery',async t=>{
    assert.equal((await call('club/reset-password',{body:{token,password:'Another-test-password-123'},ip:'reset-replay'})).status,400);
    assert.equal((await call('club/me',{method:'GET',cookie:cookieA})).status,401);
    assert.equal((await call('club/login',{body:{email:a.email,password:'Original-test-password-123'},ip:'old-login'})).status,401);
-   const login=await call('club/login',{body:{email:a.email,password:'New-test-password-123'},ip:'new-login'});assert.equal(login.status,200);assert.equal(login.body.licenses.length,3);
+   const login=await call('club/login',{body:{email:a.email,password:'New-test-password-123'},ip:'new-login'});assert.equal(login.status,200);assert.equal(login.body.licenses.length,2);assert.ok(login.body.collectionLicenses.some(l=>l.productIds.includes('free-new-piece')));
    const current=(await readRecord('club-members.json')).data.members[0];assert.equal(current.passwordReset,undefined);assert.equal(await verifyPassword('New-test-password-123',current.hash),true);
   });
   await t.test('expired links and delivery failures never change passwords',async()=>{

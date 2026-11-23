@@ -1,4 +1,6 @@
 'use client';
+import {normalizeLibrary} from '../lib/club-library.mjs';
+import {clubInterfaceCopy} from '../lib/club-interface-copy.mjs';
 import {subscriberCopy} from '../lib/subscriber-access.mjs';
 import {validBillingDocument,BILLING_DOCUMENT_ERROR} from '../lib/billing-document.mjs';
 import {shopApi as api} from '../lib/shop-api.mjs';
@@ -20,13 +22,15 @@ import {cardPaymentUrl} from '../lib/asaas-payment.mjs';
 
 export const money=formatMoney;
 export const statuses={creating:'Conferindo cobrança',pending:'Aguardando pagamento',overdue:'Vencido',paid:'Pagamento confirmado',revoked:'Acesso suspenso por estorno',cancelled:'Cancelado',failed:'Não concluído',review:'Em análise'};
-export default function PartnerShop({lang='pt',cartState,member,onEditProfile,onRefresh,requestedProductId,onProductConsumed}){
+export default function PartnerShop({lang='pt',cartState,member,collectionGroups=[],onEditProfile,onRefresh,requestedProductId,onProductConsumed}){
  const {returnedOrderId,shopView,setShopView,activeOrderId,setActiveOrderId,couponCode,setCouponCode,couponQuote,couponError,couponBusy,data:rawData,setData,cart,setCart,requestId,setRequestId,load,error}=cartState;
  const data=useMemo(()=>rawData?{...rawData,products:rawData.products.map(p=>localized(p,lang)),collections:rawData.collections.map(c=>localized(c,lang)),orders:rawData.orders.map(o=>localizeOrder(o,lang))}:rawData,[rawData,lang]);
  const localizedStatuses=Object.fromEntries(Object.entries(statuses).map(([key,value])=>[key,shopText(lang,value)]));
  const international=data?.paymentProvider==='paypal',money=(cents,currency=data?.currency||'BRL')=>formatMoney(cents,currency,lang);
  const viewHeading=useRef(null),nc=natalCopy(lang);
  const [natalOnly,setNatalOnly]=useState('');
+ const [shopQuery,setShopQuery]=useState(''),[shopCollection,setShopCollection]=useState('all'),[offerLimit,setOfferLimit]=useState(24);
+ const ui=clubInterfaceCopy(lang);
  const [,setCampaignTick]=useState(0);
  useEffect(()=>{const timer=setInterval(()=>setCampaignTick(t=>t+1),30000);return()=>clearInterval(timer);},[]);
  useEffect(()=>{load().catch(()=>{});},[member.countryCode]);
@@ -78,6 +82,7 @@ export default function PartnerShop({lang='pt',cartState,member,onEditProfile,on
  function add(item){setActiveOrderId(null);setPayment(null);if(cart.some(x=>x.id===item.id&&x.kind===item.kind))return;change(addCartOffer(cart,item));}
 
  const total=couponQuote?.totalCents??subtotal;
+ const visibleOffers=offers.filter(x=>!x.owned&&(!natalOnly||x.collection===natalOnly)&&(shopCollection==='all'||x.collection===shopCollection||x.kind==='collection'&&x.id===shopCollection)&&normalizeLibrary(x.name+' '+(collectionGroups.find(g=>g.id===x.collection)?.name||'')).includes(normalizeLibrary(shopQuery)));
  const freeClaim=total===0&&Boolean(couponQuote?.courtesy||couponQuote?.natalPromotion||natalPromotion);
  async function purchase(e){
   e.preventDefault();if(busy)return;if(!freeClaim&&!international&&!hasBillingDocument){setMessage(shopText(lang,BILLING_DOCUMENT_ERROR));return;}setBusy(true);setMessage('');
@@ -104,7 +109,8 @@ export default function PartnerShop({lang='pt',cartState,member,onEditProfile,on
    {message&&<p className="notice" role="status">{message}</p>}
    {shopView==='cart'&&activeOrder&&<ShopPayment lang={lang} returning={returningFromAsaas} order={activeOrder} payment={payment} products={data.products} collections={data.collections} money={money} statuses={localizedStatuses} busy={busy} loading={paymentLoading} error={paymentError} onRefresh={()=>refresh(activeOrder.id,true)} onCopy={copy} onBrowse={browse} onFiles={()=>switchView('files')} onOrders={()=>switchView('orders')}/>}
    {shopView==='catalog'&&<><header className="shop-view-heading"><div><p className="eyebrow">{shopText(lang,"CRIAÇÕES PARA IMPRIMIR")}</p><h3>{shopText(lang,"Escolha sua próxima peça")}</h3><p>{shopText(lang,"Arquivos digitais com licença para vender suas impressões.")}</p></div>{lines.length>0&&<button className="button primary" onClick={()=>switchView('cart')}>{shopText(lang,"Revisar carrinho ·")} {money(total)} →</button>}</header>
-   {natalOnly&&<p className="notice">{natalCopy(lang,natalOnly).collection} · <button type="button" onClick={()=>setNatalOnly(false)}>{shopText(lang,"Explorar a loja")}</button></p>}<div className="shop-offers">{offers.filter(x=>!x.owned&&(!natalOnly||x.collection===natalOnly)).map(item=><article className="shop-offer" data-collection={item.kind==='product'?item.collection:undefined} key={item.kind+item.id}><img src={item.image} alt="" loading="lazy"/><div><span className="eyebrow">{item.kind==='collection'?shopText(lang,"COLEÇÃO · {0} PEÇAS",item.productIds.length):shopText(lang,"PEÇA AVULSA")}</span><h3>{item.name}</h3>{item.includedInSubscription&&<p><span className="subscription-inline-badge">{subscriberCopy[lang].badge}</span></p>}{item.subscriptionAccess&&<a className="button primary" href={item.downloadUrl}>{subscriberCopy[lang].access}</a>}<strong className="shop-price">{money(item.priceCents)}</strong><button className="button outline" disabled={busy||cart.some(x=>x.id===item.id&&x.kind===item.kind)||item.kind==='product'&&selectedCollections.some(c=>c.productIds.includes(item.id))} onClick={()=>add(item)}>{cart.some(x=>x.id===item.id&&x.kind===item.kind)?shopText(lang,"No carrinho"):shopText(lang,"Adicionar ao carrinho")}</button></div></article>)}</div>
+   <div className="partner-shop-search"><label><span>{ui.search}</span><input type="search" value={shopQuery} onChange={e=>{setShopQuery(e.target.value);setOfferLimit(24)}}/></label><label><span>{ui.collections}</span><select value={shopCollection} onChange={e=>{setShopCollection(e.target.value);setOfferLimit(24)}}><option value="all">{ui.all}</option>{collectionGroups.filter(g=>offers.some(x=>!x.owned&&(x.collection===g.id||x.kind==='collection'&&x.id===g.id))).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></label></div>{natalOnly&&<p className="notice">{natalCopy(lang,natalOnly).collection} · <button type="button" onClick={()=>setNatalOnly(false)}>{shopText(lang,"Explorar a loja")}</button></p>}<div className="shop-offers">{visibleOffers.slice(0,offerLimit).map(item=><article className="shop-offer" data-collection={item.kind==='product'?item.collection:undefined} key={item.kind+item.id}><img src={item.image} alt="" loading="lazy"/><div><span className="eyebrow">{item.kind==='collection'?shopText(lang,"COLEÇÃO · {0} PEÇAS",item.productIds.length):shopText(lang,"PEÇA AVULSA")}</span><h3>{item.name}</h3>{item.includedInSubscription&&<p><span className="subscription-inline-badge">{subscriberCopy[lang].badge}</span></p>}{item.subscriptionAccess&&<a className="button primary" href={item.downloadUrl}>{subscriberCopy[lang].access}</a>}<strong className="shop-price">{money(item.priceCents)}</strong><button className="button outline" disabled={busy||cart.some(x=>x.id===item.id&&x.kind===item.kind)||item.kind==='product'&&selectedCollections.some(c=>c.productIds.includes(item.id))} onClick={()=>add(item)}>{cart.some(x=>x.id===item.id&&x.kind===item.kind)?shopText(lang,"No carrinho"):shopText(lang,"Adicionar ao carrinho")}</button></div></article>)}</div>
+   {visibleOffers.length>offerLimit&&<button className="button outline" onClick={()=>setOfferLimit(n=>n+24)}>{ui.more}</button>}{!visibleOffers.length&&offers.some(x=>!x.owned)&&<p className="notice">{ui.empty}</p>}
    {!offers.filter(x=>!x.owned).length&&<div className="shop-empty-state"><h4>{shopText(lang,"Nenhuma nova peça disponível")}</h4><p>{shopText(lang,"Veja os arquivos que você já adquiriu ou volte para conhecer as próximas criações.")}</p><button className="button outline" onClick={()=>switchView('files')}>{shopText(lang,"Acessar meus arquivos")}</button></div>}</>}
    {shopView==='cart'&&!activeOrder&&<form className="shop-cart admin-panel" onSubmit={purchase}>
     <header className="shop-cart-heading"><div><p className="eyebrow">{shopText(lang,"SUAS ESCOLHAS")}</p><h3>{shopText(lang,"Seu carrinho")}</h3></div><span>{itemCount} {itemCount===1?shopText(lang,"item"):shopText(lang,"itens")}</span></header>

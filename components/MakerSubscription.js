@@ -1,5 +1,6 @@
 'use client';
 import SubscriberGroup from './SubscriberGroup';
+import {clubInterfaceCopy} from '../lib/club-interface-copy.mjs';
 import MakerworldLink,{makerworldLinkCopy} from './MakerworldLink';
 import {validBillingDocument} from '../lib/billing-document.mjs';
 import {subscriptionBillingCopy} from '../lib/subscription-billing-copy.mjs';
@@ -18,7 +19,7 @@ export default function MakerSubscription({lang='pt',onRefresh}){
  async function action(kind){if(kind==='cancel'&&!window.confirm(c.confirm))return;if(kind==='start'&&data?.market?.provider==='asaas'&&!documentValid){setDocumentTouched(true);setDocumentError(document.trim()?bc.invalid:bc.required);documentInput.current?.focus();return;}setBusy(true);setError('');setDocumentError('');try{if(kind==='start'&&data?.market?.provider==='asaas'){const saved=await fetch('/api/club/billing-document',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({cpfCnpj:document})}),result=await saved.json();if(!saved.ok)throw Error(result.error||c.error);}const r=await fetch(`/api/club/maker-subscription/${kind}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({billingType,consent,termsVersion:MAKER_VERSION,lang})}),d=await r.json();if(!r.ok)throw Error(d.error||c.error);setData(d);if(kind==='start'&&d.purchase?.paymentUrl)window.location.assign(d.purchase.paymentUrl);else await onRefresh?.();}catch(e){setError(e.message)}finally{setBusy(false)}}
  const price=data?.market?new Intl.NumberFormat(lang==='pt'?'pt-BR':lang,{style:'currency',currency:data.market.currency}).format(data.market.totalCents/100):c.price;
  const renew=!data?.external?.checkoutBlocked&&data?.active&&!data.autoRenew&&!data.recurring&&!data.legacyActive&&Date.parse(data.validUntil)<=Date.now()+30*86400000;
- return <section className="maker-subscription"><div className="maker-license-hero"><p className="eyebrow">TIO LIRA · SITE / MAKERWORLD</p><h1>{c.title}</h1>{!data?.external?.checkoutBlocked&&<strong className="maker-license-price">{price}</strong>}<p>{data?.external?.checkoutBlocked?ec.intro:c.intro}</p><p>{c.details}</p><p>{c.paid}</p>{!data?.external?.checkoutBlocked&&<p>{c.renewal}</p>}</div>
+ return <section className="maker-subscription"><header className="partner-panel-heading maker-account-heading"><p className="eyebrow">TIO LIRA · SITE / MAKERWORLD</p><h1>{c.title}</h1><p>{data?.active?clubInterfaceCopy(lang).active:price}</p><a className="text-link" href={`/${lang}/assinatura/sobre`}>{clubInterfaceCopy(lang).about}</a></header>
  <MakerworldLink lang={lang} value={data?.external} onChange={async external=>{setData(d=>({...d,external}));const r=await fetch('/api/club/maker-subscription');if(r.ok)setData(await r.json());await onRefresh?.();}}/>
  {data?.active&&<div className="maker-license-state"><h2>{c.active} {new Date(data.validUntil).toLocaleDateString(lang,{timeZone:'America/Maceio'})}</h2><a className="button primary" href="/api/club/maker-subscription/license">{c.pdf}</a></div>}
  {data?.active&&<SubscriberGroup lang={lang}/>}
