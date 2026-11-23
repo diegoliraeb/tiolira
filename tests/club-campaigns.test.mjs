@@ -39,5 +39,12 @@ test('campaign freezes recipients, rechecks active subscribers, sends once, trac
   await writeRecord(`email-events/${run.recipients[0].providerId}.json`,{events:{delivered:new Date().toISOString(),opened:new Date().toISOString()}},null);
   const report=await clubCampaignReport(id);assert.equal(report.campaign.summary.sent,2);assert.equal(report.campaign.summary.delivered,1);assert.equal(report.campaign.summary.opened,1);assert.equal(report.campaign.summary.clicked,1);assert.equal(report.campaign.summary.unsubscribed,1);assert.ok(report.campaign.recipients.every(r=>!r.payload));
   run=(await readRecord(`club-campaigns/${id}.json`)).data;const r=run.recipients[0],at=new Date(Date.now()+10000).toISOString(),purchase={id:'paid',memberId:r.memberId,status:'paid',createdAt:at,paidAt:at};assert.equal(campaignConversions([run],[purchase]).size,1);assert.equal(campaignConversions([run],[{...purchase,status:'revoked'}]).size,0);assert.equal(campaignConversions([run],[{...purchase,manualActivation:{kind:'courtesy'}}]).size,0);assert.equal(campaignConversions([run],[{...purchase,memberId:'other'}]).size,0);
+  await updateRecord('club-members.json',d=>{d.members.push({id:randomUUID(),name:'Quota test',email:'quota@example.com',countryCode:'BR'});return d});
+  const quota=await prepareClubCampaign(actor,{requestId:randomUUID()});await releaseClubCampaign(quota.id);let quotaCalls=0;
+  globalThis.fetch=async()=>{quotaCalls++;return new Response(JSON.stringify({name:'daily_quota_exceeded',message:'You have reached your daily email sending quota.'}),{status:429})};
+  await runClubCampaign(quota.id);await runClubCampaign(quota.id);assert.equal(quotaCalls,1);
+  const held=(await readRecord(`club-campaigns/${quota.id}.json`)).data;assert.ok(Date.parse(held.notBefore)>Date.now());assert.equal(held.recipients[0].status,'retry');assert.equal(held.recipients[0].firstAttemptAt,undefined);
+  await updateRecord(`club-campaigns/${quota.id}.json`,d=>{d.notBefore=new Date(Date.now()-1000).toISOString();return d});
+  globalThis.fetch=async()=>new Response(JSON.stringify({id:randomUUID()}),{status:200});await runClubCampaign(quota.id);assert.equal((await readRecord(`club-campaigns/${quota.id}.json`)).data.recipients[0].status,'sent');
  }finally{globalThis.fetch=fetch0;for(const k of Object.keys(process.env))if(!(k in saved))delete process.env[k];Object.assign(process.env,saved);await rm(dir,{recursive:true,force:true});}
 });

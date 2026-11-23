@@ -80,7 +80,7 @@ export async function pauseClubCampaign(id){await updateRecord(key(id),d=>{if(!d
 async function skip(runId,rid,reason){await updateRecord(key(runId),d=>{const r=d.recipients.find(r=>r.id===rid);r.status='skipped';r.reason=reason;r.leaseUntil=0;return d})}
 export async function runClubCampaign(id,{limit=15}={}){
  if(!live())return {sent:0};const config=purchaseEmailConfig();if(!config)fail('E-mail indisponível.',503);
- let run=(await readRecord(key(id)))?.data;if(run?.status!=='sending')return {sent:0};
+ let run=(await readRecord(key(id)))?.data;if(run?.status!=='sending')return {sent:0};if(run.notBefore&&Date.parse(run.notBefore)>Date.now())return {sent:0,pending:run.recipients.filter(r=>['pending','retry','sending'].includes(r.status)).length,notBefore:run.notBefore};
  const ctx=await context();const eligible=new Set(campaignAudience(ctx).recipients.map(r=>r.memberId));let sent=0;const started=Date.now();
  for(const candidate of run.recipients.filter(r=>['pending','retry','sending'].includes(r.status)).slice(0,limit)){
   if(Date.now()-started>35000)break;
@@ -98,11 +98,11 @@ export async function runClubCampaign(id,{limit=15}={}){
   try{
    const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${config.key}`,'Content-Type':'application/json','Idempotency-Key':`club-campaign/${id}/${r.id}`},body:JSON.stringify(job.payload),signal:AbortSignal.timeout(10000)});
    const result=await response.json().catch(()=>({}));
-   if(!response.ok){const e=Error(`Provedor retornou HTTP ${response.status}${typeof result.message==='string'?': '+result.message.slice(0,160):''}`);e.retry=response.status===429;e.rejected=response.status>=400&&response.status<500&&response.status!==409;throw e;}
+   if(!response.ok){const e=Error(`Provedor retornou HTTP ${response.status}${typeof result.message==='string'?': '+result.message.slice(0,160):''}`);e.retry=response.status===429;e.dailyQuota=e.retry&&(result.name==='daily_quota_exceeded'||/daily.*quota/i.test(result.message||''));e.rejected=response.status>=400&&response.status<500&&response.status!==409;throw e;}
    if(!result.id)throw Error('Provedor não confirmou o identificador de envio.');
-   await updateRecord(key(id),d=>{const j=d.recipients.find(x=>x.id===r.id);if(j.owner===owner){j.status='sent';j.sentAt=iso();j.providerId=result.id;j.leaseUntil=0;delete j.payload;delete j.error;}return d});
+   await updateRecord(key(id),d=>{const j=d.recipients.find(x=>x.id===r.id);if(j.owner===owner){j.status='sent';j.sentAt=iso();j.providerId=result.id;j.leaseUntil=0;delete d.notBefore;delete d.waitReason;delete j.payload;delete j.error;}return d});
    await updateRecord(PREFS,d=>{d||={};d.lastSent||={};d.lastSent[emailHash(r.email)]=iso();return d});sent++;
-  }catch(e){await updateRecord(key(id),d=>{const j=d.recipients.find(x=>x.id===r.id);if(j.owner===owner&&j.status!=='sent'){j.status=e.retry?'retry':e.rejected?'failed':'review';j.error=e.message;j.leaseUntil=0}return d});break;}
+  }catch(e){await updateRecord(key(id),d=>{const j=d.recipients.find(x=>x.id===r.id);if(j.owner===owner&&j.status!=='sent'){j.status=e.retry?'retry':e.rejected?'failed':'review';j.error=e.message;j.leaseUntil=0;if(e.retry){delete j.firstAttemptAt;if(e.dailyQuota){const next=new Date();next.setUTCHours(24,5,0,0);d.notBefore=next.toISOString();d.waitReason='Limite diário do Resend atingido. A fila retoma automaticamente após a renovação da cota.';}else{d.notBefore=new Date(Date.now()+60000).toISOString();d.waitReason='Aguardando limite de envio do provedor.';}}}return d});break;}
   await delay(600);
  }
  run=(await readRecord(key(id)))?.data;const pending=run.recipients.filter(r=>['pending','retry','sending'].includes(r.status)).length;
