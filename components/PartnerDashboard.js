@@ -111,7 +111,7 @@ export default function PartnerDashboard({lang,t,member,collections,applyDashboa
    <button aria-current={section==='licencas'?'page':undefined} onClick={()=>navigate('licencas')}><MenuIcon kind="licenses"/><span>{t.partnerMyLicenses}</span><small>{licenses.length+collectionLicenses.length}</small></button>
    <button aria-current={section==='calculadora'?'page':undefined} onClick={()=>navigate('calculadora')}><MenuIcon kind="calculator"/><span>{costCopy.nav}</span></button>
    <button aria-current={section==='fichas'?'page':undefined} onClick={()=>navigate('fichas')}><MenuIcon kind="files"/><span>{costCopy.sheets}</span></button>
-   <button aria-current={section==='fotos'?'page':undefined} onClick={()=>navigate('fotos')}><MenuIcon kind="files"/><span>Imprima e ganhe</span></button>
+   {groups.some(c=>c.printRewardEligible)&&<button aria-current={section==='fotos'?'page':undefined} onClick={()=>navigate('fotos')}><MenuIcon kind="files"/><span>Imprima e ganhe</span></button>}
    <button aria-current={section==='promocao'?'page':undefined} onClick={()=>navigate('promocao')}><MenuIcon kind="coupons"/><span>Promoção de Natal</span></button>
    <button aria-current={section==='cupons'?'page':undefined} onClick={()=>navigate('cupons')}><MenuIcon kind="coupons"/><span>{t.clubCoupons}</span></button>
    <button aria-current={section==='contato'?'page':undefined} onClick={()=>navigate('contato')}><MenuIcon kind="orders"/><span>{feedbackCopy(lang).area}</span>{feedbackUnread>0&&<small>{feedbackUnread}</small>}</button>
