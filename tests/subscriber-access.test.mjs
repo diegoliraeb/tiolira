@@ -46,3 +46,15 @@ test('both payment generations expire and revoked payments grant no membership',
  assert.equal(purchaseValidity([{status:'revoked',startsAt,endsAt}],now).active,false);
  assert.equal(purchaseValidity([{status:'paid',startsAt,endsAt:'2026-11-19T12:00:00Z'}],now).active,false);
 });
+
+test('Senna subscriber download remains noncommercial and is routed through per-copy tracing',async()=>{
+ const senna={...product,id:'96f7f843-b608-4a57-8f27-6ba12e2862da',name:'Ayrton Senna',filePath:'models/senna-rev10.3mf'};
+ const catalog={...data,products:[senna]},member={id:'senna-subscriber'};
+ const locked=clubProducts(catalog,new Set(),false)[0],unlocked=clubProducts(catalog,new Set(),true)[0];
+ assert.equal(locked.downloadUrl,'');assert.equal(unlocked.downloadUrl,'/api/download?id='+senna.id);assert.equal(unlocked.canLicense,false);assert.equal(commercialPolicy(senna),'noncommercial');assert.equal(canPurchaseProduct(senna,catalog),false);
+ let active=false,prepared=0,reads=0,delivered=false;
+ const deps={hasAccess:async()=>false,subscription:async()=>({active}),record:async()=>{},readBlob:async()=>{reads++;return {stream:Readable.toWeb(Readable.from(['original']))}},prepare:async args=>{prepared++;assert.equal(args.member.id,member.id);assert.equal(args.product.id,senna.id);assert.equal(args.file.filePath,senna.filePath);return {id:'trace-senna',stream:Readable.from(['marked-copy']),cleanup:async()=>{},finish:async status=>{delivered=status==='streamed'}}}};
+ await assert.rejects(()=>serveProductDownload({member,data:catalog,productId:senna.id},deps),{status:403});assert.equal(reads,0);
+ active=true;let bytes='';const headers={},res=new Writable({write(c,e,cb){bytes+=c;cb()}});res.setHeader=(k,v)=>headers[k]=v;
+ await serveProductDownload({member,data:catalog,productId:senna.id,res},deps);await finished(res);assert.equal(prepared,1);assert.equal(bytes,'marked-copy');assert.equal(headers['X-TioLira-Download-Code'],'trace-senna');assert.equal(delivered,true);
+});

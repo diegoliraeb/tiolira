@@ -1,3 +1,4 @@
+import {productPerformance} from './product-performance.mjs';
 import {isSubscriptionProduct,canDownloadProduct} from '../lib/subscriber-access.mjs';
 import {subscriptionDashboard} from './maker-subscriptions.mjs';
 import {makerAsaasPurchaseEvent} from './maker-purchases.mjs';
@@ -227,9 +228,8 @@ export async function productSalesSummary(){
  return {products:countProductSales((await readRecord(KEY))?.data?.orders||[])};
 }
 export async function salesReport(){
- const s=state((await readRecord(KEY))?.data),{data}=await getCatalog(),rows=new Map(data.products.map(p=>[p.id,{id:p.id,name:p.name,individualSales:0,collectionSales:0,revenueCents:0,revenueUsdCents:0,downloads:s.downloads[p.id]||0}]));
- for(const o of s.orders.filter(paid))for(const item of o.items)item.products.forEach((p,i)=>{if(!rows.has(p.id))rows.set(p.id,{...p,individualSales:0,collectionSales:0,revenueCents:0,revenueUsdCents:0,downloads:s.downloads[p.id]||0});const row=rows.get(p.id);row[item.kind==='collection'?'collectionSales':'individualSales']+=soldQuantity(item);row[o.currency==='USD'?'revenueUsdCents':'revenueCents']+=Math.floor((item.totalCents??item.priceCents)/item.products.length)+(i<(item.totalCents??item.priceCents)%item.products.length?1:0);});
- return {purchaseEmailReady:Boolean(purchaseEmailConfig()),paymentsReady:paymentsReady(),environment:asaasConfig().environment,paypalReady:paypalReady(),totalUsdCents:s.orders.filter(o=>paid(o)&&o.currency==='USD').reduce((n,o)=>n+o.totalCents,0),totalCents:s.orders.filter(o=>paid(o)&&o.currency!=='USD').reduce((n,o)=>n+o.totalCents,0),paidOrders:s.orders.filter(paid).length,products:[...rows.values()],orders:s.orders.filter(currentOrderEnvironment).map(o=>({...safeOrder(o),memberName:o.memberName,memberEmail:o.memberEmail,purchaseEmailStatus:o.purchaseEmail?.status||null,purchaseEmailSentAt:o.purchaseEmail?.sentAt||null})).reverse(),recentDownloads:s.recentDownloads};
+ const s=state((await readRecord(KEY))?.data),{data}=await getCatalog(),products=productPerformance(data,s);
+ return {purchaseEmailReady:Boolean(purchaseEmailConfig()),paymentsReady:paymentsReady(),environment:asaasConfig().environment,paypalReady:paypalReady(),totalUsdCents:s.orders.filter(o=>paid(o)&&o.currency==='USD').reduce((n,o)=>n+o.totalCents,0),totalCents:s.orders.filter(o=>paid(o)&&o.currency!=='USD').reduce((n,o)=>n+o.totalCents,0),paidOrders:s.orders.filter(paid).length,products,generatedAt:new Date().toISOString(),orders:s.orders.filter(currentOrderEnvironment).map(o=>({...safeOrder(o),memberName:o.memberName,memberEmail:o.memberEmail,purchaseEmailStatus:o.purchaseEmail?.status||null,purchaseEmailSentAt:o.purchaseEmail?.sentAt||null})).reverse(),recentDownloads:s.recentDownloads};
 }
 
 export async function purchaseLicenses(member){
