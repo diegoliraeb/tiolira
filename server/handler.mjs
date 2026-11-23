@@ -1,7 +1,8 @@
+import {issueProductCommercialLicense,adminCommercialRights} from './commercial-rights.mjs';
 import {subscriberGroup} from './subscriber-group.mjs';
 import {readPoll,votePoll} from './click-sanctis-poll.mjs';
 import {pauseMakerworldLinks} from './makerworld-pause.mjs';
-import {correctMemberEmail,inspectAnnualPayment,recordDirectAnnualPayment} from './admin-member-support.mjs';
+import {correctMemberEmail,inspectAnnualPayment,recordDirectAnnualPayment,activateManualAnnual,searchAnnualMembers} from './admin-member-support.mjs';
 import {submitMakerworldLink,withdrawMakerworldLink,reviewMakerworldLink,makerworldLinksReport} from './makerworld-links.mjs';
 import {annualMigrationPreview,migrateAnnual} from './maker-asaas-annual.mjs';
 import {sendRenewalNotice} from './maker-renewals.mjs';
@@ -215,6 +216,9 @@ export default async function handler(req,res){
   if(method==='POST'&&['club/maker-subscription/start','club/maker-subscription/refresh','club/maker-subscription/cancel'].includes(route)){
    const member=await requireClub(req);await rateLimit(req,'maker-subscription',10,60_000,member.id);return json(res,200,route.endsWith('/start')?await startSubscription(member,input):route.endsWith('/cancel')?await cancelSubscription(member):await refreshSubscription(member));
   }
+  if(method==='POST'&&route==='admin/maker-subscriptions/rights'){await requireAdmin(req);await rateLimit(req,'annual-rights',30,60_000);return json(res,200,await adminCommercialRights(input.memberId));}
+  if(method==='POST'&&route==='admin/maker-subscriptions/member-search'){await requireAdmin(req);await rateLimit(req,'annual-member-search',60,60_000);return json(res,200,await searchAnnualMembers(input));}
+  if(method==='POST'&&route==='admin/maker-subscriptions/manual-activation'){const admin=await requireAdmin(req);await rateLimit(req,'annual-manual-activation',10,60_000);return json(res,200,await activateManualAnnual(admin,input));}
   if(method==='POST'&&route==='admin/member-email'){const admin=await requireAdmin(req);await rateLimit(req,'member-email-support',10,60_000);return json(res,200,await correctMemberEmail(admin,input));}
   if(method==='POST'&&route==='admin/maker-subscriptions/inspect'){await requireAdmin(req);await rateLimit(req,'annual-inspect',10,60_000);return json(res,200,await inspectAnnualPayment(input.memberId));}
   if(method==='POST'&&route==='admin/maker-subscriptions/direct-receipt'){const admin=await requireAdmin(req);await rateLimit(req,'annual-direct-receipt',10,60_000);return json(res,200,await recordDirectAnnualPayment(admin,input));}
@@ -225,13 +229,7 @@ export default async function handler(req,res){
   if(method==='POST'&&route==='club/licenses'){
    const member=await requireClub(req);
    await rateLimit(req,'license-issue',120,600_000,member.id);
-   const owned=await memberHasAccess(member,input.productId)?new Set([input.productId]):new Set();
-   const data=(await getCatalog()).data,original=data.products.find(p=>p.id===input.productId);
-   if(original&&commercialPolicy(original,data.collections)==='annual'&&!owned.has(original.id))return json(res,200,{license:await annualLicense(member)});
-   const product=clubProducts(data,owned).find(p=>p.id===input.productId&&p.canLicense);
-   if(!product)fail('Licença de venda não disponível para esta peça.',403);
-   if(isPaidProduct(product)||owned.has(product.id)){const license=(await memberLicenses(member)).find(l=>l.productId===product.id&&l.status==='active');if(!license)fail('Licença aguardando confirmação do pagamento.',409);return json(res,200,{license});}
-   return json(res,200,{license:await issueLicense(member,product)});
+   return json(res,200,{license:await issueProductCommercialLicense(member,input.productId)});
   }
   if(method==='PUT'&&route==='club/billing-document'){const member=await requireClub(req);await rateLimit(req,'billing-document',20,600_000,member.id);return json(res,200,await updateBillingDocument(member,input));}
   if(method==='PUT'&&route==='club/profile'){

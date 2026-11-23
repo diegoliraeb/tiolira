@@ -1,5 +1,5 @@
 import {canDownloadProduct} from '../lib/subscriber-access.mjs';
-import {commercialPolicy} from '../lib/maker-license.mjs';
+import {commercialPolicy,commercialEntitlement} from '../lib/maker-license.mjs';
 import {subscriptionDashboard} from './maker-subscriptions.mjs';
 import {PRINT_REWARDS_KEY} from './print-rewards-access.mjs';
 import {complimentaryAccess as collectionAccess} from './print-rewards-access.mjs';
@@ -27,12 +27,12 @@ export function clubProducts(data,owned=new Set(),annual=false,legacy=new Set())
  return data.products.filter(p=>p.published&&collections.has(p.collection)&&['site','maker','paid','subscribers'].includes(p.access)&&isAvailable(p)&&(!isPaidProduct(p)||owned.has(p.id)||!data.collections.some(c=>c.id===p.collection&&c.comingSoon))).map(({filePath,fileProfile,printProfiles,...p})=>({
   ...p,printEstimate:productPrintEstimate({...p,filePath}),canPurchase:!owned.has(p.id)&&canPurchaseProduct({...p,filePath,printProfiles},data),downloadUrl:canDownloadProduct(p,{owned:owned.has(p.id),annual})&&hasProductFiles({filePath,printProfiles})?`/api/download?id=${encodeURIComponent(p.id)}`:p.access==='subscribers'?'':p.access==='maker'?p.url:!isPaidProduct(p)?p.url:'',
   printProfiles:publicPrintProfiles({...p,filePath,fileProfile,printProfiles},canDownloadProduct(p,{owned:owned.has(p.id),annual})),
-  commercialPolicy:commercialPolicy(p,data.collections),canLicense:commercialPolicy(p,data.collections)==='noncommercial'?false:owned.has(p.id)||legacy.has(p.id)||commercialPolicy(p,data.collections)==='free'||commercialPolicy(p,data.collections)==='annual'&&annual
+  commercialPolicy:commercialPolicy(p,data.collections),licenseSource:commercialEntitlement(p,{owned:owned.has(p.id),legacy:legacy.has(p.id),annual,collections:data.collections}),canLicense:Boolean(commercialEntitlement(p,{owned:owned.has(p.id),legacy:legacy.has(p.id),annual,collections:data.collections}))
  }));
 }
 export const licenseTerms='Autorizada a impressão e venda das peças físicas desta obra pelo parceiro identificado. Esta licença é pessoal e intransferível. Não autoriza revender, compartilhar ou redistribuir os arquivos digitais.';
-export async function issueLicense(member,product){
- if(['noncommercial','annual'].includes(commercialPolicy(product)))throw Object.assign(Error('Licença gratuita indisponível para esta obra.'),{status:403});
+export async function issueLicense(member,product,collections=[]){
+ if(commercialPolicy(product,collections)!=='free')throw Object.assign(Error('Licença gratuita indisponível para esta obra.'),{status:403});
  const record=await updateRecord(`club-licenses/${member.id}.json`,old=>{
   const licenses=old?.licenses||[];
   if(licenses.some(item=>item.productId===product.id))return old;

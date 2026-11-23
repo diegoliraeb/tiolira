@@ -6,6 +6,9 @@ import {withMembershipLock} from './makerworld-links.mjs';
 import {asaas,asaasConfig} from './asaas.mjs';
 import {syncAnnual} from './maker-asaas-annual.mjs';
 import {subscriptionDashboard} from './maker-subscriptions.mjs';
+import {currentPurchase,purchaseEnvironment} from './maker-purchases.mjs';
+import {assertNoMakerworldCheckout} from './makerworld-links.mjs';
+import {MAKER_TERMS,MAKER_VERSION,yearAfter} from '../lib/maker-license.mjs';
 const MEMBERS='club-members.json',PURCHASES='maker-license-purchases.json';
 const fail=(m,s=409)=>{throw Object.assign(Error(m),{status:s})};
 const email=z.string().trim().toLowerCase().email().max(254);
@@ -80,4 +83,38 @@ export async function inspectAnnualPayment(memberId){
  if(!roots.length)fail('Nenhuma assinatura anual Asaas para consultar.');
  const payments=[];for(const r of roots){const result=await syncAnnual(r.id);if(result)payments.push(...result.payments)}
  const d=await subscriptionDashboard(member);return {active:d.active,validUntil:d.validUntil,payments};
+}
+
+const manualSchema=z.object({memberId:z.string().uuid(),requestId:z.string().uuid(),confirmed:z.literal(true),kind:z.enum(['external','courtesy']),reason:z.string().trim().min(10).max(500),reference:z.string().trim().max(150).default('')});
+export async function searchAnnualMembers(input){
+ const query=z.string().trim().min(3).max(254).parse(input.query);
+ const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ const q=normalize(query),members=(await readRecord(MEMBERS))?.data?.members||[];
+ return {members:members.filter(m=>normalize(m.name).includes(q)||normalize(m.email).includes(q)).slice(0,20).map(m=>({id:m.id,name:m.name,email:m.email}))};
+}
+export async function activateManualAnnual(admin,input){
+ const p=manualSchema.parse(input);
+ if(p.kind==='external'&&p.reference.length<10)fail('Informe a referência do pagamento recebido (mínimo de 10 caracteres).',400);
+ return withMembershipLock(p.memberId,async()=>{
+  const member=(await readRecord(MEMBERS))?.data?.members?.find(m=>m.id===p.memberId);if(!member)fail('Cadastro não encontrado.',404);
+  const data=(await readRecord(PURCHASES))?.data,prior=data?.purchases?.find(r=>r.id===p.requestId);
+  const same=r=>r.memberId===p.memberId&&r.provider==='manual'&&r.manualActivation?.kind===p.kind&&r.manualActivation.reason===p.reason&&r.manualActivation.reference===p.reference;
+  if(prior){if(!same(prior))fail('Solicitação já utilizada com outros dados.');return {ok:true,active:prior.status==='paid'&&Date.parse(prior.endsAt)>Date.now(),validUntil:prior.endsAt,alreadyApplied:true};}
+  await assertNoMakerworldCheckout(member);
+  const dashboard=await subscriptionDashboard(member);
+  if(dashboard.active)fail('Este cadastro já possui assinatura ativa. Nenhum período foi duplicado.');
+  if(dashboard.purchase||dashboard.recurring||dashboard.legacyPending||dashboard.autoRenew)fail('Existe cobrança ou assinatura em andamento. Use a conferência de pagamento para evitar duplicidade.');
+  const now=new Date().toISOString(),endsAt=yearAfter(now);
+  const record=await updateRecord(PURCHASES,d=>{
+   d||={purchases:[]};const existing=d.purchases.find(r=>r.id===p.requestId);
+   if(existing){if(!same(existing))fail('Solicitação já utilizada com outros dados.');return d;}
+   const own=d.purchases.filter(r=>r.memberId===p.memberId&&currentPurchase(r));
+   if(own.some(r=>['creating','pending','overdue','review','scheduled'].includes(r.status)||r.status==='paid'&&Date.parse(r.endsAt)>Date.now()))fail('A situação da assinatura mudou. Atualize antes de liberar.');
+   if(p.kind==='external'&&d.purchases.some(r=>r.directReceipt?.reference===p.reference||r.manualActivation?.kind==='external'&&r.manualActivation.reference===p.reference))fail('Este comprovante já foi utilizado.');
+   d.purchases.push({id:p.requestId,memberId:member.id,name:member.name,email:member.email,whatsapp:member.whatsapp||'',countryCode:member.countryCode||'',provider:'manual',environment:purchaseEnvironment('manual'),status:'paid',billingType:p.kind==='external'?'Pagamento externo':'Cortesia',currency:'BRL',totalCents:p.kind==='external'?4990:0,lang:'pt',createdAt:now,paidAt:now,startsAt:now,endsAt,terms:MAKER_TERMS,termsVersion:MAKER_VERSION,manualActivation:{kind:p.kind,reason:p.reason,reference:p.reference,actor:admin.email,at:now}});
+   return d;
+  });
+  const row=record.purchases.find(r=>r.id===p.requestId);
+  return {ok:true,active:true,validUntil:row.endsAt};
+ });
 }
