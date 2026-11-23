@@ -1,3 +1,4 @@
+import {generateTemporaryPassword,consumeTemporaryPassword,replaceTemporaryPassword} from './partner-temporary-password.mjs';
 import {clubCampaignReport,prepareClubCampaign,releaseClubCampaign,pauseClubCampaign,runClubCampaign,runClubCampaignQueue,campaignVisit,campaignUnsubscribe} from './club-campaigns.mjs';
 import {issueProductCommercialLicense,adminCommercialRights} from './commercial-rights.mjs';
 import {subscriberGroup} from './subscriber-group.mjs';
@@ -128,7 +129,7 @@ export default async function handler(req,res){
   if(method==='GET'&&route==='admin/asaas-status'){await requireAdmin(req);await rateLimit(req,'asaas-status',6,60_000);return json(res,200,await checkAsaasConnection(new URL('/api/webhooks/asaas',url.origin).href));}
   if(method==='GET'&&route==='locations'){const options=await geographyOptions(url.searchParams.get('country'),url.searchParams.get('state'));res.setHeader('Cache-Control','public, max-age=86400');return json(res,200,options);}
   if(method==='GET'&&route==='catalog'){const {data}=await getCatalog();res.setHeader('Cache-Control','public, max-age=0, s-maxage=30, stale-while-revalidate=60');return json(res,200,publicCatalog(data,new Date(),await readClickCounts()));}
-  if(method==='GET'&&route==='club/me'){const member=await requireClub(req);const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
+  if(method==='GET'&&route==='club/me'){const member=await requireClub(req,{allowPasswordChange:true});if(member.temporaryPassword)return json(res,200,{passwordChangeRequired:true});const {data}=await getCatalog();return json(res,200,await clubDashboard(member,data));}
   if(method==='GET'&&route==='club/instagram-promotion'){const member=await requireClub(req);await safelyAttributeBanner(req,member);return json(res,200,await trackPromotionAction(member,'visit',()=>instagramPromotion.status(member)));}
   if(method==='GET'&&route==='admin/instagram-club'){await requireAdmin(req);return json(res,200,await instagramClub.admin());}
   if(method==='GET'&&route==='admin/instagram-promotion'){await requireAdmin(req);return json(res,200,await instagramPromotion.admin());}
@@ -210,6 +211,8 @@ export default async function handler(req,res){
    await rateLimit(req,'club-forgot-password',5,15*60_000);
    await requestPasswordReset(input);return json(res,200,{ok:true});
   }
+  if(method==='POST'&&route==='admin/partners/temporary-password'){const admin=await requireAdmin(req);await rateLimit(req,'partner-temporary-password',10,60_000);return json(res,200,await generateTemporaryPassword(admin,input));}
+  if(method==='POST'&&route==='club/change-temporary-password'){const member=await requireClub(req,{allowPasswordChange:true});await rateLimit(req,'change-temporary-password',10,15*60_000,member.id);const updated=await replaceTemporaryPassword(member,input);res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(updated.version,{memberId:updated.id})));return json(res,200,{ok:true});}
   if(method==='POST'&&route==='club/reset-password'){
    await rateLimit(req,'club-reset-password',10,15*60_000);
    await resetPassword(input);res.setHeader('Set-Cookie',clubSessionCookie('',true));return json(res,200,{ok:true});
@@ -260,6 +263,7 @@ export default async function handler(req,res){
    if(typeof input.email==='string')await rateLimit(req,'club-login-account',40,15*60_000,input.email.trim().toLowerCase().slice(0,254));
    const email=typeof input.email==='string'?input.email.trim().toLowerCase():'';const record=await readRecord('club-members.json');const member=record?.data?.members?.find(item=>safeEqual(item.email,email));
    if(!member||typeof input.password!=='string'||input.password.length>200||!await verifyPassword(input.password,member.hash))fail('E-mail ou senha incorretos.',401);
+   if(member.temporaryPassword){const updated=await consumeTemporaryPassword(member);res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(updated.version,{memberId:updated.id,passwordChangeOnly:true})));return json(res,200,{passwordChangeRequired:true});}
    res.setHeader('Set-Cookie',clubSessionCookie(await makeSession(member.version,{memberId:member.id})));return json(res,200,{ok:true,...await clubDashboard(member,(await getCatalog()).data)});
   }
   if(method==='POST'&&route==='club/logout'){res.setHeader('Set-Cookie',clubSessionCookie('',true));return json(res,200,{ok:true});}

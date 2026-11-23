@@ -7,7 +7,7 @@ export function requestBodyLimit(route){
  if(route==='polls/click-sanctis')return 2048;
  if(route==='admin/upload')return 35_500_000;
  if(['club/print-rewards/photo','stores/apply','club/profile','club/reviews','club/messages','admin/messages','admin/stores'].includes(route))return 3_100_000;
- if(/^(admin|club)\/(login|setup|forgot-password|reset-password|logout)$/.test(route))return 16_384;
+ if(/^(admin|club)\/(login|setup|forgot-password|reset-password|change-temporary-password|logout)$/.test(route))return 16_384;
  if(['analytics/event','products/click'].includes(route))return 8_192;
  if(route.startsWith('webhooks/'))return 1_000_000;
  return 262_144;

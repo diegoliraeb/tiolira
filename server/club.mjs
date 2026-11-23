@@ -103,7 +103,7 @@ export async function resetPassword(input){
  await updateRecord('club-members.json',old=>{
   const member=old?.members?.find(m=>m.passwordReset?.hash===tokenHash&&m.passwordReset.expiresAt>Date.now());
   if(!member)fail('Este link é inválido ou expirou. Solicite um novo e-mail.');
-  member.hash=hash;member.version=randomUUID();delete member.passwordReset;
+  member.hash=hash;member.version=randomUUID();delete member.passwordReset;delete member.temporaryPassword;
   return old;
  });
 }
