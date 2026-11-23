@@ -1,3 +1,4 @@
+import {subscriberGroup} from './subscriber-group.mjs';
 import {readPoll,votePoll} from './click-sanctis-poll.mjs';
 import {pauseMakerworldLinks} from './makerworld-pause.mjs';
 import {correctMemberEmail,inspectAnnualPayment,recordDirectAnnualPayment} from './admin-member-support.mjs';
@@ -73,6 +74,11 @@ export default async function handler(req,res){
   if(method==='POST'&&route==='webhooks/maker-subscriptions'){assertWebhook(req);await subscriptionWebhook(await body(req,route));return json(res,200,{received:true});}
   if(method==='GET'&&route==='admin/makerworld-links'){await requireAdmin(req);return json(res,200,await makerworldLinksReport());}
   if(method==='GET'&&route==='club/maker-subscription')return json(res,200,await subscriptionDashboard(await requireClub(req)));
+  if(method==='GET'&&route==='club/subscriber-group'){
+   const result=await subscriberGroup(await requireClub(req),{join:url.searchParams.get('join')==='1'});
+   if(!result.invite)return json(res,200,result);
+   res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Location',result.invite);res.statusCode=302;return res.end();
+  }
   if(method==='GET'&&route==='admin/maker-subscriptions'){await requireAdmin(req);return json(res,200,await subscriptionReport());}
   if(method==='GET'&&route==='club/maker-subscription/license'){
    const member=await requireClub(req);await rateLimit(req,'maker-license-pdf',20,60_000,member.id);const pdf=await purchaseLicensePdf(await annualLicense(member));res.setHeader('Content-Type','application/pdf');res.setHeader('Content-Disposition','attachment; filename="licenca-anual-makerworld.pdf"');return res.end(Buffer.from(pdf));
