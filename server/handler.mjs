@@ -1,3 +1,4 @@
+import {clubCampaignReport,prepareClubCampaign,releaseClubCampaign,pauseClubCampaign,runClubCampaign,runClubCampaignQueue,campaignVisit,campaignUnsubscribe} from './club-campaigns.mjs';
 import {issueProductCommercialLicense,adminCommercialRights} from './commercial-rights.mjs';
 import {subscriberGroup} from './subscriber-group.mjs';
 import {readPoll,votePoll} from './click-sanctis-poll.mjs';
@@ -15,7 +16,7 @@ import {safelyRecordPromotion,trackPromotionAction} from './promotion-analytics.
 import {recordBannerClick,safelyAttributeBanner} from './promotion-banner-analytics.mjs';
 import {setCollectionPreparation} from './collection-status.mjs';
 import {instagramPromotion, partnerEmailVerification} from './instagram-promotion-runtime.mjs';
-import {configureDeliveryTracking,receiveEmailDelivery} from './email-delivery-events.mjs';
+import {configureDeliveryTracking,receiveEmailDelivery,deliveryTrackingStatus} from './email-delivery-events.mjs';
 import {adminBrasileiraoCourtesy,prepareBrasileiraoCourtesy,releaseBrasileiraoCourtesy,runBrasileiraoCourtesyEmails} from './brasileirao-courtesy.mjs';
 import {readJsonBody,requestBodyLimit} from './request-security.mjs';
 import {adminCollectionAccess,saveCollectionAccess} from './collection-access.mjs';
@@ -58,6 +59,9 @@ export default async function handler(req,res){
   const url=new URL(req.url,'https://'+(req.headers.host||'localhost'));
   const route=String((Array.isArray(req.query?.route)?req.query.route.join('/'):req.query?.route)||url.searchParams.get('route')||url.pathname.replace(/^\/api\/?/,'')).replace(/^\/+|\/+$/g,'');
   const method=req.method;
+  if(method==='GET'&&route==='admin/club-campaigns'){await requireAdmin(req);return json(res,200,await clubCampaignReport(url.searchParams.get('id')));}
+  if(method==='GET'&&route==='club-campaigns/visit'){await rateLimit(req,'campaign-visit',120,60_000);const location=await campaignVisit(url.searchParams.get('token'),url.searchParams.get('page'));res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Robots-Tag','noindex, nofollow');res.setHeader('Location',location);res.statusCode=302;return res.end();}
+  if(['GET','POST'].includes(method)&&route==='club-campaigns/unsubscribe'){await rateLimit(req,'campaign-unsubscribe',60,60_000);const html=await campaignUnsubscribe(url.searchParams.get('token'),method==='POST');res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Robots-Tag','noindex, nofollow');res.statusCode=200;return res.end(html);}
   if(method==='GET'&&route==='analytics/promotion-banner'){
    const lang=['pt','en','es','fr'].includes(url.searchParams.get('lang'))?url.searchParams.get('lang'):'pt';
    try{if(configured()){
@@ -92,7 +96,7 @@ export default async function handler(req,res){
    return res.end(Buffer.from(pdf));
   }
   if(method==='GET'&&route==='cron/gameday-prices'){assertReminderCron(req);const {refreshGamedayPrices}=await import('./gameday-pricing.mjs');return json(res,200,await refreshGamedayPrices());}
-  if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);const resends=await runPurchaseEmailResends();const productUpdates=await runProductUpdateEmails();const brasileiraoUpdate=await runBrasileiraoCourtesyEmails();return json(res,200,{...await runCartReminders(),purchaseResends:resends,productUpdates,brasileiraoUpdate});}
+  if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);const clubCampaigns=await runClubCampaignQueue();const resends=await runPurchaseEmailResends();const productUpdates=await runProductUpdateEmails();const brasileiraoUpdate=await runBrasileiraoCourtesyEmails();return json(res,200,{...await runCartReminders(),purchaseResends:resends,productUpdates,brasileiraoUpdate,clubCampaigns});}
   if(method==='GET'&&route==='reviews')return json(res,200,await publicReviews(url.searchParams.get('productId')));
   if(method==='GET'&&route==='club/feedback')return json(res,200,await memberFeedback(await requireClub(req)));
   if(method==='GET'&&route==='admin/analytics'){await requireAdmin(req);return json(res,200,await analyticsReport(url.searchParams.get('days')||30));}
@@ -281,6 +285,11 @@ export default async function handler(req,res){
    return json(res,201,{ok:true});
   }
   await requireAdmin(req);
+  if(method==='POST'&&route==='admin/club-campaigns/prepare')return json(res,200,await prepareClubCampaign(await requireAdmin(req),input));
+  if(method==='POST'&&route==='admin/club-campaigns/release')return json(res,200,await releaseClubCampaign(input.id));
+  if(method==='POST'&&route==='admin/club-campaigns/pause')return json(res,200,await pauseClubCampaign(input.id));
+  if(method==='POST'&&route==='admin/club-campaigns/process')return json(res,200,await runClubCampaign(input.id));
+  if(method==='POST'&&route==='admin/club-campaigns/tracking'){await configureDeliveryTracking();return json(res,200,await deliveryTrackingStatus());}
   if(method==='POST'&&route==='admin/brasileirao-update/tracking'){await rateLimit(req,'configure-delivery-tracking',3,60_000);await configureDeliveryTracking();return json(res,200,await adminBrasileiraoCourtesy());}
   if(method==='POST'&&route==='admin/brasileirao-update/prepare')return json(res,200,await prepareBrasileiraoCourtesy());
   if(method==='POST'&&route==='admin/brasileirao-update/release')return json(res,200,await releaseBrasileiraoCourtesy(input));

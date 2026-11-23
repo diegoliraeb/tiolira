@@ -1,10 +1,10 @@
 import {currentOrderEnvironment} from './payment-environment.mjs';
-import {createHmac,timingSafeEqual} from 'node:crypto';
+import {createHmac,timingSafeEqual,createHash} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {readRecord,updateRecord} from './store.mjs';
 import {purchaseEmailConfig} from './purchase-email.mjs';
 const KEY='email-delivery-config.json';
-const events=['email.sent','email.delivered','email.opened','email.bounced','email.complained','email.delivery_delayed','email.failed'];
+const events=['email.sent','email.delivered','email.opened','email.bounced','email.complained','email.delivery_delayed','email.failed','email.suppressed'];
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 export async function deliveryTrackingStatus(){const c=(await readRecord(KEY))?.data;return {configured:Boolean(c?.secret),openTracking:Boolean(c?.openTracking),configuredAt:c?.configuredAt||null};}
 async function resend(path,method='GET',body){
@@ -51,6 +51,10 @@ export async function receiveEmailDelivery(headers,raw){
  const emailId=event.data?.email_id;
  if(!events.includes(event.type))return;
  if(typeof emailId!=='string'||!/^[a-f0-9-]{36}$/i.test(emailId)||!Number.isFinite(Date.parse(event.created_at)))fail('Evento inválido.');
+ if(['email.bounced','email.complained','email.suppressed'].includes(event.type)){
+  const addresses=Array.isArray(event.data?.to)?event.data.to:[];
+  await updateRecord('email-suppressions.json',old=>{old||={};for(const address of addresses)if(typeof address==='string'&&address.includes('@'))old[createHash('sha256').update(address.trim().toLowerCase()).digest('hex')]={at:event.created_at,reason:event.type};return old});
+ }
  await updateRecord(`email-events/${emailId}.json`,old=>{
   const state=old||{events:{},ids:[]};if(state.ids.includes(id))return state;
   const type=event.type.slice(6),at=new Date(event.created_at).toISOString();
