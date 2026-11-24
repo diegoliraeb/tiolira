@@ -26,7 +26,7 @@ export function publicClubMember(member){
 export function clubProducts(data,owned=new Set(),annual=false,legacy=new Set()){
  const collections=new Set(data.collections.filter(c=>c.published).map(c=>c.id));
  return data.products.filter(p=>p.published&&collections.has(p.collection)&&['site','maker','paid','subscribers'].includes(p.access)&&isAvailable(p)&&(!isPaidProduct(p)||owned.has(p.id)||!data.collections.some(c=>c.id===p.collection&&c.comingSoon))).map(({filePath,fileProfile,printProfiles,...p})=>({
-  ...p,printEstimate:productPrintEstimate({...p,filePath}),canPurchase:!owned.has(p.id)&&canPurchaseProduct({...p,filePath,printProfiles},data),downloadUrl:canDownloadProduct(p,{owned:owned.has(p.id),annual})&&hasProductFiles({filePath,printProfiles})?`/api/download?id=${encodeURIComponent(p.id)}`:p.access==='subscribers'?'':p.access==='maker'?p.url:!isPaidProduct(p)?p.url:'',
+  ...p,printEstimate:productPrintEstimate({...p,filePath}),canPurchase:!owned.has(p.id)&&canPurchaseProduct({...p,filePath,printProfiles},data,annual),downloadUrl:canDownloadProduct(p,{owned:owned.has(p.id),annual})&&hasProductFiles({filePath,printProfiles})?`/api/download?id=${encodeURIComponent(p.id)}`:p.access==='subscribers'?'':p.access==='maker'?p.url:!isPaidProduct(p)?p.url:'',
   printProfiles:publicPrintProfiles({...p,filePath,fileProfile,printProfiles},canDownloadProduct(p,{owned:owned.has(p.id),annual})),
   commercialPolicy:commercialPolicy(p,data.collections),licenseSource:commercialEntitlement(p,{owned:owned.has(p.id),legacy:legacy.has(p.id),annual,collections:data.collections}),canLicense:Boolean(commercialEntitlement(p,{owned:owned.has(p.id),legacy:legacy.has(p.id),annual,collections:data.collections}))
  }));

@@ -7,7 +7,7 @@ import {checkoutFingerprint} from './checkout-fingerprint.mjs';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {readRecord,updateRecord,getCatalog} from './store.mjs';
-import {assertCollectionsReleased,quoteCart,ownedIds,safeOrder,purchaseLicenseTerms} from './commerce.mjs';
+import {assertSubscriberPurchases,assertCollectionsReleased,quoteCart,ownedIds,safeOrder,purchaseLicenseTerms} from './commerce.mjs';
 import {cartCoupons,couponCodeSchema,discountQuote} from './cart-coupons.mjs';
 import {paypal,paypalConfig,paypalReady,paypalReturnUrl,verifyPaypalWebhook} from './paypal.mjs';
 import {marketCatalog,paypalApprovalUrl} from '../lib/international-pricing.mjs';
@@ -20,13 +20,14 @@ export async function checkoutPaypal(member,input){
  if(!paypalReady())fail('Pagamentos internacionais estarão disponíveis em breve.',503);
  const parsed=inputSchema.parse(input),{data}=await getCatalog(),coupons=await cartCoupons(),config=paypalConfig(),granted=await collectionAccess(member,data),annual=(await subscriptionDashboard(member)).active;
  assertCollectionsReleased(data,parsed.items);
+ assertSubscriberPurchases(data,parsed.items,annual);
  const id=randomUUID();let chosen;
  await updateRecord(KEY,old=>{
   const s=old||{orders:[],downloads:{},recentDownloads:[]};
   const existing=s.orders.find(o=>o.memberId===member.id&&o.provider==='paypal'&&o.environment===config.environment&&o.requestId===parsed.requestId);
-  if(existing){chosen=existing.id;return s;}
+  if(existing){assertSubscriberPurchases(data,existing.productIds.map(id=>({kind:'product',id})),annual);chosen=existing.id;return s;}
   const reserved=natalReservation(s.orders,member.id,data,parsed,'paypal',config.environment);if(reserved){chosen=reserved.id;return s;}
-  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'),Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id},annual);
+  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds]),annual),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'),Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id},annual);
   if(quote.totalCents===0)fail('Confirme o resgate gratuito no carrinho.',409);
   if(quote.totalCents!==parsed.expectedTotalCents)fail('O preço mudou. Atualize o carrinho e confira o total em dólar.');
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme o preço integral, sem abatimento.');
