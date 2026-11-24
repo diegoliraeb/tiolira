@@ -60,7 +60,7 @@ async function prepareRoot(source,entry,trace,path){
  await pipeline(Readable.from(input()),...(entry.method===8?[createInflateRaw()]:[]),marker,createDeflateRaw({level:6}),meter,createWriteStream(path,{flags:'wx',mode:0o600}));
  return {...replacement(entry,{crc:marker.crc,size:marker.size,compressedSize}),compressedSize,path};
 }
-export async function prepareTracedCopy({stream,member,product,file},{register=registerTrace,finish=finishTrace}={}){
+export async function prepareTracedCopy({stream,member,product,file,acceptance},{register=registerTrace,finish=finishTrace}={}){
  const dir=await mkdtemp(join(tmpdir(),'tl-3mf-'));let handle;
  const cleanup=async()=>{await handle?.close();handle=null;await rm(dir,{recursive:true,force:true});};
  try{
@@ -75,7 +75,7 @@ export async function prepareTracedCopy({stream,member,product,file},{register=r
   const centralStart=position,central=directory.entries.map(item=>{const bytes=Buffer.from(item===entry?changed.central:item.central);bytes.writeUInt32LE(offsets.get(item.name),42);position+=bytes.length;return bytes;});
   const end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50);end.writeUInt16LE(directory.entries.length,8);end.writeUInt16LE(directory.entries.length,10);end.writeUInt32LE(position-centralStart,12);end.writeUInt32LE(centralStart,16);end.writeUInt16LE(directory.comment.length,20);
   const outputSize=position+22+directory.comment.length;
-  await register({trace,secret,member,product,file,bytes:outputSize});
+  await register({trace,secret,member,product,file,bytes:outputSize,...(acceptance?{acceptance}:{})});
   async function* output(){
    for(const item of directory.sorted){if(item===entry){yield changed.local;yield* createReadStream(changed.path,{highWaterMark:64*1024});continue;}for(let pos=item.offset;pos<item.end;pos+=1024**2)yield await source.read(pos,Math.min(item.end,pos+1024**2));}
    yield* central;yield end;yield directory.comment;

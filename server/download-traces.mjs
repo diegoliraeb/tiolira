@@ -9,9 +9,9 @@ export function newTrace(sourceHash){
  const trace={schema:1,id:'TL3MF-'+randomUUID().replaceAll('-',''),source_sha256:sourceHash};
  trace.hmac_sha256=sign(trace,secret);return {trace,secret};
 }
-export async function registerTrace({trace,secret,member,product,file,bytes}){
+export async function registerTrace({trace,secret,member,product,file,bytes,acceptance}){
  // One private record per delivery avoids growing a shared counter/document.
- await writeRecord(key(trace.id),{trace,secret,createdAt:new Date().toISOString(),status:'prepared',bytes,
+ await writeRecord(key(trace.id),{trace,secret,createdAt:new Date().toISOString(),status:'prepared',bytes,...(acceptance?{acceptance}:{}),
   member:{id:member.id,name:member.name||'',email:member.email||'',whatsapp:member.whatsapp||member.phone||''},
   product:{id:product.id,name:product.name,collection:product.collection},profile:{id:file.id,name:file.name},sourcePath:file.filePath},null);
 }

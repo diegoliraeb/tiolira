@@ -41,7 +41,9 @@ test('unique private issuance, unchanged original/other parts, local browser ext
  for(const name of ['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN'])delete process.env[name];
  process.env.LOCAL_DATA_DIR=dir;process.env.ADMIN_SESSION_SECRET='trace-test-long-secret-not-for-production';
  try{
-  const input=zip(parts),before=createHash('sha256').update(input).digest('hex'),copy=await prepareTracedCopy(args(input));let output;
+  const acceptance={version:'2026-11-23-v1',acceptedAt:new Date().toISOString(),lang:'pt'};
+  const input=zip(parts),before=createHash('sha256').update(input).digest('hex'),copy=await prepareTracedCopy({...args(input),acceptance});let output;
+  assert.deepEqual((await readRecord('download-traces/'+copy.id+'.json')).data.acceptance,acceptance);
   try{output=await buffer(copy);assert.equal(output.length,copy.size);await copy.finish('streamed');}finally{await copy.cleanup();}
   assert.equal(createHash('sha256').update(input).digest('hex'),before);
   const a=await zipDirectory(source(input)),b=await zipDirectory(source(output));assert.deepEqual(a.entries.map(e=>e.name),b.entries.map(e=>e.name));

@@ -23,7 +23,7 @@ import {readJsonBody,requestBodyLimit} from './request-security.mjs';
 import {adminCollectionAccess,saveCollectionAccess} from './collection-access.mjs';
 import {runProductUpdateEmails} from './product-update-email.mjs';
 import {runPurchaseEmailResends} from './purchase-email-resends.mjs';
-import {serveProductDownload} from './product-download.mjs';
+import {handleDownloadConsent} from './download-consent.mjs';
 import {lookupTrace} from './download-traces.mjs';
 import {resolveProductFile} from '../lib/print-profiles.mjs';
 import {costSheetReport,costSheetPdf} from './cost-sheet-pdf.mjs';
@@ -148,7 +148,7 @@ export default async function handler(req,res){
    res.setHeader('Content-Type','image/webp');res.setHeader('Cache-Control',approved?'public, max-age=60':'private, no-store');return res.end(Buffer.from(record.data.base64,'base64'));
   }
   if(['GET','HEAD'].includes(method)&&route==='media')return await serveCatalogImage(url.searchParams.get('path'),res,undefined,{head:method==='HEAD'});
-  if(method==='GET'&&route==='download'){const member=await requireClub(req);await rateLimit(req,'file-download',120,600_000,member.id);await safelyAttributeBanner(req,member);const {data}=await getCatalog();return await serveProductDownload({member,data,productId:url.searchParams.get('id'),profileId:url.searchParams.get('profile'),res});}
+  if(['GET','POST'].includes(method)&&route==='download'){const member=await requireClub(req);await rateLimit(req,'file-download',120,600_000,member.id);await safelyAttributeBanner(req,member);const {data}=await getCatalog();return await handleDownloadConsent({req,res,url,member,data});}
   if(method==='GET'&&route==='polls/click-sanctis')return json(res,200,await readPoll(req,res));
   if(!['POST','PUT','DELETE'].includes(method))fail('Rota não encontrada.',404);
   assertOrigin(req);
