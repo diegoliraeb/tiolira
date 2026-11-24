@@ -14,3 +14,6 @@ Validation 2026-11-22:
 - Production webpack build passes. Local node_modules is an external symlink; webpack avoids Turbopack's symlink root restriction. Vercel installs normal dependencies.
 - Full suite: 370 pass, 4 fail (including one parent suite). Same 4 fail on untouched baseline 32eeb35: expired cart recovery fixture, print estimate fixture, sitemap expected count. Unrelated baseline failures were not modified.
 - All test ballots are in /private/tmp/sanctis-preview-data, not production.
+
+## Closure — 2026-11-24
+The organizer requested closure. POLL_CLOSED disables all POST voting with 409 before identity or storage access. GET preserves the full aggregate count and exposes closed/closedOn; closed results need no voter cookie. The public page opens directly to final results, with the ten selected entries highlighted and no voting controls. Existing ballots remain unchanged. Sharing and page metadata now describe final results.

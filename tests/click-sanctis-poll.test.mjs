@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {candidates,validateChoices,addBallot,pollResults} from '../lib/click-sanctis-poll.mjs';
-import {signVoter,verifyVoter} from '../server/click-sanctis-poll.mjs';
+import {signVoter,verifyVoter,votePoll} from '../server/click-sanctis-poll.mjs';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -11,3 +11,5 @@ test('repeat submission is immutable, idempotent, and results contain no voter i
 test('tie at cutoff does not invent a winner',()=>{let s=null;for(const c of candidates.slice(0,11))s=addBallot(s,c.id,[c.id]);const r=pollResults(s,'');assert.equal(r.cutoffTie,true);assert.equal(r.results.filter(c=>c.rank===1).length,11);assert.equal(pollResults(null,'').cutoffTie,false);});
 test('cookie signature cannot be forged or used with another secret',()=>{const id='12345678-1234-1234-1234-123456789012',secret='a'.repeat(32),token=signVoter(id,secret);assert.equal(verifyVoter(token,secret),id);assert.equal(verifyVoter(token+'x',secret),null);assert.equal(verifyVoter(token,'b'.repeat(32)),null);assert.equal(verifyVoter(undefined,secret),null);});
 test('concurrent writes preserve distinct ballots and collapse duplicate requests',async()=>{const previous=process.env.LOCAL_DATA_DIR;assert.ok(!process.env.DATABASE_URL&&!process.env.POSTGRES_URL&&!process.env.VERCEL,'run only against local isolated storage');const dir=await mkdtemp(join(tmpdir(),'sanctis-test-'));process.env.LOCAL_DATA_DIR=dir;try{await Promise.all([['a',['fatima']],['b',['guadalupe']],['a',['pedro']]].map(([v,c])=>updateRecord('test-poll.json',old=>addBallot(old,v,c))));const r=pollResults((await readRecord('test-poll.json')).data,'');assert.equal(r.totalVoters,2);assert.equal(r.totalVotes,2);}finally{if(previous)process.env.LOCAL_DATA_DIR=previous;else delete process.env.LOCAL_DATA_DIR;await rm(dir,{recursive:true,force:true});}});
+
+test("closed poll rejects even stale or direct submissions before any storage or identity work",async()=>{await assert.rejects(votePoll({}, {}, {choices:["fatima"]}),{status:409});const result=pollResults(null,null);assert.equal(result.closed,true);assert.equal(result.closedOn,"2026-11-24");});

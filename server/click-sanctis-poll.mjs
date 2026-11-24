@@ -1,7 +1,7 @@
 import {randomUUID,createHmac} from 'node:crypto';
 import {securityConfig,safeEqual,rateLimit} from './auth.mjs';
 import {readRecord,updateRecord} from './store.mjs';
-import {POLL_ID,addBallot,pollResults,validateChoices} from '../lib/click-sanctis-poll.mjs';
+import {POLL_CLOSED,POLL_ID,addBallot,pollResults,validateChoices} from '../lib/click-sanctis-poll.mjs';
 const key=`polls/${POLL_ID}.json`,cookieName='tiolira_poll_sanctis_2';
 async function signingSecret(){const {sessionSecret}=await securityConfig();if(!sessionSecret||sessionSecret.length<32)throw Object.assign(Error('Votação temporariamente indisponível.'),{status:503});return sessionSecret;}
 export function signVoter(id,secret){return `${id}.${createHmac('sha256',secret).update(`${POLL_ID}:${id}`).digest('base64url')}`;}
@@ -13,8 +13,9 @@ async function identity(req,res,create=false){
  if(!id)throw Object.assign(Error('Ative os cookies e recarregue a página para votar.'),{status:400});
  return createHmac('sha256',secret).update(`ballot:${id}`).digest('hex');
 }
-export async function readPoll(req,res){const voter=await identity(req,res,true);return pollResults((await readRecord(key))?.data,voter);}
+export async function readPoll(req,res){const voter=POLL_CLOSED?null:await identity(req,res,true);return pollResults((await readRecord(key))?.data,voter);}
 export async function votePoll(req,res,input){
+ if(POLL_CLOSED)throw Object.assign(Error('Enquete encerrada. Consulte os resultados finais.'),{status:409});
  const choices=validateChoices(input.choices),voter=await identity(req,res);
  await rateLimit(req,'sanctis-poll-vote',20,600_000);
  await rateLimit(req,'sanctis-poll-voter',5,600_000,voter);
