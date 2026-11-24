@@ -38,7 +38,9 @@ export async function publicReviews(productId){
 export async function memberFeedback(member){
  const {state,orders,catalog}=await context(),pieces=new Map();
  for(const order of orders.filter(o=>o.memberId===member.id&&paid(o)))for(const item of order.items||[])for(const p of item.products||[]){if(!includes(order,p.id))continue;const product=catalog.products.find(x=>x.id===p.id);pieces.set(p.id,{id:p.id,name:product?.name||p.name,translations:product?.translations,orderId:order.id});}
- return {products:[...pieces.values()],reviews:state.reviews.filter(r=>r.memberId===member.id).map(r=>reviewView(r,true)),threads:state.threads.filter(t=>t.memberId===member.id).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(threadView)};
+ const contactPieces=new Map(pieces);
+ for(const p of catalog.products.filter(p=>p.published&&catalog.collections.some(c=>c.id===p.collection&&c.published)))if(!contactPieces.has(p.id))contactPieces.set(p.id,{id:p.id,name:p.name,translations:p.translations});
+ return {products:[...pieces.values()],contactProducts:[...contactPieces.values()],reviews:state.reviews.filter(r=>r.memberId===member.id).map(r=>reviewView(r,true)),threads:state.threads.filter(t=>t.memberId===member.id).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(threadView)};
 }
 export async function submitReview(member,input){
  const parsed=reviewSchema.parse(input),{orders,catalog}=await context(),order=validOrder(orders,member.id,parsed.productId,parsed.orderId);
@@ -48,15 +50,17 @@ export async function submitReview(member,input){
  return {ok:true};
 }
 export async function sendMemberMessage(member,input){
- const parsed=messageSchema.parse(input),{state,orders}=await context();let existing;
+ const parsed=messageSchema.parse(input),{state,orders,catalog}=await context();let existing;
  if(parsed.threadId){existing=state.threads.find(t=>t.id===parsed.threadId&&t.memberId===member.id);if(!existing)fail('Conversa não encontrada.',404);}
  const order=existing?null:validOrder(orders,member.id,parsed.productId,parsed.orderId);
- if(!existing&&!order)fail('Escolha uma peça de uma compra confirmada.',403);
+ if(!existing&&parsed.orderId&&!order)fail('Pedido não encontrado para esta conta e peça.',403);
+ const product=parsed.productId?catalog.products.find(p=>p.id===parsed.productId&&p.published&&catalog.collections.some(c=>c.id===p.collection&&c.published)):null;
+ if(!existing&&parsed.productId&&!order&&!product)fail('Peça não encontrada.',404);
  if(existing?.messages.length>=200)fail('Esta conversa atingiu o limite de mensagens. Entre em contato pelo canal de atendimento do site.',409);
  const photoId=await savePhoto(parsed.photo),now=new Date().toISOString(),newId=randomUUID();let threadId;
- await updateRecord(KEY,old=>{const s=old||empty();let t=parsed.threadId?s.threads.find(t=>t.id===parsed.threadId&&t.memberId===member.id):s.threads.find(t=>t.memberId===member.id&&t.productId===parsed.productId&&t.orderId===order.id);
+ await updateRecord(KEY,old=>{const s=old||empty();let t=parsed.threadId?s.threads.find(t=>t.id===parsed.threadId&&t.memberId===member.id):s.threads.find(t=>t.memberId===member.id&&t.productId===(parsed.productId||null)&&t.orderId===(order?.id||null));
  if(parsed.threadId&&!t)fail('Conversa não encontrada.',404);
- if(!t){t={id:newId,memberId:member.id,memberName:member.name,productId:parsed.productId,productName:order.items.flatMap(i=>i.products).find(p=>p.id===parsed.productId).name,orderId:order.id,status:'received',createdAt:now,messages:[]};s.threads.push(t);}
+ if(!t){t={id:newId,memberId:member.id,memberName:member.name,productId:parsed.productId||null,productName:product?.name||order?.items.flatMap(i=>i.products).find(p=>p.id===parsed.productId)?.name||'Atendimento do Clube',orderId:order?.id||null,status:'received',createdAt:now,messages:[]};s.threads.push(t);}
  if(t.messages.length>=200)fail('Limite de mensagens atingido.',409);
  t.messages.push({id:randomUUID(),sender:'member',text:parsed.text,photoId,createdAt:now});t.status='received';t.updatedAt=now;t.version=randomUUID();t.memberReadVersion=t.version;threadId=t.id;return s;});return {ok:true,threadId};
 }

@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {deflateRawSync,inflateRawSync} from 'node:zlib';
 import {Readable,Writable} from 'node:stream';
 import {createHash} from 'node:crypto';
-import {zipDirectory,entryBytes,mainModel,crc32,traceFromXml,inspectLocal3mf,TRACE_NS,TRACE_NAME} from '../lib/three-mf-trace.mjs';
+import {zipDirectory,entryBytes,mainModel,crc32,traceFromXml,inspectLocal3mf,TRACE_NS,TRACE_NAME,MAX_MODEL} from '../lib/three-mf-trace.mjs';
 import {prepareTracedCopy} from '../server/three-mf-copy.mjs';
 import {lookupTrace} from '../server/download-traces.mjs';
 import {readRecord,writeRecord} from '../server/store.mjs';
@@ -76,7 +76,7 @@ test('corrupt, duplicate, oversized, encrypted and ambiguous files fail without 
  for(const input of [Buffer.from('not a ZIP'),valid.subarray(0,-10),zip([...parts,parts[0]]),damaged,encrypted,zip(parts.map(p=>p[0]==='3D/main.model'?[p[0],'<model><metadata name="tiolira:Trace">old</metadata></model>']:p))])await assert.rejects(prepareTracedCopy(args(input),deps));
  assert.equal(registrations,0);
  const duplicate=Buffer.from(`<model><metadata name="${TRACE_NAME}">{}</metadata><metadata name="${TRACE_NAME}">{}</metadata></model>`);assert.throws(()=>traceFromXml(duplicate),/mais de um/);
- await assert.rejects(entryBytes(source(valid),{...modelEntry,uncompressed:129*1024**2},inflate),/limite/);
+ await assert.rejects(entryBytes(source(valid),{...modelEntry,uncompressed:MAX_MODEL+1},inflate),/limite/);
  const before=(await readdir(tmpdir())).filter(n=>n.startsWith('tl-3mf-')).sort();await assert.rejects(prepareTracedCopy(args(valid),{register:async()=>{throw new Error('Database offline');}}),/Database offline/);assert.deepEqual((await readdir(tmpdir())).filter(n=>n.startsWith('tl-3mf-')).sort(),before);
 });
 
@@ -89,4 +89,13 @@ test('every eligible 3MF profile is marked, non-3MF stays byte-identical, denied
  const paid={...data,products:[{...data.products[0],access:'paid',priceCents:1990}]};await assert.rejects(serveProductDownload({member,data:paid,productId:'p'},{...deps,hasAccess:async()=>false}),{status:403});assert.equal(reads,3);
  const res=new Writable({write(c,e,cb){assert.fail('Unmarked bytes must not be sent');cb();}});res.setHeader=()=>{};
  await assert.rejects(serveProductDownload({member,data,productId:'p',res},{...deps,prepare:async()=>{throw new Error('Registry offline');}}),/Registry offline/);assert.equal(records,3);
+});
+
+// A single-mesh Bambu project may be small on disk but >128 MiB as XML.
+test('monolithic Bambu model above the former 128 MiB limit can be issued and inspected',async()=>{
+ const large=Buffer.concat([model.subarray(0,-8),Buffer.alloc(129*1024**2,32),Buffer.from('</model>')]);
+ const input=zip(parts.map(p=>p[0]==='3D/main.model'?[p[0],large]:p));
+ const copy=await prepareTracedCopy(args(input),{register:async()=>{},finish:async()=>{}});
+ try{const output=await buffer(copy);assert.equal((await inspectLocal3mf(new Blob([output]))).id,copy.id);}
+ finally{await copy.cleanup();}
 });

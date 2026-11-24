@@ -118,6 +118,20 @@ test('buyer reviews, moderation, photos and private creator contact',async t=>{
   const r=own.reviews[0];assert.equal((await post('admin/reviews',{id:r.id,version:r.version,status:'approved'},cookieAdmin)).status,409);
   assert.equal((await post('club/messages',{threadId:thread.id,text:'Preciso tirar uma dúvida sobre o pedido.'})).status,200);
  });
+ await t.test('club members without purchases can ask for help, but cannot claim an order or review',async()=>{
+  const info=(await call('club/feedback',{cookie:cookieB})).body;
+  assert.equal(info.products.length,0);assert.ok(info.contactProducts.some(p=>p.id===products[0].id));
+  const general=await post('club/messages',{text:'Não consigo baixar a peça da assinatura.'},cookieB);assert.equal(general.status,200);
+  const piece=await post('club/messages',{productId:products[0].id,text:'Preciso de ajuda com este arquivo.'},cookieB);assert.equal(piece.status,200);
+  let own=(await call('club/feedback',{cookie:cookieB})).body;assert.equal(own.threads.length,2);assert.ok(own.threads.every(t=>t.orderId===null));
+  assert.equal((await post('club/messages',{productId:products[0].id,text:'Mais detalhes do mesmo problema.'},cookieB)).body.threadId,piece.body.threadId);
+  assert.equal((await post('club/messages',{productId:'unknown',text:'Produto inexistente.'},cookieB)).status,404);
+  assert.equal((await post('club/messages',{productId:products[0].id,orderId:order.id,text:'Pedido de outra pessoa.'},cookieB)).status,403);
+  assert.equal((await post('club/reviews',{productId:products[0].id,rating:5,text:'Sem compra confirmada.'},cookieB)).status,403);
+  assert.equal((await post('club/messages',{threadId:piece.body.threadId,text:'Outra conta tentando ler.'},cookieA)).status,404);
+  const adminThread=(await call('admin/feedback',{cookie:cookieAdmin})).body.threads.find(t=>t.id===piece.body.threadId);
+  assert.equal(adminThread.contact.email,b.email);assert.equal(adminThread.orderId,null);
+ });
  await t.test('test-environment payments cannot authorize production reviews',async()=>{
   await updateRecord('commerce.json',s=>{s.orders[0].status='paid';s.orders[0].environment='production';return s;});
   assert.equal((await call('club/feedback',{cookie:cookieA})).body.products.length,0);
