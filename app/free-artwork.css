@@ -10,3 +10,9 @@
 #tl-vivo .product-image[data-access="maker"]:hover>img,.product-image[data-access="maker"]:hover>img{transform:none}
 
 .subscription-inline-badge{display:inline-block;max-width:100%;padding:.45rem .65rem;border-radius:.35rem;background:#34472c;color:#fff;font-size:.8rem;font-weight:700;line-height:1.35;white-space:normal}.gd-cardbody .subscription-inline-badge{margin:.6rem 0}.admin-product-price .subscription-inline-badge{display:block;margin-top:.4rem}
+
+.subscriber-purchase-notice{margin:12px 0;min-width:0;text-align:left}
+.subscriber-purchase-badge{display:inline-block;max-width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #b66b2b;border-radius:7px;background:#fff0d8;color:#71370e;font-size:12px;font-weight:750;line-height:1.4;white-space:normal;overflow-wrap:anywhere}
+.subscriber-purchase-notice .subscriber-purchase-requirement{margin:7px 0 0;font-size:13px;line-height:1.5;color:#553e2b}
+.partner-art-card .subscriber-purchase-notice{margin:0}
+@media(max-width:600px){.subscriber-purchase-badge{font-size:11px;padding:7px 8px}.subscriber-purchase-notice .subscriber-purchase-requirement{font-size:12px}}

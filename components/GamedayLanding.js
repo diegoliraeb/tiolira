@@ -1,4 +1,5 @@
 'use client';
+import SubscriberPurchaseBadge from './SubscriberPurchaseBadge';
 
 import {isSubscriptionProduct,subscriberCopy} from '../lib/subscriber-access.mjs';
 import {useState} from 'react';
@@ -34,7 +35,7 @@ export default function GamedayLanding({lang,products,collection}){
   </section>}
   <section id="lineup" className="gd-shell gd-lineup"><div className="gd-sectionhead"><h2>{t.pick}<span>.</span></h2><p>{lineup.length} {t.teams} / 2 {t.conferences}</p></div>
    <div className="gd-filters"><label className="gd-search"><input type="search" value={query} placeholder={t.search} aria-label={t.search} onChange={e=>setQuery(e.target.value)}/></label><div className="gd-pills">{['','AFC','NFC'].map(c=><button key={c} aria-pressed={conference===c} onClick={()=>setConference(c)}>{c||t.all}</button>)}</div></div>
-   <p id="count" aria-live="polite">{matches.length} {t.teams} · {t.file}</p><div id="grid">{matches.map(({key,city,team,division,p})=><Link key={key} href={link(p)} className="gd-card"><div className="gd-pic"><img src={p.image} alt={city+' '+team+' Santa'} loading="lazy"/></div><div className="gd-cardbody"><span className="gd-teammeta">{city.toUpperCase()} / {division}</span><strong className="gd-clubname">{team}</strong>{isSubscriptionProduct(p)&&!p.collectionComingSoon&&<span className="subscription-inline-badge">{subscriberCopy[lang].badge}</span>}<span className="gd-cardfoot">{price(p)} <small>{t.details} ↗</small></span></div></Link>)}</div>
+   <p id="count" aria-live="polite">{matches.length} {t.teams} · {t.file}</p><div id="grid">{matches.map(({key,city,team,division,p})=><Link key={key} href={link(p)} className="gd-card"><div className="gd-pic"><img src={p.image} alt={city+' '+team+' Santa'} loading="lazy"/></div><div className="gd-cardbody"><span className="gd-teammeta">{city.toUpperCase()} / {division}</span><strong className="gd-clubname">{team}</strong><SubscriberPurchaseBadge product={p} lang={lang}/>{isSubscriptionProduct(p)&&!p.collectionComingSoon&&<span className="subscription-inline-badge">{subscriberCopy[lang].badge}</span>}<span className="gd-cardfoot">{price(p)} <small>{t.details} ↗</small></span></div></Link>)}</div>
    {matches.length===0&&<div id="empty"><h3>{t.empty}</h3><button id="reset" onClick={()=>{setQuery('');setConference('')}}>{t.reset}</button></div>}
   </section>
  </main>;
