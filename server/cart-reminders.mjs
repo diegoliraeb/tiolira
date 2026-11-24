@@ -51,7 +51,8 @@ export async function sendCartReminder(id,{mode='manual',now=Date.now(),testCart
  // Revalidate ownership, availability and current prices, without creating any order.
  await quoteCheckout(member,{items:selection,couponCode:''});
  const attempt=randomUUID(),fresh={...(mode==='test'?{testCart}:{}),id,cartId:cart.cartId,memberId:cart.memberId,memberName:member.name,memberEmail:member.email,mode,lang:cart.lang||'pt',createdAt:new Date(now).toISOString(),cartUpdatedAt:cart.updatedAt,sequence:cart.sequence,items:selection,coupon:cart.coupon||'',status:'sending',attempts:0};
- const newPayload={from:config.from,to:[member.email],...reminderEmail(cart,config.origin,await tokenFor(fresh,'recover'),await tokenFor(fresh,'stop'))};
+ const tokenJobBase=ctx.reminders.jobs[id]||fresh;
+ const newPayload={from:config.from,to:[member.email],...reminderEmail(cart,config.origin,await tokenFor(tokenJobBase,'recover'),await tokenFor(tokenJobBase,'stop'))};
  if(mode==='test')newPayload.subject='[TESTE] '+newPayload.subject;
  await updateRecord(KEY,old=>{
   const s=state(old),why=reason(cart,{...ctx,reminders:s},now,mode);if(why)fail(why,409);
@@ -65,7 +66,7 @@ export async function sendCartReminder(id,{mode='manual',now=Date.now(),testCart
  blocked=reason(cart,check,now,mode);
  if(blocked||!cart||cart.sequence!==job.sequence||cart.updatedAt!==job.cartUpdatedAt){await updateRecord(KEY,old=>{const s=state(old);if(s.jobs[id]?.attempt===attempt){s.jobs[id].status='cancelled';s.jobs[id].leaseUntil=0;delete s.jobs[id].payload;}return s;});fail(blocked||'O carrinho mudou; envio cancelado.',409);}
  try{
-  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${config.key}`,'Content-Type':'application/json','Idempotency-Key':`cart-reminder/${id}`},body:JSON.stringify(job.payload),signal:AbortSignal.timeout(8000)});
+  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${config.key}`,'Content-Type':'application/json','Idempotency-Key':job.deliveryRetryKey||`cart-reminder/${id}`},body:JSON.stringify(job.payload),signal:AbortSignal.timeout(8000)});
   if(!response.ok)throw Error('delivery');const result=await response.json();if(typeof result.id!=='string'||!result.id)throw Error('delivery');
   await updateRecord(KEY,old=>{const s=state(old),j=s.jobs[id];if(j?.attempt===attempt){j.status='sent';j.sentAt=new Date(now).toISOString();j.providerId=result.id;j.leaseUntil=0;delete j.payload;delete j.error;}return s;});
   return {ok:true,status:'sent'};
@@ -74,7 +75,19 @@ export async function sendCartReminder(id,{mode='manual',now=Date.now(),testCart
  }
 }
 
-// Admin-requested test: no order, no synthetic abandoned-cart analytics and no account creation.
+// Recover only a provider-confirmed technical failure, never a delivery or bounce.
+export async function recoverFailedCartReminder(id,providerId){
+ const events=(await readRecord(`email-events/${providerId}.json`))?.data?.events||{};
+ if(!events.failed||events.delivered||events.bounced||events.complained||events.suppressed)fail('Não há falha técnica elegível para reenvio.',409);
+ await updateRecord(KEY,old=>{const s=state(old),j=s.jobs[id];
+  if(!j||j.providerId!==providerId||j.status!=='sent'||j.deliveryRecoveryHistory?.some(h=>h.providerId===providerId)||j.leaseUntil>Date.now())fail('O lembrete já mudou. Confira antes de repetir.',409);
+  j.deliveryRecoveryHistory||=[];j.deliveryRecoveryHistory.push({providerId:j.providerId,sentAt:j.sentAt,recoveredAt:new Date().toISOString()});
+  j.deliveryRetryKey=`cart-reminder/${id}/recovery/${providerId}`;j.status='failed';j.leaseUntil=0;
+  delete j.firstAttemptAt;delete j.providerId;delete j.sentAt;delete j.payload;return s;
+ });
+ return sendCartReminder(id);
+}
+
 export async function sendTestCartReminder(input,now=Date.now()){
  const parsed=z.object({email:z.string().trim().toLowerCase().email().max(254),requestId:z.string().uuid()}).parse(input);
  const ctx=await context(),member=ctx.members.find(m=>m.email.toLowerCase()===parsed.email);

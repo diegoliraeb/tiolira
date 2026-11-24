@@ -7,11 +7,12 @@ import {randomUUID} from 'node:crypto';
 import {writeRecord,readRecord,updateRecord} from '../server/store.mjs';
 import {recordCart} from '../server/analytics.mjs';
 import {cartKey} from '../server/cart-state.mjs';
-import {runCartReminders,sendTestCartReminder,sendCartReminder,recoverCart,unsubscribeCartReminders,reminderReport,assertReminderCron,reminderEmail} from '../server/cart-reminders.mjs';
+import {runCartReminders,sendTestCartReminder,sendCartReminder,recoverFailedCartReminder,recoverCart,unsubscribeCartReminders,reminderReport,assertReminderCron,reminderEmail} from '../server/cart-reminders.mjs';
 import {makeSession} from '../server/auth.mjs';
 import {recoveryToken} from '../lib/cart-reminder-copy.mjs';
 import {partnerRoute} from '../lib/partner-navigation.mjs';
 import handler from '../server/handler.mjs';
+import {GET as recoveryGet,POST as recoveryPost} from '../app/admin/reenvios/route.js';
 import seed from '../data/catalog.json' with {type:'json'};
 
 const HOUR=3600000;
@@ -38,6 +39,15 @@ test('cart reminders: delivery, private recovery, opt-out and commerce regressio
   assert.throws(()=>assertReminderCron({headers:{}}));assert.throws(()=>assertReminderCron({headers:{authorization:'Bearer wrong'}}));assert.doesNotThrow(()=>assertReminderCron({headers:{authorization:'Bearer local-cron-only'}}));
   assert.equal((await call('cron/cart-reminders')).status,401);assert.equal((await call('admin/cart-reminders/send',{method:'POST'})).status,401);assert.equal((await call('admin/cart-reminders/send',{method:'POST',cookie:memberCookie})).status,401);
   assert.equal((await call('admin/cart-reminders/send',{method:'POST',cookie:adminCookie,origin:'https://evil.invalid'})).status,403);assert.equal((await call('club/cart-recover',{method:'POST'})).status,401);
+ });
+ await t.test('operational recovery page requires admin and same-site POST',async()=>{
+  const url='https://www.tiolira.com.br/admin/reenvios';
+  assert.equal((await recoveryGet(new Request(url))).status,401);
+  assert.equal((await recoveryPost(new Request(url,{method:'POST'}))).status,401);
+  assert.equal((await recoveryGet(new Request(url,{headers:{cookie:memberCookie}}))).status,401);
+  assert.equal((await recoveryGet(new Request(url,{headers:{cookie:adminCookie}}))).status,200);
+  assert.equal((await recoveryPost(new Request(url,{method:'POST',headers:{cookie:adminCookie,origin:'https://evil.invalid'}}))).status,403);
+  assert.equal(requests.length,0);
  });
  await t.test('automatic threshold is exactly six hours and manual sends do not wait six hours',async()=>{
   await reset();let c=await newCart({age:6*HOUR-1});assert.equal((await runCartReminders(now)).sent,0);assert.equal(requests.length,0);assert.equal((await runCartReminders(now+1)).sent,1);assert.equal(requests.length,1);assert.equal((await runCartReminders(now+2)).sent,0);await assert.rejects(()=>sendCartReminder(c.id,{now:now+3}),/já enviado/);
@@ -68,6 +78,18 @@ test('cart reminders: delivery, private recovery, opt-out and commerce regressio
  await t.test('uncertain delivery retries exact payload and idempotency key; never blindly retries after expiry',async()=>{
   await reset();const c=await newCart();failDelivery=true;await assert.rejects(()=>sendCartReminder(c.id,{now}),e=>e.status===503);assert.equal((await readRecord('analytics/cart-reminders.json')).data.jobs[c.id].status,'failed');failDelivery=false;await sendCartReminder(c.id,{now:now+HOUR});assert.deepEqual(requests[0].body,requests[1].body);assert.equal(requests[0].headers['Idempotency-Key'],requests[1].headers['Idempotency-Key']);assert.equal((await readRecord('analytics/cart-reminders.json')).data.jobs[c.id].status,'sent');
   await reset();const d=await newCart();failDelivery=true;await assert.rejects(()=>sendCartReminder(d.id,{now}));failDelivery=false;await assert.rejects(()=>sendCartReminder(d.id,{now:now+23*HOUR}),/verificar no provedor/);assert.equal(requests.length,1);
+ });
+ await t.test('technical delivery recovery is single-use, excludes bounces and preserves valid recovery links',async()=>{
+  await reset();const c=await newCart();await sendCartReminder(c.id,{now:now-1000});
+  await updateRecord('email-events/fake-delivery-id.json',()=>({events:{failed:new Date().toISOString(),delivered:new Date().toISOString()}}));
+  await assert.rejects(()=>recoverFailedCartReminder(c.id,'fake-delivery-id'),/elegível/);assert.equal(requests.length,1);
+  await updateRecord('email-events/fake-delivery-id.json',()=>({events:{failed:new Date().toISOString(),bounced:new Date().toISOString()}}));
+  await assert.rejects(()=>recoverFailedCartReminder(c.id,'fake-delivery-id'),/elegível/);
+  await updateRecord('email-events/fake-delivery-id.json',()=>({events:{failed:new Date().toISOString()}}));
+  await recoverFailedCartReminder(c.id,'fake-delivery-id');assert.equal(requests.length,2);
+  assert.notEqual(requests[0].headers['Idempotency-Key'],requests[1].headers['Idempotency-Key']);
+  assert.equal((await recoverCart(member,tokens().recover)).status,'restored');
+  await assert.rejects(()=>recoverFailedCartReminder(c.id,'different-provider'),/elegível/);
  });
  await t.test('recover removes unavailable pieces and revalidates expired coupons; reports never disclose tokens',async()=>{
   await reset();const c=await newCart({items:pieces.map(p=>({kind:'product',id:p.id}))});await sendCartReminder(c.id,{now});const token=tokens().recover;
