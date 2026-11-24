@@ -1,3 +1,4 @@
+import {subscriptionDashboard} from './maker-subscriptions.mjs';
 import {makerPaypalPurchaseEvent} from './maker-purchases.mjs';
 import {makerPaypalEvent} from './maker-paypal.mjs';
 import {complimentaryAccess as collectionAccess} from './print-rewards-access.mjs';
@@ -17,7 +18,7 @@ const inputSchema=z.object({items:cartSchema,requestId:z.string().uuid(),couponC
 export function marketCoupons(coupons,currency){return currency==='USD'?coupons.map(c=>({...c,minimumCents:Math.round(c.minimumCents/6),...(c.type==='fixed'?{value:Math.max(1,Math.round(c.value/6))}:{})})):coupons;}
 export async function checkoutPaypal(member,input){
  if(!paypalReady())fail('Pagamentos internacionais estarão disponíveis em breve.',503);
- const parsed=inputSchema.parse(input),{data}=await getCatalog(),coupons=await cartCoupons(),config=paypalConfig(),granted=await collectionAccess(member,data);
+ const parsed=inputSchema.parse(input),{data}=await getCatalog(),coupons=await cartCoupons(),config=paypalConfig(),granted=await collectionAccess(member,data),annual=(await subscriptionDashboard(member)).active;
  assertCollectionsReleased(data,parsed.items);
  const id=randomUUID();let chosen;
  await updateRecord(KEY,old=>{
@@ -25,7 +26,7 @@ export async function checkoutPaypal(member,input){
   const existing=s.orders.find(o=>o.memberId===member.id&&o.provider==='paypal'&&o.environment===config.environment&&o.requestId===parsed.requestId);
   if(existing){chosen=existing.id;return s;}
   const reserved=natalReservation(s.orders,member.id,data,parsed,'paypal',config.environment);if(reserved){chosen=reserved.id;return s;}
-  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'),Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id});
+  const quote=discountQuote({...quoteCart(marketCatalog(data,'USD'),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency:'USD'},parsed.couponCode,marketCoupons(coupons.coupons,'USD'),Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id},annual);
   if(quote.totalCents===0)fail('Confirme o resgate gratuito no carrinho.',409);
   if(quote.totalCents!==parsed.expectedTotalCents)fail('O preço mudou. Atualize o carrinho e confira o total em dólar.');
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme o preço integral, sem abatimento.');

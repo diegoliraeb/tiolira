@@ -66,13 +66,13 @@ export function quoteCart(data,input,owned=new Set()){
  if(!Number.isSafeInteger(totalCents)||totalCents<=0||totalCents>10_000_000)fail('Valor de compra inválido.');
  return {items,totalCents,productIds:[...included].sort(),overlap:[...included].filter(x=>owned.has(x))};
 }
-export function safeOrder(o,orders){return {provider:o.provider||'asaas',currency:o.currency||'BRL',id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,couponDiscountCents:o.couponDiscountCents??(o.coupon?o.discountCents:0),promotion:o.promotion||null,natalPromotion:o.natalPromotion||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:o.provider==='paypal'?paypalApprovalUrl(o.paymentUrl,o.environment):invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null,licenses:paid(o)?(o.licenses||[]).filter(l=>!orders||natalProductAccess(o,l.productId,orders.filter(currentOrderEnvironment))).map(l=>({code:l.code,productId:l.productId,downloadUrl:`/api/club/licenses/download?code=${encodeURIComponent(l.code)}`})):[]};}
+export function safeOrder(o,orders){return {provider:o.provider||'asaas',currency:o.currency||'BRL',id:o.id,createdAt:o.createdAt,status:o.status,totalCents:o.totalCents,subtotalCents:o.subtotalCents??o.totalCents,discountCents:o.discountCents||0,coupon:o.coupon||null,couponDiscountCents:o.couponDiscountCents??(o.coupon?o.discountCents:0),promotion:o.promotion||null,natalPromotion:o.natalPromotion||null,subscriberDiscount:o.subscriberDiscount||null,items:o.items,productIds:o.productIds,billingType:o.billingType,paymentUrl:o.provider==='paypal'?paypalApprovalUrl(o.paymentUrl,o.environment):invoiceUrl(o.paymentUrl),paidAt:o.paidAt||null,dueDate:o.dueDate||null,licenses:paid(o)?(o.licenses||[]).filter(l=>!orders||natalProductAccess(o,l.productId,orders.filter(currentOrderEnvironment))).map(l=>({code:l.code,productId:l.productId,downloadUrl:`/api/club/licenses/download?code=${encodeURIComponent(l.code)}`})):[]};}
 export async function shop(member){
  const [{data:baseData},record]=await Promise.all([getCatalog(),readRecord(KEY)]),currency=internationalBuyer(member)?'USD':'BRL',data=marketCatalog(baseData,currency),orders=state(record?.data).orders,granted=await collectionAccess(member,baseData),owned=new Set([...ownedIds(orders,member.id),...granted.productIds]);
  const annual=(await subscriptionDashboard(member)).active;
  const products=data.products.filter(p=>canPurchaseProduct(p,data)||owned.has(p.id)&&p.published&&!p.exclusive&&['site','paid','subscribers'].includes(p.access)&&hasProductFiles(p)&&data.collections.some(c=>c.id===p.collection&&c.published)).map(p=>({id:p.id,name:p.name,translations:p.translations,image:p.image,collection:p.collection,priceCents:p.priceCents,includedInSubscription:isSubscriptionProduct(p),subscriptionAccess:isSubscriptionProduct(p)&&annual&&!owned.has(p.id),owned:owned.has(p.id),printProfiles:publicPrintProfiles(p,canDownloadProduct(p,{owned:owned.has(p.id),annual})),downloadUrl:canDownloadProduct(p,{owned:owned.has(p.id),annual})?`/api/download?id=${encodeURIComponent(p.id)}`:null}));
  const collections=data.collections.filter(c=>c.published&&!c.free&&!c.comingSoon&&c.priceCents>0).flatMap(c=>{const members=data.products.filter(p=>p.collection===c.id&&p.published);return members.length&&members.every(p=>canPurchaseProduct(p,data))?[{id:c.id,name:c.name,translations:c.translations,image:collectionCover(c),priceCents:c.priceCents,productIds:members.map(p=>p.id),owned:members.every(p=>owned.has(p.id))}]:[]});
- return {products,collections,natalCampaign:memberNatalState(orders,member.id,baseData),orders:orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).map(o=>safeOrder(o,orders)).reverse(),currency,paymentProvider:currency==='USD'?'paypal':'asaas',paymentsReady:currency==='USD'?paypalReady():paymentsReady()};
+ return {products,collections,subscriberDiscountActive:annual,natalCampaign:memberNatalState(orders,member.id,baseData),orders:orders.filter(o=>o.memberId===member.id&&currentOrderEnvironment(o)).map(o=>safeOrder(o,orders)).reverse(),currency,paymentProvider:currency==='USD'?'paypal':'asaas',paymentsReady:currency==='USD'?paypalReady():paymentsReady()};
 }
 export async function memberOwnedIds(member){return ownedIds(state((await readRecord(KEY))?.data).orders,member.id);}
 export async function purchaseAccess(member,productId){return (await memberOwnedIds(member)).has(productId);}
@@ -80,12 +80,12 @@ export async function memberAccessIds(member){const [owned,granted]=await Promis
 export async function memberHasAccess(member,productId){return (await memberAccessIds(member)).has(productId);}
 export async function memberLicenses(member){const [purchased,granted]=await Promise.all([purchaseLicenses(member),collectionAccess(member)]);const paid=new Set(purchased.filter(l=>l.status==='active').map(l=>l.productId));return [...purchased,...granted.licenses.filter(l=>!paid.has(l.productId))];}
 export async function quoteCheckout(member,input){
- const [{data},coupons,owned,record]=await Promise.all([getCatalog(),cartCoupons(),memberAccessIds(member),readRecord(KEY)]);
- const currency=internationalBuyer(member)?'USD':'BRL';return {...discountQuote({...quoteCart(marketCatalog(data,currency),input.items,owned),currency},input.couponCode,marketCoupons(coupons.coupons,currency),Date.now(),memberNatalState(state(record?.data).orders,member.id,data),{campaign:record?.data?.brasileiraoCourtesy,orders:state(record?.data).orders,memberId:member.id}),currency};
+ const [{data},coupons,owned,record,subscription]=await Promise.all([getCatalog(),cartCoupons(),memberAccessIds(member),readRecord(KEY),subscriptionDashboard(member)]);
+ const currency=internationalBuyer(member)?'USD':'BRL';return {...discountQuote({...quoteCart(marketCatalog(data,currency),input.items,owned),currency},input.couponCode,marketCoupons(coupons.coupons,currency),Date.now(),memberNatalState(state(record?.data).orders,member.id,data),{campaign:record?.data?.brasileiraoCourtesy,orders:state(record?.data).orders,memberId:member.id},subscription.active),currency};
 }
 async function claimNatalOffer(member,input){
  const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.literal(0),lang:z.enum(['pt','en','es','fr']).default('pt')}).parse(input);
- const {data}=await getCatalog(),granted=await collectionAccess(member,data),currency=internationalBuyer(member)?'USD':'BRL',environment=asaasConfig().environment;
+ const {data}=await getCatalog(),granted=await collectionAccess(member,data),annual=(await subscriptionDashboard(member)).active,currency=internationalBuyer(member)?'USD':'BRL',environment=asaasConfig().environment;
  assertCollectionsReleased(data,parsed.items);
  let result;
  const updated=await updateRecord(KEY,old=>{
@@ -95,7 +95,7 @@ async function claimNatalOffer(member,input){
    result=existing.id;return s;
   }
   if(!isCourtesyCode(parsed.couponCode))natalReservation(s.orders,member.id,data,parsed,'promotion',environment);
-  const quote=discountQuote({...quoteCart(marketCatalog(data,currency),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency},parsed.couponCode,[],Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id});
+  const quote=discountQuote({...quoteCart(marketCatalog(data,currency),parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),currency},parsed.couponCode,[],Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id},annual);
   if(quote.totalCents!==0||(!quote.courtesy&&(!quote.natalPromotion||quote.natalPromotion.percent!==100)))fail('Sua oferta mudou. Atualize o carrinho para conferir o benefício disponível.',409);
   const issuedAt=new Date().toISOString(),orderId=randomUUID();result=orderId;
   const o={id:orderId,requestId:parsed.requestId,memberId:member.id,memberName:member.name,memberEmail:member.email,createdAt:issuedAt,paidAt:issuedAt,status:'paid',provider:'promotion',currency,environment,billingType:'PROMOTION',lang:parsed.lang,...quote};
@@ -111,14 +111,14 @@ export async function checkout(member,input){
  const cpfCnpj=String(member.cpfCnpj||'').replace(/\D/g,'');
  if(!validBillingDocument(cpfCnpj))throw Object.assign(Error(BILLING_DOCUMENT_ERROR),{status:400,code:'BILLING_DOCUMENT_INVALID',uncertain:false});
  const parsed=z.object({items:cartSchema,requestId:z.string().uuid(),billingType:z.enum(['PIX','BOLETO','CREDIT_CARD']),couponCode:couponCodeSchema.default(''),expectedTotalCents:z.number().int().positive().optional(),acceptOverlap:z.boolean().default(false),lang:z.enum(['pt','en','es','fr']).default('pt')}).parse(input);
- const {data}=await getCatalog(),environment=asaasConfig().environment,coupons=await cartCoupons(),granted=await collectionAccess(member,data);
+ const {data}=await getCatalog(),environment=asaasConfig().environment,coupons=await cartCoupons(),granted=await collectionAccess(member,data),annual=(await subscriptionDashboard(member)).active;
  assertCollectionsReleased(data,parsed.items);
  const orderId=randomUUID();let chosenId;
  await updateRecord(KEY,old=>{
   const s=state(old),existing=s.orders.find(o=>o.memberId===member.id&&o.provider!=='paypal'&&o.environment===environment&&o.requestId===parsed.requestId);
   if(existing){chosenId=existing.id;return s;}
   const reserved=natalReservation(s.orders,member.id,data,parsed,'asaas',environment);if(reserved){chosenId=reserved.id;return s;}
-  const quote=discountQuote(quoteCart(data,parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),parsed.couponCode,coupons.coupons,Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id});
+  const quote=discountQuote(quoteCart(data,parsed.items,new Set([...ownedIds(s.orders,member.id),...granted.productIds])),parsed.couponCode,coupons.coupons,Date.now(),memberNatalState(s.orders,member.id,data),{campaign:s.brasileiraoCourtesy,orders:s.orders,memberId:member.id},annual);
   if(quote.totalCents===0)fail('Confirme o resgate gratuito no carrinho.',409);
   if((parsed.couponCode||quote.promotion||quote.natalPromotion||parsed.expectedTotalCents!==undefined)&&parsed.expectedTotalCents!==quote.totalCents)fail('O desconto mudou. Confira o total atualizado antes de pagar.',409);
   if(quote.overlap.length&&!parsed.acceptOverlap)fail('Você já possui parte da coleção. Confirme a compra pelo valor integral, sem abatimento.',409);

@@ -11,3 +11,8 @@
 .subscriber-group-card{margin:16px 0;padding:20px;border:1px solid #bad0bc;border-radius:16px;background:#f0f5ec;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 24px;align-items:center;color:#253c2a}
 .subscriber-group-card h2{font-size:1.3rem;margin:4px 0 8px}.subscriber-group-card p{margin:4px 0;line-height:1.5}.subscriber-group-card small{grid-column:1/-1;line-height:1.5;color:#4a5e4c}.subscriber-group-card .button{background:#28563b;color:white;white-space:normal;text-align:center}
 @media(max-width:600px){.subscriber-group-card{padding:16px;grid-template-columns:minmax(0,1fr);gap:12px}.subscriber-group-card .button{width:100%;box-sizing:border-box}.subscriber-group-card h2{font-size:1.15rem}}
+
+/* Keep all subscription showcase cards the same size, including Brasileirão portraits. */
+.subscription-public .seo-product-grid .product-image[data-collection]{aspect-ratio:1;height:auto;position:relative;overflow:hidden;background:#eee8da}
+.subscription-public .seo-product-grid .product-image[data-collection]>img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;object-position:center;transform:none}
+.subscription-discount-benefit{color:#284631;background:#e4ecd9;display:inline-block;padding:10px 16px;border-radius:12px;font-size:15px}

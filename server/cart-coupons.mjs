@@ -1,3 +1,4 @@
+import {applySubscriberDiscount} from '../lib/subscriber-discount.mjs';
 import {isCourtesyCode,courtesyQuote} from './brasileirao-courtesy.mjs';
 import {applyFamilyDiscount,allocateDiscount,familyEligible} from '../lib/family-discount.mjs';
 import {applyNatalPromotion,natalEligible,promotionEntries} from '../lib/natal-promotion.mjs';
@@ -16,7 +17,7 @@ export async function saveCartCoupon(input){
  const coupons=[...current.coupons.filter(c=>c.id!==coupon.id),coupon];
  return {coupons,revision:await writeRecord(KEY,{coupons},current.revision)};
 }
-export function discountQuote(quote,code,coupons,now=Date.now(),natalContext,courtesyContext){
+function baseDiscountQuote(quote,code,coupons,now=Date.now(),natalContext,courtesyContext){
  code=couponCodeSchema.parse(code||'');
  if(code.startsWith('TLIG-'))throw Object.assign(Error('Use seu cupom pessoal na seção Promoção de Natal da área do parceiro.'),{status:400});
  if(isCourtesyCode(code))return courtesyQuote(quote,courtesyContext);
@@ -38,3 +39,5 @@ export function discountQuote(quote,code,coupons,now=Date.now(),natalContext,cou
  const items=quote.items.map((item,index)=>({...item,discountCents:item.discountCents+allocations[index],totalCents:item.totalCents-allocations[index]}));
  return {...quote,items,subtotalCents,discountCents:quote.discountCents+discountCents,couponDiscountCents:discountCents,totalCents:quote.totalCents-discountCents,coupon:{id:coupon.id,code:coupon.code,type:coupon.type,value:coupon.value}};
 }
+
+export function discountQuote(quote,code,coupons,now=Date.now(),natalContext,courtesyContext,subscriberActive=false){return applySubscriberDiscount(baseDiscountQuote(quote,code,coupons,now,natalContext,courtesyContext),subscriberActive);}
