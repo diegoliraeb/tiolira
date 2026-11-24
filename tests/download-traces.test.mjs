@@ -7,7 +7,8 @@ import {deflateRawSync,inflateRawSync} from 'node:zlib';
 import {Readable,Writable} from 'node:stream';
 import {createHash} from 'node:crypto';
 import {zipDirectory,entryBytes,mainModel,crc32,traceFromXml,inspectLocal3mf,TRACE_NS,TRACE_NAME,MAX_MODEL} from '../lib/three-mf-trace.mjs';
-import {prepareTracedCopy} from '../server/three-mf-copy.mjs';
+import {prepareTracedCopy,TraceModelTransform} from '../server/three-mf-copy.mjs';
+import {pipeline} from 'node:stream/promises';
 import {lookupTrace} from '../server/download-traces.mjs';
 import {readRecord,writeRecord} from '../server/store.mjs';
 import {serveProductDownload} from '../server/product-download.mjs';
@@ -98,4 +99,15 @@ test('monolithic Bambu model above the former 128 MiB limit can be issued and in
  const copy=await prepareTracedCopy(args(input),{register:async()=>{},finish:async()=>{}});
  try{const output=await buffer(copy);assert.equal((await inspectLocal3mf(new Blob([output]))).id,copy.id);}
  finally{await copy.cleanup();}
+});
+
+test('streamed XML validation handles split UTF-8 and rejects late markers, invalid UTF-8 and CRC mismatch',async()=>{
+ const trace={id:'test'};
+ async function run(bytes,{wrongCrc=false}={}){
+  const chunks=[];await pipeline(Readable.from(Array.from(bytes,b=>Buffer.from([b]))),new TraceModelTransform({uncompressed:bytes.length,crc:wrongCrc?0:crc32(bytes)},trace),new Writable({write(c,e,done){chunks.push(c);done()}}));return Buffer.concat(chunks);
+ }
+ const output=await run(model);assert.equal(traceFromXml(output).id,'test');
+ await assert.rejects(run(model,{wrongCrc:true}),/integridade/);
+ for(const text of ['<!DOCTYPE evil>','<!ENTITY evil>','<metadata name="tiolira:Trace">{}</metadata>','<x xmlns:tiolira="bad"/>'])await assert.rejects(run(Buffer.concat([model,Buffer.from(text)])),/original/);
+ await assert.rejects(run(Buffer.concat([model,Buffer.from([0xff])])));
 });
