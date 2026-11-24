@@ -39,6 +39,7 @@ import {receivePaypalWebhook} from './paypal-commerce.mjs';
 import {purchaseLicensePdf} from './purchase-license-pdf.mjs';
 import {cartCoupons,saveCartCoupon} from './cart-coupons.mjs';
 import {shop,checkout,quoteCheckout,refreshOrder,paymentDetails,memberLicenses,downloadablePurchaseLicense,salesReport,productSalesSummary,downloadPartnersReport,assertWebhook,receiveWebhook,memberHasAccess,isPaidProduct} from './commerce.mjs';
+import {financialOverview} from './financial-overview.mjs';
 import {configurePurchaseEmailWebhook,checkAsaasConnection} from './asaas.mjs';
 import {updatePartnerProfile,partnerProfile,updateBillingDocument} from './partner-profile.mjs';
 import {registerPartner,joinPartnerNetwork} from './partners.mjs';
@@ -126,6 +127,7 @@ export default async function handler(req,res){
    return json(res,200,await auditProductFile({...product,filePath:file.filePath,name:product.name+' · '+file.name,id:product.id+':'+file.id}));
   }
   if(method==='GET'&&route==='admin/product-sales'){await requireAdmin(req);return json(res,200,await productSalesSummary());}
+  if(method==='GET'&&route==='admin/financial-overview'){await requireAdmin(req);return json(res,200,await financialOverview({mode:url.searchParams.get('mode')||'day',count:url.searchParams.get('count')??undefined,currency:url.searchParams.get('currency')||'BRL'}));}
   if(method==='GET'&&route==='admin/sales'){await requireAdmin(req);return json(res,200,await salesReport());}
   if(method==='GET'&&route==='admin/paypal-status'){await requireAdmin(req);await rateLimit(req,'paypal-status',6,60_000);return json(res,200,await checkPaypalConnection());}
   if(method==='GET'&&route==='admin/asaas-status'){await requireAdmin(req);await rateLimit(req,'asaas-status',6,60_000);return json(res,200,await checkAsaasConnection(new URL('/api/webhooks/asaas',url.origin).href));}
