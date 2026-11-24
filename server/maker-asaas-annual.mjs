@@ -1,3 +1,4 @@
+import {markSubscriberWelcome} from '../lib/subscriber-welcome.mjs';
 import {withMembershipLock,assertNoMakerworldCheckout} from './makerworld-links.mjs';
 import {paypalConfig} from './paypal.mjs';
 import {randomUUID} from 'node:crypto';
@@ -57,7 +58,7 @@ export async function applyAnnualPayment(id,p){return updateRecord(KEY,d=>{
   const others=d.purchases.filter(x=>x.id!==row.id&&x.memberId===root.memberId&&x.status==='paid'&&x.endsAt&&Date.parse(x.startsAt)<=Math.max(due,paid));
   const end=Math.max(0,...others.map(x=>Date.parse(x.endsAt)));
   // Preserve previously paid time. Never grant another year for a replayed payment ID.
-  row.startsAt=new Date(end>paid?end:row.id===root.id?paid:Math.max(due,paid)).toISOString();row.endsAt=yearAfter(row.startsAt);
+  row.startsAt=new Date(end>paid?end:row.id===root.id?paid:Math.max(due,paid)).toISOString();row.endsAt=yearAfter(row.startsAt);markSubscriberWelcome(row,d.purchases);
  }
  return d;
 });}

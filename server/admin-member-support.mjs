@@ -1,3 +1,4 @@
+import {markSubscriberWelcome} from '../lib/subscriber-welcome.mjs';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {readRecord,updateRecord} from './store.mjs';
@@ -112,6 +113,7 @@ export async function activateManualAnnual(admin,input){
    if(own.some(r=>['creating','pending','overdue','review','scheduled'].includes(r.status)||r.status==='paid'&&Date.parse(r.endsAt)>Date.now()))fail('A situação da assinatura mudou. Atualize antes de liberar.');
    if(p.kind==='external'&&d.purchases.some(r=>r.directReceipt?.reference===p.reference||r.manualActivation?.kind==='external'&&r.manualActivation.reference===p.reference))fail('Este comprovante já foi utilizado.');
    d.purchases.push({id:p.requestId,memberId:member.id,name:member.name,email:member.email,whatsapp:member.whatsapp||'',countryCode:member.countryCode||'',provider:'manual',environment:purchaseEnvironment('manual'),status:'paid',billingType:p.kind==='external'?'Pagamento externo':'Cortesia',currency:'BRL',totalCents:p.kind==='external'?4990:0,lang:'pt',createdAt:now,paidAt:now,startsAt:now,endsAt,terms:MAKER_TERMS,termsVersion:MAKER_VERSION,manualActivation:{kind:p.kind,reason:p.reason,reference:p.reference,actor:admin.email,at:now}});
+   markSubscriberWelcome(d.purchases.at(-1),d.purchases,now);
    return d;
   });
   const row=record.purchases.find(r=>r.id===p.requestId);

@@ -1,3 +1,4 @@
+import {markLegacySubscriberWelcome} from '../lib/subscriber-welcome.mjs';
 import {randomUUID} from 'node:crypto';
 import {readRecord,updateRecord} from './store.mjs';
 import {paypal,paypalConfig,paypalReady} from './paypal.mjs';
@@ -34,11 +35,12 @@ export async function syncMakerPaypal(s){
  const list=await paypal(`/v1/billing/subscriptions/${enc(s.subscriptionId)}/transactions?start_time=${enc(from)}&end_time=${enc(to)}`);
  if(list.total_pages>1)fail('Transações PayPal exigem conferência.');
  await updateRecord(KEY,old=>{const row=old.subscriptions.find(r=>r.id===s.id&&r.provider==='paypal');if(!row)fail('Assinatura não encontrada.',404);
+ const hadWelcomePeriod=row.periods.some(p=>p.startsAt&&p.endsAt);
  if(['CANCELLED','EXPIRED'].includes(remote.status)){row.cancelledAt||=new Date().toISOString();row.status='cancelled';}
  else if(!row.cancelledAt){row.status=remote.status==='ACTIVE'?'subscribed':remote.status==='SUSPENDED'?'suspended':'pending';}
  row.renewalSuspended=remote.status==='SUSPENDED';
  for(const t of list.transactions||[]){const period=paypalPeriod(t,row);if(period){const i=row.periods.findIndex(p=>p.paymentId===t.id);if(i<0)row.periods.push(period);else row.periods[i]=period;}}
- row.checkedAt=new Date().toISOString();return old;});
+ markLegacySubscriberWelcome(row,hadWelcomePeriod);row.checkedAt=new Date().toISOString();return old;});
 }
 export async function cancelMakerPaypal(s){
  if(!s.subscriptionId)fail('Nenhuma assinatura PayPal encontrada.');

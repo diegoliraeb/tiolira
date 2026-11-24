@@ -1,3 +1,4 @@
+import {runSubscriberWelcomeEmails,subscriberWelcomeReport} from './subscriber-welcome.mjs';
 import {generateTemporaryPassword,consumeTemporaryPassword,replaceTemporaryPassword} from './partner-temporary-password.mjs';
 import {clubCampaignReport,prepareClubCampaign,releaseClubCampaign,pauseClubCampaign,runClubCampaign,runClubCampaignQueue,campaignVisit,campaignUnsubscribe} from './club-campaigns.mjs';
 import {issueProductCommercialLicense,adminCommercialRights} from './commercial-rights.mjs';
@@ -85,6 +86,7 @@ export default async function handler(req,res){
    if(!result.invite)return json(res,200,result);
    res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Location',result.invite);res.statusCode=302;return res.end();
   }
+  if(method==='GET'&&route==='admin/subscriber-welcome'){await requireAdmin(req);return json(res,200,await subscriberWelcomeReport());}
   if(method==='GET'&&route==='admin/maker-subscriptions'){await requireAdmin(req);return json(res,200,await subscriptionReport());}
   if(method==='GET'&&route==='club/maker-subscription/license'){
    const member=await requireClub(req);await rateLimit(req,'maker-license-pdf',20,60_000,member.id);const license=await annualLicense(member);if(url.searchParams.get('format')==='json'){res.setHeader('Cache-Control','private, no-store');return json(res,200,{license:{code:license.code,status:license.status,validUntil:license.validUntil}});}const pdf=await purchaseLicensePdf(license);res.setHeader('Content-Type','application/pdf');res.setHeader('Content-Disposition','attachment; filename="licenca-anual-makerworld.pdf"');return res.end(Buffer.from(pdf));
@@ -97,7 +99,7 @@ export default async function handler(req,res){
    return res.end(Buffer.from(pdf));
   }
   if(method==='GET'&&route==='cron/gameday-prices'){assertReminderCron(req);const {refreshGamedayPrices}=await import('./gameday-pricing.mjs');return json(res,200,await refreshGamedayPrices());}
-  if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);const clubCampaigns=await runClubCampaignQueue();const resends=await runPurchaseEmailResends();const productUpdates=await runProductUpdateEmails();const brasileiraoUpdate=await runBrasileiraoCourtesyEmails();return json(res,200,{...await runCartReminders(),purchaseResends:resends,productUpdates,brasileiraoUpdate,clubCampaigns});}
+  if(method==='GET'&&route==='cron/cart-reminders'){assertReminderCron(req);const subscriberWelcome=await runSubscriberWelcomeEmails();const clubCampaigns=await runClubCampaignQueue();const resends=await runPurchaseEmailResends();const productUpdates=await runProductUpdateEmails();const brasileiraoUpdate=await runBrasileiraoCourtesyEmails();return json(res,200,{...await runCartReminders(),purchaseResends:resends,productUpdates,brasileiraoUpdate,clubCampaigns,subscriberWelcome});}
   if(method==='GET'&&route==='reviews')return json(res,200,await publicReviews(url.searchParams.get('productId')));
   if(method==='GET'&&route==='club/feedback')return json(res,200,await memberFeedback(await requireClub(req)));
   if(method==='GET'&&route==='admin/analytics'){await requireAdmin(req);return json(res,200,await analyticsReport(url.searchParams.get('days')||30));}
