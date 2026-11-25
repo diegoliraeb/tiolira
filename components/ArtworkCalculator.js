@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {workshopKeys,calculateArtwork,artworkOffer} from '../lib/calculator.mjs';
 import {artworkStartingValues,artworkGroupTotals,artworkGroupBreakdown} from '../lib/artwork-selection.mjs';
+import {selectedPrintEstimate,printVariantLabel} from '../lib/selected-print-estimate.mjs';
 import {clubInterfaceCopy} from '../lib/club-interface-copy.mjs';
 import {calculatorCopy} from '../lib/artwork-calculator-copy.mjs';
 const initialState={profile:null,sheets:[],revision:null};
@@ -13,7 +14,7 @@ export default function ArtworkCalculator({lang='pt',products,collections,view='
  const [values,setValues]=useState(()=>artworkStartingValues(null)),[channel,setChannel]=useState('card'),[offer,setOffer]=useState(39.9),[profile,setProfile]=useState({});
  const [guideStep,setGuideStep]=useState(1);
  const workshop=useRef(null),workshopTitle=useRef(null),picker=useRef(null);
- const totals=artworkGroupTotals(items,products),selected=items[0]?.productId||'',product=products.find(p=>p.id===selected),isGroup=totals.quantity>1,saveAsGroup=isGroup||!!groupId;
+ const totals=artworkGroupTotals(items,products),selected=items[0]?.productId||'',product=products.find(p=>p.id===selected),isGroup=totals.quantity>1,saveAsGroup=isGroup||!!groupId||items.some(i=>i.variantId);
  const numberText=n=>new Intl.NumberFormat(lang,{maximumFractionDigits:2}).format(n),timeText=h=>`${Math.floor(Math.round(h*60)/60)} h ${Math.round(h*60)%60} min`;
  let result=null,simulation=null,breakdown=null;try{result=calculateArtwork(values);simulation=artworkOffer(values,offer);breakdown=artworkGroupBreakdown(items,products,values);}catch{}
  async function read(){const r=await fetch('/api/club/cost-sheets',{cache:'no-store'});if(!r.ok)throw Error(c.error);return r.json();}
@@ -21,7 +22,8 @@ export default function ArtworkCalculator({lang='pt',products,collections,view='
  useEffect(()=>{if(requestedProductId&&ready&&products.some(p=>p.id===requestedProductId)){choose(requestedProductId,true);onProductConsumed?.();}},[requestedProductId,ready]);
  async function reload(){try{const data=await read();setState(data);setReady(true);setLoadError(false);}catch{setLoadError(true);}}
  function setSelection(next){setItems(next);setIsCustom(false);setCustomId(null);setCustomName('');const t=artworkGroupTotals(next,products);setValues(v=>({...v,grams:t.grams,hours:t.hours}));setMessage('');}
- function choose(id,replace=false){const existing=items.find(i=>i.productId===id);if(!replace&&existing?.quantity>=999)return;if(!replace&&!existing&&items.length>=100)return;const next=replace?[{productId:id,quantity:1}]:existing?items.map(i=>i.productId===id?{...i,quantity:i.quantity+1}:i):[...items,{productId:id,quantity:1}];if(replace||isCustom)setGroupId(null);setSelection(next);}
+ function choose(id,replace=false){const existing=items.find(i=>i.productId===id);if(!replace&&existing?.quantity>=999)return;if(!replace&&!existing&&items.length>=100)return;const defaultVariant=products.find(p=>p.id===id)?.printEstimate?.defaultVariant,newItem={productId:id,quantity:1,...(defaultVariant?{variantId:defaultVariant}:{})};const next=replace?[newItem]:existing?items.map(i=>i.productId===id?{...i,quantity:i.quantity+1}:i):[...items,newItem];if(replace||isCustom)setGroupId(null);setSelection(next);}
+ function variant(id,variantId){setSelection(items.map(i=>i.productId===id?{...i,variantId}:i));}
  function quantity(id,n){if(!Number.isInteger(n)||n<1||n>999)return;setSelection(items.map(i=>i.productId===id?{...i,quantity:n}:i));}
  function remove(id){setSelection(items.filter(i=>i.productId!==id));}
  function custom(){setGuideStep(1);setItems([]);setIsCustom(true);setGroupId(null);setCustomId(null);setCustomName('');setValues(artworkStartingValues(null,state.profile));setChannel('card');setOffer(39.9);setMessage('');}
@@ -69,8 +71,8 @@ export default function ArtworkCalculator({lang='pt',products,collections,view='
  <section className="piece-panel"><div className="section-label"><span className="step">01</span><h2>{c.choose}</h2></div>
  {!items.length&&!isCustom&&<button className="calculator-empty-selection" onClick={()=>picker.current.showModal()}><span aria-hidden="true">＋</span><strong>{c.choose}</strong><small>{c.startSelection}</small></button>}
  {isCustom&&<label className="custom-piece-name">{c.customName}<input maxLength="100" value={customName} onChange={e=>setCustomName(e.target.value)}/></label>}
- <div className="calculator-group-list">{items.map(item=>{const p=products.find(p=>p.id===item.productId),line=breakdown?.lines.find(line=>line.productId===item.productId);return <article className="calculator-group-item" key={item.productId}>
- {p?.image&&<img src={p.image} alt=""/>}<div className="calculator-group-copy"><h3>{p?.name||item.productId}</h3><small>{p?.printEstimate?`${numberText(p.printEstimate.grams*item.quantity)} g · ${timeText(p.printEstimate.hours*item.quantity)}`:c.missingEstimate}</small></div>
+ <div className="calculator-group-list">{items.map(item=>{const p=products.find(p=>p.id===item.productId),estimate=selectedPrintEstimate(p,item.variantId),line=breakdown?.lines.find(line=>line.productId===item.productId);return <article className="calculator-group-item" key={item.productId}>
+ {p?.image&&<img src={p.image} alt=""/>}<div className="calculator-group-copy"><h3>{p?.name||item.productId}</h3><small>{estimate?`${numberText(estimate.grams*item.quantity)} g · ${timeText(estimate.hours*item.quantity)}`:c.missingEstimate}</small>{p?.printEstimate?.variants&&<label className="calculator-variant">{c.printVariant}<select aria-label={`${c.printVariant}: ${p.name}`} value={item.variantId||p.printEstimate.defaultVariant} onChange={e=>variant(item.productId,e.target.value)}>{p.printEstimate.variants.map(v=><option key={v.id} value={v.id}>{printVariantLabel(v,lang)}</option>)}</select><small>{c.variantNote}</small></label>}</div>
  {line&&<dl className="calculator-unit-prices"><div><dt>{c.unitCost}</dt><dd>{money(line.unit.cost)}</dd></div><div><dt>{c.unitPrice}</dt><dd>{money(line.unit.price)}</dd></div>{item.quantity>1&&<div className="calculator-line-price"><dt>{c.linePrice} · {item.quantity} × {money(line.unit.price)}</dt><dd>{money(line.subtotal)}</dd></div>}</dl>}
  <div className="calculator-quantity"><button aria-label={`${c.decrease}: ${p?.name||item.productId}`} disabled={item.quantity===1} onClick={()=>quantity(item.productId,item.quantity-1)}>−</button><input aria-label={`${c.quantity}: ${p?.name||item.productId}`} type="number" min="1" max="999" step="1" inputMode="numeric" value={item.quantity} onChange={e=>quantity(item.productId,Number(e.target.value))}/><button aria-label={`${c.increase}: ${p?.name||item.productId}`} disabled={item.quantity===999} onClick={()=>quantity(item.productId,item.quantity+1)}>＋</button></div>
  <button className="calculator-remove" aria-label={`${c.remove}: ${p?.name||item.productId}`} onClick={()=>remove(item.productId)}>{c.remove}</button>

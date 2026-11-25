@@ -23,6 +23,14 @@ def inspect(row):
     if not plates:raise ValueError('No model plates')
     names=row.get('gcodes') or sorted(n for n in z.namelist() if re.fullmatch(r'Metadata/plate_\d+\.gcode',n))
     if len(names)!=len(plates):raise ValueError(f'Incomplete slicing: {len(names)}/{len(plates)} plates')
+    # Some projects contain alternative complete builds (e.g. smooth/ribbed box).
+    # Count only the explicitly selected plates, never both alternatives together.
+    if row.get('plate_indices'):
+        requested=row['plate_indices']
+        if row.get('gcodes') or len(set(requested))!=len(requested) or any(not isinstance(i,int) or i<1 for i in requested):raise ValueError('Invalid plate selection')
+        selected=[f'Metadata/plate_{i}.gcode' for i in requested]
+        if any(n not in names for n in selected):raise ValueError('Selected plate not sliced')
+        names=selected
     slice_info=ET.fromstring(z.read('Metadata/slice_info.config')) if 'Metadata/slice_info.config' in z.namelist() else None
     sliced={}
     for plate in slice_info.findall('plate') if slice_info is not None else []:

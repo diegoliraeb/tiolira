@@ -1018,5 +1018,179 @@
     "checkedAt": "2026-11-09T13:05:30.983067+00:00",
     "filePath": "models/e11b2d6a-219d-4da3-8833-ccebca20de37.3mf",
     "url": ""
+  },
+  "52dd5191-1b4c-4a02-8cc1-4ca7cdae65c6": {
+    "grams": 86.32,
+    "seconds": 31377,
+    "plates": 5,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.12",
+    "source": "Nossa_Senhora_V5_90mm_A1_Sem_AMS.3mf",
+    "checkedAt": "2026-11-25T18:46:37.500351+00:00",
+    "filePath": "models/76aea26b-eeb3-4431-a4ed-8e7f6bbdb925.3mf",
+    "url": ""
+  },
+  "1e65c34d-d7f3-47a1-8cf6-8d81a406c56e": {
+    "grams": 52.48,
+    "seconds": 24505,
+    "plates": 5,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.12",
+    "source": "Jesus_V3_90mm_A1_Sem_AMS.3mf",
+    "checkedAt": "2026-11-25T18:46:40.128917+00:00",
+    "filePath": "",
+    "url": "https://makerworld.com/pt/models/3646828-sagrado-coracao-de-jesus-click-sanctis-sem-ams#profileId-4183675"
+  },
+  "3b2206a3-3741-44a4-bea0-3cc2544636f9": {
+    "grams": 47.36,
+    "seconds": 15726,
+    "plates": 3,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.12",
+    "source": "Santo_Antonio_V3_90mm_A1_Sem_AMS.3mf",
+    "checkedAt": "2026-11-25T18:46:42.494424+00:00",
+    "filePath": "models/8ee58563-6066-46a0-8634-9c43a178fbb9.3mf",
+    "url": ""
+  },
+  "63111c38-f3cd-4ec9-b8bb-f01e3dfe38ca": {
+    "grams": 50.36,
+    "seconds": 21298,
+    "plates": 5,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.12",
+    "source": "Sao_Jose_V3_6_Pecas_A1_Sem_AMS.3mf",
+    "checkedAt": "2026-11-25T18:46:44.557159+00:00",
+    "filePath": "",
+    "url": "https://makerworld.com/pt/models/3656221-sao-jose-click-sanctis-sem-ams"
+  },
+  "edfbd772-ca37-42bd-9ced-8a78d2b2f0cc": {
+    "grams": 68.01,
+    "seconds": 29606,
+    "plates": 6,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.12",
+    "source": "Santa_Teresinha_V2_90mm_A1_Sem_AMS.3mf",
+    "checkedAt": "2026-11-25T18:46:46.970949+00:00",
+    "filePath": "models/90ea81e6-1309-410c-a602-1cc80245dbda.3mf",
+    "url": ""
+  },
+  "9b92b14a-9270-4a34-b3bc-2333bed3f112": {
+    "grams": 58.8,
+    "seconds": 22707,
+    "plates": 5,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.12",
+    "source": "Santa_Rita_V2_90mm_A1_Sem_AMS.3mf",
+    "checkedAt": "2026-11-25T18:46:49.381687+00:00",
+    "filePath": "",
+    "url": "https://makerworld.com/pt/models/3666874-santa-rita-de-cassia-click-sanctis-sem-ams"
+  },
+  "6fdd50d1-0f6d-4d50-ace2-df9e5ef094ea": {
+    "grams": 56.5,
+    "seconds": 23906,
+    "plates": 7,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.12",
+    "source": "Sao_Jorge_V4_90mm_A1_Sem_AMS.3mf",
+    "checkedAt": "2026-11-25T18:46:51.113931+00:00",
+    "filePath": "models/4148150e-3ed6-4dee-be1f-3e1c7061ee59.3mf",
+    "url": ""
+  },
+  "67b25d33-7d24-4e3d-bf36-e35096cb0fa9": {
+    "grams": 170.76,
+    "seconds": 29439,
+    "plates": 3,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.2",
+    "source": "Caixa_Individual_Versao_2_Deitada_Lisa_e_Canelada_A1.3mf",
+    "checkedAt": "2026-11-25T18:46:54.179559+00:00",
+    "filePath": "models/a705bdc6-6a15-4c3f-b04e-8c8e45bad3a8.3mf",
+    "url": "",
+    "defaultVariant": "lisa",
+    "variants": [
+      {
+        "id": "lisa",
+        "label": {
+          "pt": "Lisa · bandejas 1–3",
+          "en": "Smooth · plates 1–3",
+          "es": "Lisa · placas 1–3",
+          "fr": "Lisse · plateaux 1–3"
+        },
+        "grams": 170.76,
+        "seconds": 29439,
+        "plates": 3
+      },
+      {
+        "id": "canelada",
+        "label": {
+          "pt": "Canelada · bandejas 4–6",
+          "en": "Ribbed · plates 4–6",
+          "es": "Estriada · placas 4–6",
+          "fr": "Cannelée · plateaux 4–6"
+        },
+        "grams": 174.68,
+        "seconds": 32374,
+        "plates": 3
+      }
+    ]
+  },
+  "7cab4cd9-c404-415d-9edb-674b43b3c422": {
+    "grams": 60.24,
+    "seconds": 27067,
+    "plates": 5,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.12",
+    "source": "Miguel-V8-sliced.3mf",
+    "checkedAt": "2026-11-25T18:46:54.186029+00:00",
+    "filePath": "",
+    "url": "https://makerworld.com/pt/models/3676745-saint-michael-the-archangel-click-sanctis-no-ams"
+  },
+  "e2b315ea-5e1d-46da-a717-f4160d878b84": {
+    "grams": 170.76,
+    "seconds": 29575,
+    "plates": 3,
+    "printer": "Bambu Lab A1 0.4 nozzle",
+    "material": "PLA",
+    "layer": "0.2",
+    "source": "Caixa_Individual_Versao_3_Tampa_Desenho_Lisa_e_Canelada_A1.3mf",
+    "checkedAt": "2026-11-25T18:46:56.780916+00:00",
+    "filePath": "models/60c20058-228b-4820-9d2c-eb71f6902193.3mf",
+    "url": "",
+    "defaultVariant": "lisa",
+    "variants": [
+      {
+        "id": "lisa",
+        "label": {
+          "pt": "Lisa · bandejas 1–3",
+          "en": "Smooth · plates 1–3",
+          "es": "Lisa · placas 1–3",
+          "fr": "Lisse · plateaux 1–3"
+        },
+        "grams": 170.76,
+        "seconds": 29575,
+        "plates": 3
+      },
+      {
+        "id": "canelada",
+        "label": {
+          "pt": "Canelada · bandejas 4–6",
+          "en": "Ribbed · plates 4–6",
+          "es": "Estriada · placas 4–6",
+          "fr": "Cannelée · plateaux 4–6"
+        },
+        "grams": 174.68,
+        "seconds": 32509,
+        "plates": 3
+      }
+    ]
   }
 }

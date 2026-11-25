@@ -6,6 +6,7 @@ import {groupItemsSchema,valuesSchema} from './cost-sheets.mjs';
 import {calculateArtwork} from '../lib/calculator.mjs';
 import {artworkGroupBreakdown} from '../lib/artwork-selection.mjs';
 import {productPrintEstimate} from '../lib/print-estimates.mjs';
+import {selectedPrintEstimate,printVariantLabel} from '../lib/selected-print-estimate.mjs';
 import {calculatorCopy} from '../lib/artwork-calculator-copy.mjs';
 
 const schema=z.object({items:groupItemsSchema.optional(),customName:z.string().trim().min(1).max(100).optional(),values:valuesSchema,lang:z.enum(['pt','en','es','fr']).default('pt')}).refine(v=>Boolean(v.items)!==Boolean(v.customName),'Informe obras ou uma peça avulsa.');
@@ -13,9 +14,10 @@ export function costSheetReport(input,catalog){
  const data=schema.parse(input),result=calculateArtwork(data.values);
  const products=catalog.products.filter(p=>p.published&&catalog.collections.some(c=>c.id===p.collection&&c.published)).map(p=>({...p,printEstimate:productPrintEstimate(p)}));
  if(data.items?.some(i=>!products.some(p=>p.id===i.productId)))throw Object.assign(Error('Obra não disponível.'),{status:404});
+ if(data.items?.some(i=>i.variantId&&!selectedPrintEstimate(products.find(p=>p.id===i.productId),i.variantId)))throw Object.assign(Error('Versão de impressão não disponível.'),{status:400});
  const breakdown=data.items?artworkGroupBreakdown(data.items,products,data.values):{lines:[{productId:null,quantity:1,unit:result,cost:result.cost,subtotal:result.price}],individualTotal:result.price};
  if(!breakdown)throw Object.assign(Error('Faltam referências para detalhar os custos das obras.'),{status:400});
- return {...data,result,individualTotal:breakdown.individualTotal,lines:breakdown.lines.map(line=>({...line,name:line.productId?products.find(p=>p.id===line.productId).name:data.customName})),quantity:breakdown.lines.reduce((sum,l)=>sum+l.quantity,0)};
+ return {...data,result,individualTotal:breakdown.individualTotal,lines:breakdown.lines.map(line=>{const p=products.find(p=>p.id===line.productId),item=data.items?.find(i=>i.productId===line.productId),v=item?.variantId?selectedPrintEstimate(p,item.variantId):null;return {...line,name:p?p.name+(v?' — '+printVariantLabel(v,data.lang):''):data.customName};}),quantity:breakdown.lines.reduce((sum,l)=>sum+l.quantity,0)};
 }
 
 export async function costSheetPdf(report,{partnerName='',now=new Date()}={}){

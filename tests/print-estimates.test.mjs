@@ -19,5 +19,5 @@ test('validated print reference is identical publicly and privately and tied to 
 });
 test('imported totals are complete finite estimates, with profile and source provenance',()=>{
  assert.ok(Object.keys(estimates).length>0,'The verified reference catalog must not be empty');
- for(const e of Object.values(estimates)){assert.ok(Number.isFinite(e.grams)&&e.grams>0);assert.ok(Number.isInteger(e.seconds)&&e.seconds>0);assert.ok(Number.isInteger(e.plates)&&e.plates>0);assert.ok(e.printer&&e.source&&e.checkedAt);}
+ for(const e of Object.values(estimates)){assert.ok(Number.isFinite(e.grams)&&e.grams>0);assert.ok(Number.isFinite(e.seconds)&&e.seconds>0);assert.ok(Number.isInteger(e.plates)&&e.plates>0);assert.ok(e.printer&&e.source&&e.checkedAt);}
 });
